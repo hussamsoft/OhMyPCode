@@ -109,6 +109,35 @@ test("change gating allows superseded workflow runs to cancel", () => {
   }
 });
 
+test("desktop package build initializes the pinned OMP submodule", () => {
+  const source = readFileSync(new URL(".github/workflows/desktop-packages.yml", repoRoot), "utf8");
+  const linuxJob = jobBlocks(source).get("linux")?.join("\n") ?? "";
+  assert.match(linuxJob, /fetch-depth: 0/);
+  assert.match(linuxJob, /submodules: true/);
+  assert.match(linuxJob, /npm run build:desktop -- --publish never --linux --x64/);
+});
+
+test("desktop release jobs initialize the pinned OMP submodule", () => {
+  const source = readFileSync(new URL(".github/workflows/desktop-release.yml", repoRoot), "utf8");
+  const buildJobs = ["publish-macos", "publish-linux", "publish-windows"].map(
+    (job) => jobBlocks(source).get(job)?.join("\n") ?? "",
+  );
+  for (const job of buildJobs) {
+    assert.match(job, /actions\/checkout@v4/);
+    assert.match(job, /fetch-depth: 0/);
+    assert.match(job, /submodules: true/);
+    assert.match(job, /npm run build:desktop/);
+  }
+  assert.match(source, /node scripts\/build-omp-runtime\.mjs --ensure --target/);
+});
+
+test("website deployment skips cleanly without Cloudflare credentials", () => {
+  const source = readFileSync(new URL(".github/workflows/deploy-website.yml", repoRoot), "utf8");
+  assert.match(source, /CLOUDFLARE_API_TOKEN/);
+  assert.match(source, /CLOUDFLARE_API_TOKEN is not configured; skipping website deployment/);
+  assert.match(source, /if: steps\.cloudflare\.outputs\.has_token == 'true'/);
+});
+
 test("focused contracts stay inside existing required checks", () => {
   const jobs = jobBlocks(readFileSync(ciWorkflowPath, "utf8"));
   const changes = jobs.get("changes")?.join("\n") ?? "";
