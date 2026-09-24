@@ -1,0 +1,5 @@
+Fixed
+- Skip website deployment when the optional Cloudflare API token is not configured
+- Preserve pinned OMP runtime and release packaging across CI builds
+
+Full notes: https://paseo.sh/changelog

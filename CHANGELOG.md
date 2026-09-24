@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.3 - 2026-09-24
+
+### Fixed
+
+- Skip website deployment when the optional Cloudflare API token is not configured
+- Preserve pinned OMP runtime and release packaging across CI builds
+
 ## 0.9.2 - 2026-09-24
 
 ### Fixed
