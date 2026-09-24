@@ -1,11 +1,11 @@
 npmRebuild: false
-appId: sh.paseo.desktop
-productName: Paseo
-executableName: Paseo
+appId: sh.ohmypcode.desktop
+productName: OhMyPCode
+executableName: OhMyPCode
 protocols:
-  - name: Paseo agent link
+  - name: OhMyPCode agent link
     schemes:
-      - paseo
+      - ohmypcode
 afterPack: ./scripts/after-pack.js
 afterSign: ./scripts/after-sign.js
 directories:
@@ -31,15 +31,17 @@ extraResources:
     to: app-dist
   - from: assets/editor-targets
     to: editor-target-icons
+  - from: ../../ohmypcode/default-config.json
+    to: ohmypcode/default-config.json
 publish:
   provider: github
-  owner: getpaseo
-  repo: paseo
+  owner: hussamsoft
+  repo: OhMyPCode
 mac:
-  artifactName: "Paseo-${version}-${arch}.${ext}"
+  artifactName: "OhMyPCode-${version}-${arch}.${ext}"
   minimumSystemVersion: "13.0.0"
   category: public.app-category.developer-tools
-  icon: assets/icon.icns
+  icon: ../../ohmypcode/assets/desktop/icon.icns
   hardenedRuntime: true
   notarize: true
   entitlements: build/entitlements.mac.plist
@@ -47,20 +49,24 @@ mac:
   extraResources:
     - from: bin/paseo
       to: bin/paseo
-    - from: assets/icon.png
+    - from: ../../ohmypcode/assets/desktop/icon.png
       to: icon.png
+    - from: ../../ohmypcode/runtime/omp/darwin-${arch}
+      to: omp/darwin-${arch}
   target:
     - dmg
     - zip
 linux:
   category: Development
-  icon: assets
-  artifactName: "Paseo-${version}-${arch}.${ext}"
-  maintainer: "Mohamed Boudra <hello@moboudra.com>"
-  vendor: "Paseo"
+  icon: ../../ohmypcode/assets/desktop
+  artifactName: "OhMyPCode-${version}-${arch}.${ext}"
+  maintainer: "OhMyPCode"
+  vendor: "OhMyPCode"
   extraResources:
     - from: bin/paseo
       to: bin/paseo
+    - from: ../../ohmypcode/runtime/omp/linux-${arch}
+      to: omp/linux-${arch}
   target:
     - AppImage
     - deb
@@ -72,19 +78,21 @@ rpm:
   afterInstall: scripts/linux-sandbox/after-install.tpl
 appImage:
   # A nonempty argument list replaces builder's hardcoded --no-sandbox default.
-  executableArgs: ["--class=Paseo"]
+  executableArgs: ["--class=OhMyPCode"]
   # Keep the AppImage filename stable across versions (no ${version}) so
   # electron-updater overwrites the file in place instead of renaming it to a new
   # versioned path. A rename orphans the old binary, breaks desktop shortcuts, and
-  # dangles the ~/.local/bin/paseo CLI symlink, which points at $APPIMAGE. The
+  # dangles the ~/.local/bin/ompc CLI symlink, which points at $APPIMAGE. The
   # version stays discoverable via the release tag and the in-app version.
-  artifactName: "Paseo-${arch}.${ext}"
+  artifactName: "OhMyPCode-${arch}.${ext}"
 win:
-  artifactName: "Paseo-Setup-${version}-${arch}.${ext}"
-  icon: assets/icon.ico
+  artifactName: "OhMyPCode-Setup-${version}-${arch}.${ext}"
+  icon: ../../ohmypcode/assets/desktop/icon.ico
   extraResources:
     - from: bin/paseo.cmd
       to: bin/paseo.cmd
+    - from: ../../ohmypcode/runtime/omp/win32-${arch}
+      to: omp/win32-${arch}
   target:
     - target: nsis
       arch:

@@ -227,6 +227,14 @@ import {
 } from "../services/github-service.js";
 import type { ForgeService } from "../services/forge-service.js";
 import type { ProviderUsageService } from "../services/quota-fetcher/service.js";
+import type { OmpStatisticsService } from "../services/omp-statistics/service.js";
+import { createOmpCollabService, type OmpCollabService } from "../services/omp-collab/index.js";
+import {
+  createOmpProvidersService,
+  type OmpProvidersService,
+} from "../services/omp-providers/index.js";
+import { OmpProvidersSessionController } from "./session/omp/omp-providers-session-controller.js";
+import { OmpVibeSessionController } from "./session/omp/omp-vibe-session-controller.js";
 import {
   resolveWorkspaceRootAgent,
   summarizeFetchWorkspacesEntries,
@@ -512,9 +520,12 @@ export interface SessionOptions {
   stt: Resolvable<SpeechToTextProvider | null>;
   sttLanguage?: string;
   tts: Resolvable<TextToSpeechProvider | null>;
+  ompCollabService?: OmpCollabService;
+  ompProvidersService?: OmpProvidersService;
   terminalManager: TerminalManager | null;
   providerSnapshotManager: ProviderSnapshotManager;
   providerUsageService: ProviderUsageService;
+  ompStatisticsService?: OmpStatisticsService;
   hubExecutionAgents?: HubExecutionAgents;
   hubRelationships?: HubRelationshipManagement;
   serviceProxy?: ServiceProxySubsystem;
@@ -612,6 +623,17 @@ function resolveDirectorySync(service: DirectorySyncService | undefined): Direct
   return service ?? new DirectorySyncService();
 }
 
+function resolveOmpCollabService(service: OmpCollabService | undefined): OmpCollabService {
+  return service ?? createOmpCollabService();
+}
+
+function resolveOmpProvidersService(
+  service: OmpProvidersService | undefined,
+  logger: pino.Logger,
+): OmpProvidersService {
+  return service ?? createOmpProvidersService({ logger });
+}
+
 function describeRegistryTransition(record: ArchivedRecordSnapshot | null): RegistryTransition {
   if (!record) {
     return "created";
@@ -649,6 +671,15 @@ function workspaceLabelErrorCode(error: unknown): string {
     return error.code;
   }
   return "workspace_label_failed";
+}
+
+class OmpToolSelectionError extends Error {
+  readonly code = "omp_tool_selection_failed";
+
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause), { cause });
+    this.name = "OmpToolSelectionError";
+  }
 }
 
 interface ClientActivity {
@@ -761,6 +792,9 @@ export class Session {
   private readonly workspaceUpdateTails = new Map<string, Promise<void>>();
   private readonly terminalManager: TerminalManager | null;
   private readonly providerSnapshotManager: ProviderSnapshotManager;
+  private readonly ompCollabService: OmpCollabService;
+  private readonly ompProvidersController: OmpProvidersSessionController;
+  private readonly ompVibeController: OmpVibeSessionController;
   private readonly serviceProxy: ServiceProxySubsystem | null;
   private readonly scriptRuntimeStore: WorkspaceScriptRuntimeStore | null;
   private readonly getDaemonTcpPort: (() => number | null) | null;
@@ -828,6 +862,7 @@ export class Session {
       terminalManager,
       providerSnapshotManager,
       providerUsageService,
+      ompStatisticsService,
       serviceProxy,
       scriptRuntimeStore,
       workspaceSetupSnapshots,
@@ -889,6 +924,11 @@ export class Session {
     this.workspaceLabelService = resolveWorkspaceLabelService(workspaceLabelService);
     this.filesystem = filesystem ?? nodeSessionFileSystem;
     this.github = github ?? createGitHubService();
+    this.ompCollabService = resolveOmpCollabService(options.ompCollabService);
+    const ompProvidersService = resolveOmpProvidersService(
+      options.ompProvidersService,
+      this.sessionLogger,
+    );
     this.renameCurrentBranch = renameCurrentBranch ?? renameCurrentBranchDefault;
     this.workspaceGitService = workspaceGitService;
     this.gitMutation = createGitMutationService({
@@ -984,6 +1024,7 @@ export class Session {
       },
       providerSnapshotManager,
       providerUsageService,
+      ompStatisticsService,
       logger: this.sessionLogger,
     });
     this.agentConfigSession = new AgentConfigSession({
@@ -1114,6 +1155,19 @@ export class Session {
       logger: this.sessionLogger,
     });
     this.providerSnapshotManager = providerSnapshotManager;
+    this.ompProvidersController = new OmpProvidersSessionController({
+      service: ompProvidersService,
+      emit: (message) => this.emit(message),
+      delivery: this.delivery,
+      refreshOmpCatalog: () =>
+        this.providerSnapshotManager.refreshSettingsSnapshot({ providers: ["omp"] }),
+      logger: this.sessionLogger,
+    });
+    this.ompVibeController = new OmpVibeSessionController({
+      agentManager,
+      emit: (message) => this.emit(message),
+      logger: this.sessionLogger,
+    });
     this.serviceProxy = serviceProxy ?? null;
     this.scriptRuntimeStore = scriptRuntimeStore ?? null;
     this.workspaceSetupSnapshots = workspaceSetupSnapshots ?? new Map();
@@ -1256,14 +1310,44 @@ export class Session {
     return owner;
   }
 
-  // COMPAT(timelineItemCapabilities): plugin items added in v0.8.0, notifications in v0.7.2.
-  // Remove after 2027-03-07 once the supported client floor is >= v0.8.0.
+  // COMPAT(ompProviderStateEvents): added in v0.9.1, remove after 2027-03-24
+  // once clients that predate OMP Vibe/tool state events are below the floor.
   private supportsTimelineItem(item: { type: string }, source?: object): boolean {
     let capability: ClientCapability;
     if (item.type === "notification") capability = CLIENT_CAPS.timelineNotifications;
     else if (item.type === "plugin") capability = CLIENT_CAPS.pluginTimelineItems;
     else return true;
     return source ? this.supportsForSource(capability, source) : this.supports(capability);
+  }
+
+  private supportsAgentStreamEvent(
+    event: Extract<SessionOutboundMessage, { type: "agent_stream" }>["payload"]["event"],
+    source?: object,
+  ): boolean {
+    if (event.type !== "tools_updated" && event.type !== "provider_state_updated") return true;
+    return source
+      ? this.supportsForSource(CLIENT_CAPS.ompProviderStateEvents, source)
+      : this.supports(CLIENT_CAPS.ompProviderStateEvents);
+  }
+
+  private supportsAgentStreamDelivery(
+    event: Extract<SessionOutboundMessage, { type: "agent_stream" }>["payload"]["event"],
+    source: object | undefined,
+    attention: boolean,
+  ): boolean {
+    if (event.type === "tools_updated" || event.type === "provider_state_updated") {
+      if (!this.supportsAgentStreamEvent(event, source)) return false;
+    }
+    if (event.type === "timeline" && !this.supportsTimelineItem(event.item, source)) return false;
+    if (
+      attention &&
+      source !== undefined &&
+      (this.delivery.isModern(source) ||
+        this.supportsForSource(CLIENT_CAPS.selectiveAgentTimeline, source))
+    ) {
+      return false;
+    }
+    return true;
   }
 
   private forwardAgentStream(
@@ -1290,28 +1374,13 @@ export class Session {
     for (const subscription of this.timelineSubscriptions.values()) {
       const source = subscription.owner.source;
       if (!subscription.agentIds.has(event.agentId)) continue;
-      if (
-        attention &&
-        (this.delivery.isModern(source) ||
-          this.supportsForSource(CLIENT_CAPS.selectiveAgentTimeline, source))
-      )
-        continue;
-      if (
-        serializedEvent.type === "timeline" &&
-        !this.supportsTimelineItem(serializedEvent.item, source)
-      )
-        continue;
+      if (!this.supportsAgentStreamDelivery(serializedEvent, source, attention)) continue;
       subscription.owner.emit(message);
     }
-    // COMPAT(ownedSubscriptions): added in v0.8.0, remove implicit timeline delivery after 2027-03-09.
     for (const [source, { capabilities }] of this.clientSources) {
       if (this.delivery.isModern(source) || capabilities.has(CLIENT_CAPS.selectiveAgentTimeline))
         continue;
-      if (
-        serializedEvent.type === "timeline" &&
-        !this.supportsTimelineItem(serializedEvent.item, source)
-      )
-        continue;
+      if (!this.supportsAgentStreamDelivery(serializedEvent, source, attention)) continue;
       const alreadyDelivered = [...this.timelineSubscriptions.values()].some(
         (subscription) =>
           subscription.owner.source === source && subscription.agentIds.has(event.agentId),
@@ -1321,9 +1390,11 @@ export class Session {
     if (
       this.clientSources.size === 0 &&
       !this.supports(CLIENT_CAPS.selectiveAgentTimeline) &&
-      this.timelineSubscriptions.size === 0
-    )
+      this.timelineSubscriptions.size === 0 &&
+      this.supportsAgentStreamEvent(serializedEvent)
+    ) {
       this.emit(message);
+    }
   }
 
   supports(capability: ClientCapability): boolean {
@@ -2131,7 +2202,7 @@ export class Session {
                 requestId,
                 requestType: msg.type,
                 error: `Request failed: ${err.message}`,
-                code: "handler_error",
+                code: err instanceof OmpToolSelectionError ? err.code : "handler_error",
               },
             });
           } catch (emitError) {
@@ -2281,7 +2352,8 @@ export class Session {
       this.dispatchAgentConfigMessage(msg) ??
       this.dispatchCheckoutMessage(msg) ??
       this.dispatchWorkspaceLifecycleMessage(msg) ??
-      this.dispatchWorkspaceFileMessage(msg, source) ??
+      this.dispatchWorkspaceAndOmpCollabMessage(msg, source) ??
+      this.dispatchOmpVibeMessage(msg) ??
       this.dispatchProviderMessage(msg) ??
       this.dispatchOrchestrationSkillsMessage(msg) ??
       this.dispatchPluginDirectoryMessage(msg) ??
@@ -2742,6 +2814,32 @@ export class Session {
 
   private dispatchAgentConfigMessage(msg: SessionInboundMessage): Promise<void> | undefined {
     switch (msg.type) {
+      case "list_provider_tools_request":
+        return this.agentManager.listProviderTools(msg.provider, msg.cwd).then((tools) => {
+          this.emit({
+            type: "list_provider_tools_response",
+            payload: { requestId: msg.requestId, tools },
+          });
+        });
+      case "list_agent_tools_request":
+        return this.agentManager.listAgentTools(msg.agentId).then((tools) => {
+          this.emit({
+            type: "list_agent_tools_response",
+            payload: { requestId: msg.requestId, tools },
+          });
+        });
+      case "set_agent_tools_request":
+        return this.agentManager
+          .setAgentTools(msg.agentId, msg.enabledTools)
+          .then((tools) => {
+            this.emit({
+              type: "set_agent_tools_response",
+              payload: { requestId: msg.requestId, tools },
+            });
+          })
+          .catch((error: unknown) => {
+            throw new OmpToolSelectionError(error);
+          });
       case "set_agent_mode_request":
         return this.agentConfigSession.handleSetAgentModeRequest(msg);
       case "set_agent_model_request":
@@ -2963,6 +3061,17 @@ export class Session {
     }
   }
 
+  private dispatchWorkspaceAndOmpCollabMessage(
+    msg: SessionInboundMessage,
+    source?: object,
+  ): Promise<void> | undefined {
+    return (
+      this.dispatchWorkspaceFileMessage(msg, source) ??
+      this.dispatchOmpCollabMessage(msg) ??
+      this.dispatchOmpProvidersMessage(msg)
+    );
+  }
+
   private dispatchWorkspaceStateMessage(msg: SessionInboundMessage): Promise<void> | undefined {
     switch (msg.type) {
       case "workspace.recovery.inspect.request":
@@ -2976,6 +3085,90 @@ export class Session {
       default:
         return undefined;
     }
+  }
+  private dispatchOmpCollabMessage(msg: SessionInboundMessage): Promise<void> | undefined {
+    switch (msg.type) {
+      case "omp.collab.hosts.list.request":
+        return this.handleOmpCollabHostsListRequest(msg);
+      case "omp.collab.link.create.request":
+        return this.handleOmpCollabLinkCreateRequest(msg);
+      case "omp.collab.session.share.request":
+        return this.handleOmpCollabSessionShareRequest(msg);
+      default:
+        return undefined;
+    }
+  }
+
+  private dispatchOmpProvidersMessage(msg: SessionInboundMessage): Promise<void> | undefined {
+    return this.ompProvidersController.dispatch(msg);
+  }
+
+  private dispatchOmpVibeMessage(msg: SessionInboundMessage): Promise<void> | undefined {
+    return this.ompVibeController.dispatch(msg);
+  }
+
+  private async handleOmpCollabHostsListRequest(
+    msg: Extract<SessionInboundMessage, { type: "omp.collab.hosts.list.request" }>,
+  ): Promise<void> {
+    try {
+      const hosts = [...(await this.ompCollabService.listHosts())];
+      this.emit({
+        type: "omp.collab.hosts.list.response",
+        payload: { requestId: msg.requestId, hosts },
+      });
+    } catch {
+      this.emitOmpCollabError(msg);
+    }
+  }
+
+  private async handleOmpCollabLinkCreateRequest(
+    msg: Extract<SessionInboundMessage, { type: "omp.collab.link.create.request" }>,
+  ): Promise<void> {
+    try {
+      const link = await this.ompCollabService.createLink(msg.instanceId, msg.viewOnly);
+      this.emit({
+        type: "omp.collab.link.create.response",
+        payload: { requestId: msg.requestId, link },
+      });
+    } catch {
+      this.emitOmpCollabError(msg);
+    }
+  }
+
+  private async handleOmpCollabSessionShareRequest(
+    msg: Extract<SessionInboundMessage, { type: "omp.collab.session.share.request" }>,
+  ): Promise<void> {
+    try {
+      const link = await this.ompCollabService.shareSession(msg.session, msg.gist);
+      this.emit({
+        type: "omp.collab.session.share.response",
+        payload: { requestId: msg.requestId, link },
+      });
+    } catch {
+      this.emitOmpCollabError(msg);
+    }
+  }
+
+  private emitOmpCollabError(
+    msg: Extract<
+      SessionInboundMessage,
+      {
+        type:
+          | "omp.collab.hosts.list.request"
+          | "omp.collab.link.create.request"
+          | "omp.collab.session.share.request";
+      }
+    >,
+  ): void {
+    this.emit({
+      type: "rpc_error",
+      payload: {
+        requestId: msg.requestId,
+        requestType: msg.type,
+        error: "OMP collaboration operation failed",
+        code: "omp_collab_failed",
+      },
+    });
   }
 
   private dispatchProviderMessage(msg: SessionInboundMessage): Promise<void> | undefined {
@@ -2996,6 +3189,8 @@ export class Session {
         return this.providerCatalogSession.handleProviderDiagnosticRequest(msg);
       case "provider.usage.list.request":
         return this.providerCatalogSession.handleProviderUsageListRequest(msg);
+      case "omp.statistics.request":
+        return this.providerCatalogSession.handleOmpStatisticsRequest(msg);
       default:
         return undefined;
     }
@@ -8426,6 +8621,8 @@ export class Session {
       this.unsubscribeTerminalWorkspaceContributionEvents = null;
     }
     this.providerCatalogSession.dispose();
+    this.ompProvidersController.dispose();
+    this.ompVibeController.dispose();
 
     this.terminalController.dispose();
 

@@ -1,9 +1,9 @@
 {
-  "name": "@getpaseo/desktop",
+  "name": "@ohmypcode/desktop",
   "version": "0.9.1",
   "private": true,
-  "description": "Paseo desktop app (Electron wrapper)",
-  "homepage": "https://paseo.sh",
+  "description": "OhMyPCode desktop app — an OMP-first coding workspace",
+  "homepage": "https://github.com/hussamsoft/OhMyPCode",
   "license": "Apache-2.0",
   "author": {
     "name": "Mohamed Boudra",
@@ -11,11 +11,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/getpaseo/paseo.git"
+    "url": "https://github.com/hussamsoft/OhMyPCode.git"
   },
   "main": "dist/main.js",
   "scripts": {
-    "build": "npm --prefix ../.. run build:server:clean && npm run build:main && electron-builder --config electron-builder.yml",
+    "build": "npm --prefix ../.. run build:server:clean && npm run build:main && electron-builder --config electron-builder.yml --publish never",
     "build:main": "tsc -p tsconfig.json",
     "capture-harness": "npm run build:main && ./capture-harness/run.sh",
     "dev": "./scripts/dev.sh",
@@ -46,5 +46,5 @@
     "vitest": "^4.1.6",
     "wait-on": "8.0.5"
   },
-  "desktopName": "Paseo.desktop"
+  "desktopName": "OhMyPCode.desktop"
 }

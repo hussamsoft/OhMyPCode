@@ -236,6 +236,7 @@ import type {
   AgentCapabilityFlags,
   AgentModelDefinition,
   AgentMode,
+  AgentToolDefinition,
   AgentPermissionRequest,
   AgentPermissionResponse,
   AgentPersistenceHandle,
@@ -371,6 +372,8 @@ const AgentCapabilityFlagsSchema: z.ZodType<AgentCapabilityFlags> = z
     supportsMcpServers: z.boolean(),
     supportsReasoningStream: z.boolean(),
     supportsToolInvocations: z.boolean(),
+    supportsOmpVibe: z.boolean().optional(),
+    supportsOmpToolSelection: z.boolean().optional(),
     // COMPAT(rewind): added in v0.1.X, drop when floor >= v0.1.X.
     supportsRewindConversation: z.boolean().optional().default(false),
     // COMPAT(rewind): added in v0.1.X, drop when floor >= v0.1.X.
@@ -714,6 +717,16 @@ export const AgentTimelineItemPayloadSchema: z.ZodType<AgentTimelineItem, unknow
   }),
 ]);
 
+export const AgentToolSourceSchema = z.enum(["native", "paseo", "mcp"]);
+export const AgentToolDefinitionSchema = z.object({
+  name: z.string(),
+  label: z.string(),
+  description: z.string(),
+  source: AgentToolSourceSchema,
+  enabled: z.boolean(),
+  required: z.boolean(),
+}) satisfies z.ZodType<AgentToolDefinition>;
+
 export const AgentStreamEventPayloadSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("thread_started"),
@@ -761,6 +774,17 @@ export const AgentStreamEventPayloadSchema = z.discriminatedUnion("type", [
     provider: AgentProviderSchema,
     requestId: z.string(),
     resolution: AgentPermissionResponseSchema,
+  }),
+  z.object({
+    type: z.literal("tools_updated"),
+    provider: AgentProviderSchema,
+    tools: z.array(AgentToolDefinitionSchema),
+  }),
+  z.object({
+    type: z.literal("provider_state_updated"),
+    provider: AgentProviderSchema,
+    stateKey: z.string(),
+    state: JsonWireValueSchema,
   }),
   z.object({
     type: z.literal("attention_required"),
@@ -826,6 +850,7 @@ export const AgentSnapshotPayloadSchema = z.object({
   pendingPermissions: z.array(AgentPermissionRequestPayloadSchema),
   persistence: AgentPersistenceHandleSchema.nullable(),
   runtimeInfo: AgentRuntimeInfoSchema.optional(),
+  tools: z.array(AgentToolDefinitionSchema).optional(),
   lastUsage: AgentUsageSchema.optional(),
   lastError: z.string().optional(),
   title: z.string().nullable(),
@@ -1772,6 +1797,204 @@ export const ProviderDiagnosticRequestMessageSchema = z.object({
 export const ProviderUsageListRequestMessageSchema = z.object({
   type: z.literal("provider.usage.list.request"),
   requestId: z.string(),
+});
+
+export const ListProviderToolsRequestSchema = z.object({
+  type: z.literal("list_provider_tools_request"),
+  provider: AgentProviderSchema,
+  cwd: z.string(),
+  requestId: z.string(),
+});
+
+export const ListAgentToolsRequestSchema = z.object({
+  type: z.literal("list_agent_tools_request"),
+  agentId: z.string(),
+  requestId: z.string(),
+});
+
+export const SetAgentToolsRequestSchema = z.object({
+  type: z.literal("set_agent_tools_request"),
+  agentId: z.string(),
+  enabledTools: z.array(z.string()),
+  requestId: z.string(),
+});
+
+export const OmpVibeWorkerSchema = z.object({
+  id: z.string(),
+  cli: z.enum(["fast", "good"]),
+  name: z.string(),
+  state: z.enum(["initializing", "running", "idle", "dead"]),
+  turnCount: z.number().int().nonnegative(),
+  queuedMessages: z.number().int().nonnegative(),
+  resolvedModel: z.string().optional(),
+  lastActivity: z.string().optional(),
+  currentTool: z.string().optional(),
+  outputTail: z.array(z.string()),
+  lastTurnStatus: z.enum(["running", "completed", "failed", "cancelled", "idle"]),
+  createdAt: z.number(),
+  lastActivityAt: z.number(),
+});
+
+export const OmpVibeStateSchema = z.object({
+  revision: z.number().int().nonnegative(),
+  enabled: z.boolean(),
+  workers: z.array(OmpVibeWorkerSchema),
+});
+
+export const OmpVibeStatusRequestSchema = z.object({
+  type: z.literal("omp.vibe.status.request"),
+  agentId: z.string(),
+  requestId: z.string(),
+});
+
+export const OmpVibeEnterRequestSchema = z.object({
+  type: z.literal("omp.vibe.enter.request"),
+  agentId: z.string(),
+  prompt: z.string().optional(),
+  requestId: z.string(),
+});
+
+export const OmpVibeExitRequestSchema = z.object({
+  type: z.literal("omp.vibe.exit.request"),
+  agentId: z.string(),
+  requestId: z.string(),
+});
+
+export const OmpVibeSpawnRequestSchema = z.object({
+  type: z.literal("omp.vibe.spawn.request"),
+  agentId: z.string(),
+  tier: z.enum(["fast", "good"]),
+  name: z.string().optional(),
+  prompt: z.string(),
+  requestId: z.string(),
+});
+
+export const OmpVibeSendRequestSchema = z.object({
+  type: z.literal("omp.vibe.send.request"),
+  agentId: z.string(),
+  workerId: z.string(),
+  message: z.string(),
+  requestId: z.string(),
+});
+
+export const OmpVibeWaitRequestSchema = z.object({
+  type: z.literal("omp.vibe.wait.request"),
+  agentId: z.string(),
+  workerIds: z.array(z.string()).optional(),
+  timeoutMs: z.number().int().positive().optional(),
+  requestId: z.string(),
+});
+
+export const OmpVibeKillRequestSchema = z.object({
+  type: z.literal("omp.vibe.kill.request"),
+  agentId: z.string(),
+  workerId: z.string(),
+  requestId: z.string(),
+});
+
+export const OmpStatisticsRequestMessageSchema = z.object({
+  type: z.literal("omp.statistics.request"),
+  requestId: z.string(),
+  forceRefresh: z.boolean().optional(),
+});
+
+const OmpCollabHostMetadataSchema = z.record(z.string(), z.unknown());
+const OmpCollabLinkSchema = z
+  .string()
+  .url()
+  .refine(
+    (value) => new URL(value).protocol === "https:",
+    "OMP collaboration links must use HTTPS",
+  );
+
+export const OmpCollabHostsListRequestSchema = z.object({
+  type: z.literal("omp.collab.hosts.list.request"),
+  requestId: z.string(),
+});
+
+export const OmpCollabLinkCreateRequestSchema = z.object({
+  type: z.literal("omp.collab.link.create.request"),
+  instanceId: z.string().trim().min(1),
+  viewOnly: z.boolean().optional(),
+  requestId: z.string(),
+});
+
+export const OmpCollabSessionShareRequestSchema = z.object({
+  type: z.literal("omp.collab.session.share.request"),
+  session: z.string().trim().min(1),
+  gist: z.boolean().optional(),
+  requestId: z.string(),
+});
+
+export const OmpProvidersListRequestSchema = z.object({
+  type: z.literal("omp.providers.list.request"),
+  requestId: z.string(),
+});
+export const OmpProviderLoginStartRequestSchema = z.object({
+  type: z.literal("omp.providers.login.start.request"),
+  providerId: z.string().min(1),
+  requestId: z.string(),
+});
+export const OmpProviderLoginRespondRequestSchema = z.object({
+  type: z.literal("omp.providers.login.respond.request"),
+  loginId: z.string(),
+  uiRequestId: z.string(),
+  value: z.string().optional(),
+  confirmed: z.boolean().optional(),
+  cancelled: z.boolean().optional(),
+  requestId: z.string(),
+});
+export const OmpProviderLoginCancelRequestSchema = z.object({
+  type: z.literal("omp.providers.login.cancel.request"),
+  loginId: z.string(),
+  requestId: z.string(),
+});
+export const OmpProviderLogoutRequestSchema = z.object({
+  type: z.literal("omp.providers.logout.request"),
+  providerId: z.string().min(1),
+  requestId: z.string(),
+});
+
+export const OmpProviderLoginEventSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("open_url"),
+    uiRequestId: z.string(),
+    url: z.string(),
+    instructions: z.string().optional(),
+  }),
+  z.object({
+    kind: z.literal("input"),
+    uiRequestId: z.string(),
+    title: z.string(),
+    placeholder: z.string().optional(),
+    secret: z.boolean(),
+  }),
+  z.object({
+    kind: z.literal("select"),
+    uiRequestId: z.string(),
+    title: z.string().optional(),
+    options: z.array(z.string()),
+  }),
+  z.object({
+    kind: z.literal("confirm"),
+    uiRequestId: z.string(),
+    title: z.string().optional(),
+    message: z.string().optional(),
+  }),
+  z.object({
+    kind: z.literal("notify"),
+    message: z.string(),
+    level: z.enum(["info", "warning", "error"]),
+  }),
+  z.object({ kind: z.literal("completed") }),
+  z.object({ kind: z.literal("failed"), error: z.string() }),
+]);
+
+const OmpLoginProviderSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  authenticated: z.boolean(),
+  available: z.boolean(),
 });
 
 export const ResumeAgentRequestMessageSchema = z.object({
@@ -3212,6 +3435,9 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   AgentTimelineAppendRequestSchema,
   AgentSkillsGetStatusRequestSchema,
   AgentSkillsReconcileRequestSchema,
+  OmpCollabHostsListRequestSchema,
+  OmpCollabLinkCreateRequestSchema,
+  OmpCollabSessionShareRequestSchema,
   AgentSkillsUninstallRequestSchema,
   AgentSkillsSaveSelectionRequestSchema,
   AgentSkillsImportLegacySelectionRequestSchema,
@@ -3232,6 +3458,22 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   RefreshProvidersSnapshotRequestMessageSchema,
   ProviderDiagnosticRequestMessageSchema,
   ProviderUsageListRequestMessageSchema,
+  OmpStatisticsRequestMessageSchema,
+  ListProviderToolsRequestSchema,
+  ListAgentToolsRequestSchema,
+  SetAgentToolsRequestSchema,
+  OmpVibeStatusRequestSchema,
+  OmpVibeEnterRequestSchema,
+  OmpVibeExitRequestSchema,
+  OmpVibeSpawnRequestSchema,
+  OmpVibeSendRequestSchema,
+  OmpVibeWaitRequestSchema,
+  OmpVibeKillRequestSchema,
+  OmpProvidersListRequestSchema,
+  OmpProviderLoginStartRequestSchema,
+  OmpProviderLoginRespondRequestSchema,
+  OmpProviderLoginCancelRequestSchema,
+  OmpProviderLogoutRequestSchema,
   ResumeAgentRequestMessageSchema,
   ImportAgentRequestMessageSchema,
   RefreshAgentRequestMessageSchema,
@@ -3619,6 +3861,12 @@ export const ServerInfoStatusPayloadSchema = z
         workspaceFileEditing: z.boolean().optional(),
         // COMPAT(providerUsageList): added in v0.1.98, drop the gate when daemon floor >= v0.1.98.
         providerUsageList: z.boolean().optional(),
+        // OhMyPCode fork capabilities: stock Paseo daemons never set these, so this gate is permanent.
+        ompStatistics: z.boolean().optional(),
+        ompCollab: z.boolean().optional(),
+        ompProviders: z.boolean().optional(),
+        ompVibe: z.boolean().optional(),
+        ompToolSelection: z.boolean().optional(),
         // COMPAT(agentDetach): added in v0.1.98, remove gate after 2026-12-19 once daemon floor >= v0.1.98.
         agentDetach: z.boolean().optional(),
         // COMPAT(agentThinkingUpdate): added in v0.2.4, remove gate after 2027-01-28.
@@ -6227,6 +6475,212 @@ export const ProviderUsageListResponseMessageSchema = z.object({
   }),
 });
 
+export const ListProviderToolsResponseSchema = z.object({
+  type: z.literal("list_provider_tools_response"),
+  payload: z.object({
+    requestId: z.string(),
+    tools: z.array(AgentToolDefinitionSchema),
+  }),
+});
+
+export const ListAgentToolsResponseSchema = z.object({
+  type: z.literal("list_agent_tools_response"),
+  payload: z.object({
+    requestId: z.string(),
+    tools: z.array(AgentToolDefinitionSchema),
+  }),
+});
+
+export const SetAgentToolsResponseSchema = z.object({
+  type: z.literal("set_agent_tools_response"),
+  payload: z.object({
+    requestId: z.string(),
+    tools: z.array(AgentToolDefinitionSchema),
+  }),
+});
+
+export const OmpVibeStatusResponseSchema = z.object({
+  type: z.literal("omp.vibe.status.response"),
+  payload: z.object({
+    requestId: z.string(),
+    state: OmpVibeStateSchema,
+  }),
+});
+
+export const OmpVibeEnterResponseSchema = z.object({
+  type: z.literal("omp.vibe.enter.response"),
+  payload: z.object({
+    requestId: z.string(),
+    state: OmpVibeStateSchema,
+  }),
+});
+
+export const OmpVibeExitResponseSchema = z.object({
+  type: z.literal("omp.vibe.exit.response"),
+  payload: z.object({
+    requestId: z.string(),
+    state: OmpVibeStateSchema,
+  }),
+});
+
+export const OmpVibeSpawnResponseSchema = z.object({
+  type: z.literal("omp.vibe.spawn.response"),
+  payload: z.object({
+    requestId: z.string(),
+    worker: OmpVibeWorkerSchema,
+    state: OmpVibeStateSchema,
+  }),
+});
+
+export const OmpVibeSendResponseSchema = z.object({
+  type: z.literal("omp.vibe.send.response"),
+  payload: z.object({
+    requestId: z.string(),
+    delivery: z.enum(["steered", "started", "queued"]),
+    state: OmpVibeStateSchema,
+  }),
+});
+
+export const OmpVibeWaitResponseSchema = z.object({
+  type: z.literal("omp.vibe.wait.response"),
+  payload: z.object({
+    requestId: z.string(),
+    settled: z.array(
+      z.object({
+        id: z.string(),
+        jobId: z.string(),
+        status: z.enum(["completed", "failed", "cancelled"]),
+        resultText: z.string(),
+      }),
+    ),
+    stillRunning: z.array(z.string()),
+    timedOut: z.boolean(),
+    state: OmpVibeStateSchema,
+  }),
+});
+
+export const OmpVibeKillResponseSchema = z.object({
+  type: z.literal("omp.vibe.kill.response"),
+  payload: z.object({
+    requestId: z.string(),
+    worker: OmpVibeWorkerSchema,
+    state: OmpVibeStateSchema,
+  }),
+});
+
+const OmpStatisticAggregateSchema = z.object({
+  totalRequests: z.number(),
+  successfulRequests: z.number(),
+  failedRequests: z.number(),
+  errorRate: z.number(),
+  totalInputTokens: z.number(),
+  totalOutputTokens: z.number(),
+  totalCacheReadTokens: z.number(),
+  totalCacheWriteTokens: z.number(),
+  cacheRate: z.number(),
+  cacheSavings: z.number(),
+
+  totalCost: z.number(),
+  unpricedRequests: z.number(),
+  totalPremiumRequests: z.number(),
+  avgDuration: z.number().nullable(),
+  avgTtft: z.number().nullable(),
+  avgTokensPerSecond: z.number().nullable(),
+  firstTimestamp: z.number(),
+  lastTimestamp: z.number(),
+});
+
+export const OmpStatisticsSchema = z.object({
+  overall: OmpStatisticAggregateSchema,
+  byModel: z.array(
+    OmpStatisticAggregateSchema.extend({
+      model: z.string(),
+      provider: z.string(),
+    }),
+  ),
+  byAgentType: z.array(
+    z.object({
+      agentType: z.string(),
+      totalRequests: z.number(),
+      totalInputTokens: z.number(),
+      totalOutputTokens: z.number(),
+      totalCacheReadTokens: z.number(),
+      totalCacheWriteTokens: z.number(),
+      totalCost: z.number(),
+    }),
+  ),
+  timeSeries: z.array(
+    z.object({
+      timestamp: z.number(),
+      requests: z.number(),
+      errors: z.number(),
+      tokens: z.number(),
+      cost: z.number(),
+    }),
+  ),
+});
+
+export const OmpStatisticsResponseMessageSchema = z.object({
+  type: z.literal("omp.statistics.response"),
+  payload: z.object({
+    requestId: z.string(),
+    fetchedAt: z.string(),
+    statistics: OmpStatisticsSchema,
+  }),
+});
+export const OmpCollabHostsListResponseSchema = z.object({
+  type: z.literal("omp.collab.hosts.list.response"),
+  payload: z.object({
+    requestId: z.string(),
+    hosts: z.array(OmpCollabHostMetadataSchema),
+  }),
+});
+
+export const OmpCollabLinkCreateResponseSchema = z.object({
+  type: z.literal("omp.collab.link.create.response"),
+  payload: z.object({
+    requestId: z.string(),
+    link: OmpCollabLinkSchema,
+  }),
+});
+
+export const OmpCollabSessionShareResponseSchema = z.object({
+  type: z.literal("omp.collab.session.share.response"),
+  payload: z.object({
+    requestId: z.string(),
+    link: OmpCollabLinkSchema,
+  }),
+});
+
+export const OmpProvidersListResponseSchema = z.object({
+  type: z.literal("omp.providers.list.response"),
+  payload: z.object({ requestId: z.string(), providers: z.array(OmpLoginProviderSummarySchema) }),
+});
+export const OmpProviderLoginStartResponseSchema = z.object({
+  type: z.literal("omp.providers.login.start.response"),
+  payload: z.object({ requestId: z.string(), loginId: z.string() }),
+});
+export const OmpProviderLoginProgressMessageSchema = z.object({
+  type: z.literal("omp.providers.login.progress"),
+  payload: z.object({
+    requestId: z.string(),
+    loginId: z.string(),
+    event: OmpProviderLoginEventSchema,
+  }),
+});
+export const OmpProviderLoginRespondResponseSchema = z.object({
+  type: z.literal("omp.providers.login.respond.response"),
+  payload: z.object({ requestId: z.string() }),
+});
+export const OmpProviderLoginCancelResponseSchema = z.object({
+  type: z.literal("omp.providers.login.cancel.response"),
+  payload: z.object({ requestId: z.string() }),
+});
+export const OmpProviderLogoutResponseSchema = z.object({
+  type: z.literal("omp.providers.logout.response"),
+  payload: z.object({ requestId: z.string() }),
+});
+
 const AgentSlashCommandSchema = z.object({
   name: z.string(),
   description: z.string(),
@@ -6912,6 +7366,26 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   RefreshProvidersSnapshotResponseMessageSchema,
   ProviderDiagnosticResponseMessageSchema,
   ProviderUsageListResponseMessageSchema,
+  OmpStatisticsResponseMessageSchema,
+  ListProviderToolsResponseSchema,
+  ListAgentToolsResponseSchema,
+  SetAgentToolsResponseSchema,
+  OmpVibeStatusResponseSchema,
+  OmpVibeEnterResponseSchema,
+  OmpVibeExitResponseSchema,
+  OmpVibeSpawnResponseSchema,
+  OmpVibeSendResponseSchema,
+  OmpVibeWaitResponseSchema,
+  OmpVibeKillResponseSchema,
+  OmpCollabHostsListResponseSchema,
+  OmpCollabLinkCreateResponseSchema,
+  OmpCollabSessionShareResponseSchema,
+  OmpProvidersListResponseSchema,
+  OmpProviderLoginStartResponseSchema,
+  OmpProviderLoginProgressMessageSchema,
+  OmpProviderLoginRespondResponseSchema,
+  OmpProviderLoginCancelResponseSchema,
+  OmpProviderLogoutResponseSchema,
   ListCommandsResponseSchema,
   ListTerminalsResponseSchema,
   TerminalsChangedSchema,
@@ -7094,10 +7568,43 @@ export type ProviderUsageStatus = z.infer<typeof ProviderUsageStatusSchema>;
 export type ProviderUsage = z.infer<typeof ProviderUsageSchema>;
 export type ProviderUsageWindow = z.infer<typeof ProviderUsageWindowSchema>;
 export type ProviderUsageBalance = z.infer<typeof ProviderUsageBalanceSchema>;
+export type OmpCollabHostsListResponse = z.infer<typeof OmpCollabHostsListResponseSchema>;
+export type OmpCollabLinkCreateResponse = z.infer<typeof OmpCollabLinkCreateResponseSchema>;
+export type OmpCollabSessionShareResponse = z.infer<typeof OmpCollabSessionShareResponseSchema>;
+export type OmpProviderLoginEvent = z.infer<typeof OmpProviderLoginEventSchema>;
+export type OmpProvidersListResponse = z.infer<typeof OmpProvidersListResponseSchema>;
+export type OmpProviderLoginStartResponse = z.infer<typeof OmpProviderLoginStartResponseSchema>;
+export type OmpProviderLoginRespondResponse = z.infer<typeof OmpProviderLoginRespondResponseSchema>;
+export type OmpProviderLoginCancelResponse = z.infer<typeof OmpProviderLoginCancelResponseSchema>;
+export type OmpProviderLogoutResponse = z.infer<typeof OmpProviderLogoutResponseSchema>;
 export type ProviderUsageDetail = z.infer<typeof ProviderUsageDetailSchema>;
+export type OmpStatistics = z.infer<typeof OmpStatisticsSchema>;
+export type OmpStatisticsResponseMessage = z.infer<typeof OmpStatisticsResponseMessageSchema>;
 export type ProviderUsageListResponseMessage = z.infer<
   typeof ProviderUsageListResponseMessageSchema
 >;
+export type OmpVibeWorker = z.infer<typeof OmpVibeWorkerSchema>;
+export type OmpVibeState = z.infer<typeof OmpVibeStateSchema>;
+export type ListProviderToolsRequest = z.infer<typeof ListProviderToolsRequestSchema>;
+export type ListProviderToolsResponse = z.infer<typeof ListProviderToolsResponseSchema>;
+export type ListAgentToolsRequest = z.infer<typeof ListAgentToolsRequestSchema>;
+export type ListAgentToolsResponse = z.infer<typeof ListAgentToolsResponseSchema>;
+export type SetAgentToolsRequest = z.infer<typeof SetAgentToolsRequestSchema>;
+export type SetAgentToolsResponse = z.infer<typeof SetAgentToolsResponseSchema>;
+export type OmpVibeStatusRequest = z.infer<typeof OmpVibeStatusRequestSchema>;
+export type OmpVibeStatusResponse = z.infer<typeof OmpVibeStatusResponseSchema>;
+export type OmpVibeEnterRequest = z.infer<typeof OmpVibeEnterRequestSchema>;
+export type OmpVibeEnterResponse = z.infer<typeof OmpVibeEnterResponseSchema>;
+export type OmpVibeExitRequest = z.infer<typeof OmpVibeExitRequestSchema>;
+export type OmpVibeExitResponse = z.infer<typeof OmpVibeExitResponseSchema>;
+export type OmpVibeSpawnRequest = z.infer<typeof OmpVibeSpawnRequestSchema>;
+export type OmpVibeSpawnResponse = z.infer<typeof OmpVibeSpawnResponseSchema>;
+export type OmpVibeSendRequest = z.infer<typeof OmpVibeSendRequestSchema>;
+export type OmpVibeSendResponse = z.infer<typeof OmpVibeSendResponseSchema>;
+export type OmpVibeWaitRequest = z.infer<typeof OmpVibeWaitRequestSchema>;
+export type OmpVibeWaitResponse = z.infer<typeof OmpVibeWaitResponseSchema>;
+export type OmpVibeKillRequest = z.infer<typeof OmpVibeKillRequestSchema>;
+export type OmpVibeKillResponse = z.infer<typeof OmpVibeKillResponseSchema>;
 export type ChatCreateResponse = z.infer<typeof ChatCreateResponseSchema>;
 export type ChatListResponse = z.infer<typeof ChatListResponseSchema>;
 export type ChatInspectResponse = z.infer<typeof ChatInspectResponseSchema>;

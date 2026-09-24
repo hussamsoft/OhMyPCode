@@ -3,14 +3,18 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    omp.url = "git+https://github.com/can1357/oh-my-pi.git?rev=e4151593ace2781d1dc2f06d760301f88af3e9dc";
+    omp.flake = false;
   };
 
   outputs =
     {
       self,
       nixpkgs,
+      omp,
     }:
     let
+      ompSource = omp;
       supportedSystems = [
         "x86_64-linux"
         "aarch64-linux"
@@ -39,7 +43,7 @@
           default = paseo;
           paseo = paseo;
           desktop = pkgs.callPackage ./nix/desktop-package.nix {
-            inherit paseo;
+            inherit paseo ompSource;
             buildVersion = desktopBuildVersion;
           };
         }

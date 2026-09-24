@@ -10,24 +10,33 @@
   makeDesktopItem,
   electron,
   libuv,
+  bun,
   buildVersion,
   # Reuse the daemon's prebuilt npm-deps FOD. Same lockfile, same content —
   # without this, the desktop drv produces a separately-named store path
   # (`paseo-desktop-<v>-npm-deps`) and refetches the entire registry. Override
   # the upstream hash via `paseo.override { npmDepsHash = "..."; }`.
-  paseo,
+  ompSource,
 }:
+let
+  runtimePlatform = if stdenv.hostPlatform.isWindows then "windows" else if stdenv.hostPlatform.isDarwin then "darwin" else "linux";
+  runtimeArch = if stdenv.hostPlatform.isx86_64 then "x64" else if stdenv.hostPlatform.isaarch64 then "arm64" else stdenv.hostPlatform.parsedPlatform.cpu;
+in
+  # Keep the Nix derivation hermetic: Bun is an explicit input, and the source
+  # includes the pinned vendor/oh-my-pi checkout. Runtime binaries are generated
+  # during the build and are never checked into the source tree.
 buildNpmPackage {
-  pname = "paseo-desktop";
+  pname = "ohmypcode-desktop";
   version = (builtins.fromJSON (builtins.readFile ../package.json)).version;
 
   src = lib.cleanSourceWith {
     src = ./..;
-    filter = path: type: let
-      baseName = builtins.baseNameOf path;
-      relPath = lib.removePrefix (toString ./..) path;
-    in
-      # Exclude mobile-only platform code (we only need the web/electron build)
+    filter = path: type:
+      let
+        baseName = builtins.baseNameOf path;
+        relPath = lib.removePrefix (toString ./..) path;
+      in
+      # The pinned vendor/oh-my-pi submodule is required by the runtime builder.
       !(lib.hasPrefix "/packages/app/android" relPath)
       && !(lib.hasPrefix "/packages/app/ios" relPath)
       # Website is unrelated to the desktop app
@@ -57,6 +66,13 @@ buildNpmPackage {
       && baseName != "release";
   };
 
+  # Replace the optional developer submodule with the flake's pinned source.
+  postPatch = ''
+    rm -rf vendor/oh-my-pi
+    mkdir -p vendor
+    cp -R ${ompSource} vendor/oh-my-pi
+  '';
+
   nodejs = nodejs_22;
   inherit (paseo) npmDeps;
 
@@ -66,6 +82,7 @@ buildNpmPackage {
 
   nativeBuildInputs =
     [
+      bun
       python3 # for node-gyp (node-pty)
     ]
     ++ lib.optionals stdenv.hostPlatform.isLinux [
@@ -82,6 +99,8 @@ buildNpmPackage {
   dontNpmBuild = true;
 
   env = {
+    BUN = "${bun}/bin/bun";
+    OMP_SOURCE_COMMIT = "e4151593ace2781d1dc2f06d760301f88af3e9dc";
     EXPO_NO_TELEMETRY = "1";
     # Expo's web build pulls in some pre-bundled assets; ensure it doesn't try
     # to phone home during the build.
@@ -90,6 +109,7 @@ buildNpmPackage {
 
   buildPhase = ''
     runHook preBuild
+    npm run ensure:omp-runtime -- --ensure-platform-arches
 
     # Native deps (terminal emulation; libuv-linked on Linux)
     npm rebuild node-pty
@@ -104,7 +124,7 @@ buildNpmPackage {
     ( cd packages/app && PASEO_WEB_PLATFORM=electron npx expo export --platform web )
 
     # Desktop main process
-    npm run build:main --workspace=@getpaseo/desktop
+    npm run build:main --workspace=@ohmypcode/desktop
 
     ${lib.optionalString stdenv.hostPlatform.isDarwin ''
       # Let electron-builder create the native bundle layout (including helper
@@ -143,7 +163,7 @@ buildNpmPackage {
     mkdir -p $out/bin
 
     ${lib.optionalString stdenv.hostPlatform.isLinux ''
-      mkdir -p $out/share/paseo-desktop
+      mkdir -p $out/share/ohmypcode-desktop
 
       # Materialize only the desktop and daemon runtime graphs. Copying the
       # complete monorepo used to ship every build-time dependency (including
@@ -153,64 +173,81 @@ buildNpmPackage {
 
       while IFS= read -r path; do
         [ -z "$path" ] && continue
-        mkdir -p "$out/share/paseo-desktop/$(dirname "$path")"
-        cp -a "$path" "$out/share/paseo-desktop/$path"
+        mkdir -p "$out/share/ohmypcode-desktop/$(dirname "$path")"
+        cp -a "$path" "$out/share/ohmypcode-desktop/$path"
       done < desktop-files.txt
 
       # Keep the same unpackaged monorepo layout expected by main.js.
-      cp package.json $out/share/paseo-desktop/
-      mkdir -p $out/share/paseo-desktop/packages/app
-      cp -a packages/app/dist $out/share/paseo-desktop/packages/app/
+      cp package.json $out/share/ohmypcode-desktop/
+      mkdir -p $out/share/ohmypcode-desktop/packages/app
+      cp -a packages/app/dist $out/share/ohmypcode-desktop/packages/app/
 
       for runtime_path in \
         packages/desktop/dist/main.js \
         packages/desktop/dist/preload.js \
         packages/desktop/dist/features/browser-keyboard/guest-preload.js \
         packages/desktop/package.json; do
-        if [ ! -e "$out/share/paseo-desktop/$runtime_path" ]; then
+        if [ ! -e "$out/share/ohmypcode-desktop/$runtime_path" ]; then
           echo "desktop runtime trace omitted $runtime_path" >&2
           exit 1
         fi
       done
 
-      if [ -e $out/share/paseo-desktop/node_modules/electron ]; then
+      runtime_root="$out/share/ohmypcode-desktop/ohmypcode/runtime/omp"
+      runtime_source="ohmypcode/runtime/omp/${runtimePlatform}-${runtimeArch}"
+      if [ ! -d "$runtime_source" ]; then
+        echo "OMP runtime missing: $runtime_source" >&2
+        exit 1
+      fi
+      mkdir -p "$runtime_root"
+      cp -a "$runtime_source" "$runtime_root/"
+      if [ ! -e "$runtime_root/${runtimePlatform}-${runtimeArch}/manifest.json" ]; then
+        echo "OMP runtime manifest missing for ${runtimePlatform}-${runtimeArch}" >&2
+        exit 1
+      fi
+      if [ ! -f ohmypcode/default-config.json ]; then
+        echo "OhMyPCode default config missing" >&2
+        exit 1
+      fi
+      mkdir -p "$out/share/ohmypcode-desktop/ohmypcode"
+      cp -a ohmypcode/default-config.json "$out/share/ohmypcode-desktop/ohmypcode/default-config.json"
+
+      if [ -e $out/share/ohmypcode-desktop/node_modules/electron ]; then
         echo "desktop runtime trace included npm Electron" >&2
         exit 1
       fi
 
       # Hicolor icon for desktop environments
       install -Dm644 packages/desktop/assets/icon.png \
-        $out/share/icons/hicolor/512x512/apps/paseo-desktop.png
+        $out/share/icons/hicolor/512x512/apps/ohmypcode-desktop.png
 
       # Electron derives Wayland's toplevel app_id from the package name in the
       # app root it launches. Point it at a one-file app named "paseo-desktop"
       # so shells can match the window to the desktop entry and hicolor icon.
-      mkdir -p $out/share/paseo-desktop/electron-app
-      printf '%s\n' "{ \"name\": \"paseo-desktop\", \"version\": \"$version\", \"main\": \"index.js\" }" \
-        > $out/share/paseo-desktop/electron-app/package.json
+      mkdir -p $out/share/ohmypcode-desktop/electron-app
+      printf '%s\n' "{ \"name\": \"ohmypcode-desktop\", \"version\": \"$version\", \"main\": \"index.js\" }" \
+        > $out/share/ohmypcode-desktop/electron-app/package.json
       printf '%s\n' 'require("../packages/desktop/dist/main.js");' \
-        > $out/share/paseo-desktop/electron-app/index.js
-
-      # Chromium's setuid sandbox cannot live in the immutable Nix store.
-      makeWrapper ${electron}/bin/electron $out/bin/paseo-desktop \
-        --add-flags "$out/share/paseo-desktop/electron-app" \
+        > $out/share/ohmypcode-desktop/electron-app/index.js
+      makeWrapper ${electron}/bin/electron $out/bin/ohmypcode-desktop \
+        --add-flags "$out/share/ohmypcode-desktop/electron-app" \
         --add-flags "--no-sandbox" \
-        --add-flags "--class=paseo-desktop" \
-        --set EXPO_DEV_URL "paseo://app/" \
-        --set CHROME_DESKTOP "paseo-desktop.desktop"
+        --add-flags "--class=ohmypcode-desktop" \
+        --set EXPO_DEV_URL "ohmypcode://app/" \
+        --set CHROME_DESKTOP "ohmypcode-desktop.desktop"
 
       copyDesktopItems
     ''}
 
     ${lib.optionalString stdenv.hostPlatform.isDarwin ''
-      app="$(find packages/desktop/release -maxdepth 3 -type d -name Paseo.app -print -quit)"
+      app="$(find packages/desktop/release -maxdepth 3 -type d -name OhMyPCode.app -print -quit)"
       if [ -z "$app" ]; then
-        echo "electron-builder did not produce Paseo.app" >&2
+        echo "electron-builder did not produce OhMyPCode.app" >&2
         exit 1
       fi
       mkdir -p "$out/Applications"
-      cp -R "$app" "$out/Applications/Paseo.app"
-      ln -s ../Applications/Paseo.app/Contents/MacOS/Paseo "$out/bin/paseo-desktop"
+      cp -R "$app" "$out/Applications/OhMyPCode.app"
+      ln -s ../Applications/OhMyPCode.app/Contents/MacOS/OhMyPCode "$out/bin/ohmypcode-desktop"
     ''}
 
     runHook postInstall
@@ -218,38 +255,22 @@ buildNpmPackage {
 
   desktopItems = lib.optionals stdenv.hostPlatform.isLinux [
     (makeDesktopItem {
-      name = "paseo-desktop";
-      desktopName = "Paseo";
+      name = "ohmypcode-desktop";
+      desktopName = "OhMyPCode";
       genericName = "AI Coding Agents";
-      comment = "Self-hosted daemon for AI coding agents";
-      exec = "paseo-desktop";
-      icon = "paseo-desktop";
+      comment = "OMP-first coding workspace";
+      exec = "ohmypcode-desktop";
+      icon = "ohmypcode-desktop";
       categories = ["Development"];
-      startupWMClass = "paseo-desktop";
-    })
-    # Hidden alias entry. Which of the two names Electron ends up publishing as
-    # the Wayland app_id depends on the Electron version: 41 uses the app-root
-    # package.json `name` ("paseo-desktop"), 38 uses the runtime app name that
-    # main.ts sets ("Paseo"). Ship a NoDisplay entry for the second spelling so
-    # the icon resolves either way without a duplicate launcher item.
-    (makeDesktopItem {
-      name = "Paseo";
-      desktopName = "Paseo";
-      genericName = "AI Coding Agents";
-      comment = "Self-hosted daemon for AI coding agents";
-      exec = "paseo-desktop";
-      icon = "paseo-desktop";
-      categories = [ "Development" ];
-      startupWMClass = "Paseo";
-      noDisplay = true;
+      startupWMClass = "ohmypcode-desktop";
     })
   ];
 
   meta = {
-    description = "Paseo desktop app (Electron wrapper)";
-    homepage = "https://github.com/getpaseo/paseo";
-    license = lib.licenses.agpl3Plus;
-    mainProgram = "paseo-desktop";
+    description = "OhMyPCode desktop app (Electron wrapper)";
+    homepage = "https://github.com/hussamsoft/OhMyPCode";
+    license = lib.licenses.asl20;
+    mainProgram = "ohmypcode-desktop";
     platforms = lib.platforms.linux ++ lib.platforms.darwin;
   };
 }

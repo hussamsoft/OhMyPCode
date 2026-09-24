@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
+import { z } from "zod";
 import {
+  AgentSnapshotPayloadSchema,
+  AgentStreamMessageSchema,
   FileExplorerRequestSchema,
   PaseoWorktreeArchiveRequestSchema,
   parseServerInfoStatusPayload,
@@ -253,6 +256,134 @@ describe("provider usage list message contract", () => {
     });
 
     expect(parsed.success).toBe(false);
+  });
+});
+
+describe("OMP statistics message contract", () => {
+  test("accepts correlated statistics requests and responses", () => {
+    expect(
+      SessionInboundMessageSchema.parse({
+        type: "omp.statistics.request",
+        requestId: "stats-1",
+        forceRefresh: true,
+      }),
+    ).toEqual({
+      type: "omp.statistics.request",
+      requestId: "stats-1",
+      forceRefresh: true,
+    });
+
+    const aggregate = {
+      totalRequests: 1,
+      successfulRequests: 1,
+      failedRequests: 0,
+      errorRate: 0,
+      totalInputTokens: 10,
+      totalOutputTokens: 5,
+      totalCacheReadTokens: 20,
+      totalCacheWriteTokens: 0,
+      cacheRate: 0.5,
+      cacheSavings: 0.25,
+      totalCost: 0.01,
+      unpricedRequests: 0,
+      totalPremiumRequests: 0,
+      avgDuration: 100,
+      avgTtft: 25,
+      avgTokensPerSecond: 10,
+      firstTimestamp: 1,
+      lastTimestamp: 2,
+    };
+    const parsed = SessionOutboundMessageSchema.parse({
+      type: "omp.statistics.response",
+      payload: {
+        requestId: "stats-1",
+        fetchedAt: "2026-06-19T00:00:00.000Z",
+        statistics: {
+          overall: aggregate,
+          byModel: [{ ...aggregate, model: "gpt-test", provider: "openai-codex" }],
+          byAgentType: [
+            {
+              agentType: "main",
+              totalRequests: 1,
+              totalInputTokens: 10,
+              totalOutputTokens: 5,
+              totalCacheReadTokens: 20,
+              totalCacheWriteTokens: 0,
+              totalCost: 0.01,
+            },
+          ],
+          timeSeries: [{ timestamp: 1, requests: 1, errors: 0, tokens: 35, cost: 0.01 }],
+        },
+      },
+    });
+
+    expect(parsed.type).toBe("omp.statistics.response");
+  });
+});
+
+describe("OMP provider message contract", () => {
+  test("round-trips provider requests and responses", () => {
+    const requests = [
+      { type: "omp.providers.list.request", requestId: "list-1" },
+      {
+        type: "omp.providers.login.start.request",
+        requestId: "start-1",
+        providerId: "deepseek",
+      },
+      {
+        type: "omp.providers.login.respond.request",
+        requestId: "respond-1",
+        loginId: "login-1",
+        uiRequestId: "request-1",
+        value: "choice",
+      },
+      { type: "omp.providers.login.cancel.request", requestId: "cancel-1", loginId: "login-1" },
+      { type: "omp.providers.logout.request", requestId: "logout-1", providerId: "deepseek" },
+    ];
+    for (const request of requests) {
+      expect(SessionInboundMessageSchema.parse(request)).toEqual(request);
+    }
+
+    const responses = [
+      {
+        type: "omp.providers.list.response",
+        payload: {
+          requestId: "list-1",
+          providers: [{ id: "deepseek", name: "DeepSeek", authenticated: true, available: true }],
+        },
+      },
+      {
+        type: "omp.providers.login.start.response",
+        payload: { requestId: "start-1", loginId: "login-1" },
+      },
+      {
+        type: "omp.providers.login.progress",
+        payload: {
+          requestId: "start-1",
+          loginId: "login-1",
+          event: { kind: "input", uiRequestId: "request-1", title: "Paste key", secret: true },
+        },
+      },
+      { type: "omp.providers.login.respond.response", payload: { requestId: "respond-1" } },
+      { type: "omp.providers.login.cancel.response", payload: { requestId: "cancel-1" } },
+      { type: "omp.providers.logout.response", payload: { requestId: "logout-1" } },
+    ];
+    for (const response of responses) {
+      expect(SessionOutboundMessageSchema.parse(response)).toEqual(response);
+    }
+  });
+
+  test("rejects unknown provider login events", () => {
+    expect(
+      SessionOutboundMessageSchema.safeParse({
+        type: "omp.providers.login.progress",
+        payload: {
+          requestId: "start-1",
+          loginId: "login-1",
+          event: { kind: "unsupported" },
+        },
+      }).success,
+    ).toBe(false);
   });
 });
 
@@ -518,5 +649,292 @@ describe("viewed timeline subscription messages", () => {
         },
       },
     });
+  });
+});
+
+const agentTool = {
+  name: "read",
+  label: "Read",
+  description: "Read a file",
+  source: "native" as const,
+  enabled: true,
+  required: true,
+};
+
+const vibeWorker = {
+  id: "worker-1",
+  cli: "fast" as const,
+  name: "Inspect",
+  state: "running" as const,
+  turnCount: 1,
+  queuedMessages: 0,
+  resolvedModel: "smol",
+  lastActivity: "Reading",
+  currentTool: "read",
+  outputTail: ["Found package scripts"],
+  lastTurnStatus: "running" as const,
+  createdAt: 1,
+  lastActivityAt: 2,
+};
+
+const vibeState = {
+  revision: 3,
+  enabled: true,
+  workers: [vibeWorker],
+};
+
+describe("agent tool selection message contract", () => {
+  test("round-trips provider and live tool requests with correlated responses", () => {
+    const requests = [
+      {
+        type: "list_provider_tools_request",
+        provider: "omp",
+        cwd: "C:/repo",
+        requestId: "provider-tools",
+      },
+      { type: "list_agent_tools_request", agentId: "agent-1", requestId: "agent-tools" },
+      {
+        type: "set_agent_tools_request",
+        agentId: "agent-1",
+        enabledTools: ["read", "todo"],
+        requestId: "set-tools",
+      },
+    ];
+    for (const request of requests) {
+      expect(SessionInboundMessageSchema.parse(request)).toEqual(request);
+    }
+
+    const responses = [
+      { type: "list_provider_tools_response", requestId: "provider-tools" },
+      { type: "list_agent_tools_response", requestId: "agent-tools" },
+      { type: "set_agent_tools_response", requestId: "set-tools" },
+    ].map((response) => ({
+      type: response.type,
+      payload: { requestId: response.requestId, tools: [agentTool] },
+    }));
+    for (const response of responses) {
+      expect(SessionOutboundMessageSchema.parse(response)).toEqual(response);
+    }
+  });
+
+  test("publishes tool catalogs through snapshots and agent stream events", () => {
+    const stream = SessionOutboundMessageSchema.parse({
+      type: "agent_stream",
+      payload: {
+        agentId: "agent-1",
+        timestamp: "2026-09-23T00:00:00.000Z",
+        event: { type: "tools_updated", provider: "omp", tools: [agentTool] },
+      },
+    });
+    expect(stream.type).toBe("agent_stream");
+    if (stream.type !== "agent_stream") {
+      throw new Error("Expected agent_stream");
+    }
+    expect(stream.payload.event).toEqual({
+      type: "tools_updated",
+      provider: "omp",
+      tools: [agentTool],
+    });
+
+    const stateStream = AgentStreamMessageSchema.parse({
+      type: "agent_stream",
+      payload: {
+        agentId: "agent-1",
+        timestamp: "2026-09-23T00:00:00.000Z",
+        event: {
+          type: "provider_state_updated",
+          provider: "omp",
+          stateKey: "vibe",
+          state: vibeState,
+        },
+      },
+    });
+    expect(stateStream.payload.event).toMatchObject({
+      type: "provider_state_updated",
+      stateKey: "vibe",
+      state: vibeState,
+    });
+  });
+});
+
+describe("OMP Vibe message contract", () => {
+  test("round-trips all seven correlated Vibe operations", () => {
+    const requests = [
+      { type: "omp.vibe.status.request", agentId: "agent-1", requestId: "status" },
+      {
+        type: "omp.vibe.enter.request",
+        agentId: "agent-1",
+        prompt: "Coordinate the work",
+        requestId: "enter",
+      },
+      { type: "omp.vibe.exit.request", agentId: "agent-1", requestId: "exit" },
+      {
+        type: "omp.vibe.spawn.request",
+        agentId: "agent-1",
+        tier: "fast",
+        name: "Inspect",
+        prompt: "Inspect package scripts",
+        requestId: "spawn",
+      },
+      {
+        type: "omp.vibe.send.request",
+        agentId: "agent-1",
+        workerId: "worker-1",
+        message: "Continue",
+        requestId: "send",
+      },
+      {
+        type: "omp.vibe.wait.request",
+        agentId: "agent-1",
+        workerIds: ["worker-1"],
+        timeoutMs: 5_000,
+        requestId: "wait",
+      },
+      {
+        type: "omp.vibe.kill.request",
+        agentId: "agent-1",
+        workerId: "worker-1",
+        requestId: "kill",
+      },
+    ];
+    for (const request of requests) {
+      expect(SessionInboundMessageSchema.parse(request)).toEqual(request);
+    }
+
+    const stateOnlyResponses = ["status", "enter", "exit"].map((requestId) => ({
+      type: `${requestId === "status" ? "omp.vibe.status" : `omp.vibe.${requestId}`}.response`,
+      payload: { requestId, state: vibeState },
+    }));
+    const responses = [
+      ...stateOnlyResponses,
+      {
+        type: "omp.vibe.spawn.response",
+        payload: { requestId: "spawn", worker: vibeWorker, state: vibeState },
+      },
+      {
+        type: "omp.vibe.send.response",
+        payload: { requestId: "send", delivery: "steered", state: vibeState },
+      },
+      {
+        type: "omp.vibe.wait.response",
+        payload: {
+          requestId: "wait",
+          settled: [],
+          stillRunning: ["worker-1"],
+          timedOut: false,
+          state: vibeState,
+        },
+      },
+      {
+        type: "omp.vibe.kill.response",
+        payload: { requestId: "kill", worker: vibeWorker, state: vibeState },
+      },
+    ];
+    for (const response of responses) {
+      expect(SessionOutboundMessageSchema.parse(response)).toEqual(response);
+    }
+  });
+
+  test("rejects zero Vibe wait timeouts at the wire boundary", () => {
+    expect(
+      SessionInboundMessageSchema.safeParse({
+        type: "omp.vibe.wait.request",
+        agentId: "agent-1",
+        timeoutMs: 0,
+        requestId: "wait-zero",
+      }).success,
+    ).toBe(false);
+    expect(
+      SessionInboundMessageSchema.parse({
+        type: "omp.vibe.wait.request",
+        agentId: "agent-1",
+        timeoutMs: 1,
+        requestId: "wait-one",
+      }),
+    ).toMatchObject({ timeoutMs: 1 });
+  });
+});
+
+describe("OMP tool and Vibe capability flags", () => {
+  test("accepts host and agent flags while legacy payloads remain parseable", () => {
+    expect(
+      parseServerInfoStatusPayload({
+        status: "server_info",
+        serverId: "server-1",
+        features: { ompVibe: true, ompToolSelection: true },
+      }),
+    ).toMatchObject({
+      features: { ompVibe: true, ompToolSelection: true },
+    });
+
+    const baseSnapshot = {
+      id: "agent-1",
+      provider: "omp",
+      cwd: "C:/repo",
+      model: null,
+      createdAt: "2026-09-23T00:00:00.000Z",
+      updatedAt: "2026-09-23T00:00:00.000Z",
+      lastUserMessageAt: null,
+      status: "idle",
+      currentModeId: null,
+      availableModes: [],
+      pendingPermissions: [],
+      title: null,
+      labels: {},
+      persistence: null,
+      capabilities: {
+        supportsStreaming: true,
+        supportsSessionPersistence: true,
+        supportsDynamicModes: true,
+        supportsMcpServers: true,
+        supportsReasoningStream: true,
+        supportsToolInvocations: true,
+      },
+    };
+    const legacy = AgentSnapshotPayloadSchema.parse(baseSnapshot);
+    expect(legacy.capabilities).not.toHaveProperty("supportsOmpVibe");
+    expect(legacy.capabilities).not.toHaveProperty("supportsOmpToolSelection");
+    expect(
+      AgentSnapshotPayloadSchema.parse({
+        ...baseSnapshot,
+        tools: [agentTool],
+        capabilities: {
+          ...baseSnapshot.capabilities,
+          supportsOmpVibe: true,
+          supportsOmpToolSelection: true,
+        },
+      }),
+    ).toMatchObject({
+      tools: [agentTool],
+      capabilities: {
+        supportsOmpVibe: true,
+        supportsOmpToolSelection: true,
+      },
+    });
+  });
+});
+
+describe("legacy agent stream envelope compatibility", () => {
+  test("keeps frozen legacy event unions unaware of newer OMP events", () => {
+    const frozenLegacyAgentStreamEventSchema = z.discriminatedUnion("type", [
+      z.object({ type: z.literal("turn_started"), provider: z.string() }),
+      z.object({ type: z.literal("timeline"), provider: z.string(), item: z.unknown() }),
+    ]);
+
+    expect(
+      frozenLegacyAgentStreamEventSchema.safeParse({
+        type: "provider_state_updated",
+        provider: "omp",
+        stateKey: "vibe",
+        state: { revision: 1, enabled: true, workers: [] },
+      }).success,
+    ).toBe(false);
+    expect(
+      frozenLegacyAgentStreamEventSchema.safeParse({
+        type: "timeline",
+        provider: "omp",
+        item: { type: "assistant_message", text: "legacy" },
+      }).success,
+    ).toBe(true);
   });
 });

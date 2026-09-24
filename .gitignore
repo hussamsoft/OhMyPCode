@@ -91,5 +91,9 @@ packages/desktop/.cache/
 packages/desktop/src-tauri/resources/managed-runtime/
 app.json
 
+# Generated OMP desktop runtime (built locally for packaging)
+/ohmypcode/runtime/omp/**/omp
+/ohmypcode/runtime/omp/**/omp.exe
+
 # Heap snapshots dumped by --heapsnapshot-near-heap-limit; keep them for debugging.
 *.heapsnapshot

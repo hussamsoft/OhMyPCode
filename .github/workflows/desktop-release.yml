@@ -84,7 +84,7 @@ jobs:
             fi
             gh release create "$RELEASE_TAG" \
               --repo "${{ github.repository }}" \
-              --title "Paseo $RELEASE_TAG" \
+              --title "OhMyPCode $RELEASE_TAG" \
               --notes "" \
               --draft \
               $prerelease_flag || {
@@ -115,6 +115,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: true
           ref: ${{ env.CHECKOUT_REF }}
 
       - name: Resolve release metadata
@@ -222,6 +223,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: true
           ref: ${{ env.CHECKOUT_REF }}
 
       - name: Resolve release metadata
@@ -318,11 +320,15 @@ jobs:
       contents: write
       packages: read
     runs-on: windows-latest
-
+    strategy:
+      fail-fast: false
+      matrix:
+        electron_arch: [x64, arm64]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: true
           ref: ${{ env.CHECKOUT_REF }}
 
       - name: Resolve release metadata
@@ -359,6 +365,10 @@ jobs:
           fs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
           NODE
 
+      - name: Ensure matching OMP runtime
+        shell: bash
+        run: node scripts/build-omp-runtime.mjs --ensure --target "bun-windows-${{ matrix.electron_arch == 'x64' && 'x64-baseline' || 'arm64' }}"
+
       - name: Build desktop release
         shell: bash
         env:
@@ -368,7 +378,7 @@ jobs:
           PASEO_DESKTOP_SMOKE_ARTIFACT_DIR: ${{ runner.temp }}/desktop-smoke
         run: |
           set -euo pipefail
-          build_args=(-- --publish never --win --x64 --arm64)
+          build_args=(-- --publish never --win --${{ matrix.electron_arch }})
           build_args+=("-c.publish.releaseType=$RELEASE_TYPE")
           build_args+=("-c.publish.channel=$RELEASE_CHANNEL")
           npm run build:desktop "${build_args[@]}"
@@ -377,7 +387,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-smoke-windows-x64
+          name: desktop-smoke-windows-${{ matrix.electron_arch }}
           path: ${{ runner.temp }}/desktop-smoke
           if-no-files-found: ignore
           retention-days: 7

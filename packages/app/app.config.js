@@ -10,6 +10,7 @@ const { getNativeReleaseVersion } = require("./native-release-version");
 const appVariant = process.env.APP_VARIANT ?? "production";
 const isFdroidBuild = process.env.PASEO_FDROID_BUILD === "1";
 const isProfileBuild = process.env.PASEO_PROFILE_BUILD === "1";
+const isElectronExport = process.env.PASEO_WEB_PLATFORM === "electron";
 
 const buildProfile = isFdroidBuild
   ? {
@@ -67,7 +68,7 @@ function resolveSecretFile(params) {
 
 const variants = {
   production: {
-    name: "Paseo",
+    name: "OhMyPCode",
     packageId: "sh.paseo",
     googleServicesFile: resolveSecretFile({
       envKey: "GOOGLE_SERVICES_FILE_PROD",
@@ -79,7 +80,7 @@ const variants = {
     }),
   },
   development: {
-    name: "Paseo Debug",
+    name: "OhMyPCode Debug",
     packageId: "sh.paseo.debug",
     googleServicesFile: resolveSecretFile({
       envKey: "GOOGLE_SERVICES_FILE_DEBUG",
@@ -97,7 +98,7 @@ const nativeReleaseVersion = getNativeReleaseVersion(pkg.version);
 
 export default {
   expo: {
-    name: variant.name,
+    name: isElectronExport ? "OhMyPCode" : variant.name,
     slug: "voice-mobile",
     version: nativeReleaseVersion.appVersion,
     orientation: "portrait",
@@ -134,7 +135,9 @@ export default {
     },
     web: {
       output: "single",
-      favicon: "./assets/images/favicon.png",
+      favicon: isElectronExport
+        ? "../../ohmypcode/assets/app/favicon.png"
+        : "./assets/images/favicon.png",
     },
     autolinking: {
       searchPaths: ["../../node_modules", "./node_modules"],
