@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.2 - 2026-09-24
+
+### Fixed
+
+- Stabilized OhMyPCode desktop rebuilds and release packaging with a pinned OMP runtime, submodule checkout, and architecture-specific Windows builds
+- Fixed OMP Vibe worker controls and transcript handling across desktop views
+- Fixed OMP provider, collaboration, statistics, and command handling for older and newer client capabilities
+
 ## 0.9.1 - 2026-09-22
 
 ### Added
