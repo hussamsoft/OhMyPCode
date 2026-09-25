@@ -1,0 +1,303 @@
+# OhMyPCode checkpoint — 2026-09-25
+
+## User instruction
+
+Execute the OhMyPCode master plan step-by-step, verifying each step before the next. Preserve source and uncommitted work.
+
+## Safety Warning
+
+Do not run a HEAD restore on the modified files. The worktree still holds the user's
+uncommitted work and the OhMyPCode fork's changes on top of the Paseo baseline; a restore
+would delete both.
+
+## Current product state
+
+- OMP submodule baseline: tag `v18.3.1`, commit `6204b7508014bcdf12d95f0b3fd470905fd99344`.
+- OMP fork commit on top: `5fc857c255c31cc3876f1cc7e94473b2aaa6d3c6`
+  ("feat(coding-agent): add shared vibe controls and tool catalog"), replayed from the
+  v18.2.11 fork commit `b65b7c30c7`, which stays reachable on the local branch
+  `ohmypcode/fork-v18.2.11`.
+- Bundled runtime `ohmypcode/runtime/omp/win32-x64`: `omp/18.3.1`, manifest SHA-256
+  matches the binary, `sourceCommit` matches the submodule HEAD, and
+  `npm run ensure:omp-runtime` is clean.
+- `omp collab list --json` on the bundled binary returns `{"version":1,"hosts":[]}`.
+- Desktop-local environment variables were migrated to `OHMYPCODE_*`; daemon/CLI
+  compatibility names remain.
+- `ohmypcode/default-config.json` intentionally uses the verified live
+  `https://app.paseo.sh` endpoint; `app.ohmypcode.sh` was NXDOMAIN and removed.
+
+## Phase 0 — baseline integration (verified)
+
+1. `packages/server/src/server/websocket-server.ts` publishes `ompCollab`, `ompVibe`, and
+   `ompToolSelection` together from the single `ompRuntimeAvailable` probe. Verified with a
+   mocked false/true pair in `websocket-server.relay-reconnect.test.ts`.
+2. `scripts/build-omp-runtime.mjs` fails packaging on a manifest target, SHA-256, or
+   `sourceCommit` mismatch with `vendor/oh-my-pi` HEAD. It also clears `RUSTC_WRAPPER`
+   for the native step: sccache on Windows fails with `os error 206` on long rustc
+   argument lists (`pi-builtins`, `jj-lib`).
+3. `packages/protocol/src/terminal-profiles.ts` keeps `{ id: "omp", command: "omp" }` as the
+   display default; the daemon remaps it through `resolveOmpTerminalSpawn`. Covered by
+   12 passing DI tests in `omp-command.test.ts`, including the Windows-vs-POSIX PATH
+   split (the implementation selects `win32`/`posix` from the requested platform, not the
+   host, so it behaves identically on Linux and Windows CI).
+4. `use-draft-agent-tools.ts` computes the tool `rows` from the saved `allowedTools`;
+   `input-draft.ts` uses those rows for both `rows` and `list()`. Verified by
+   `use-draft-agent-tools.test.tsx` (write on, bash off, read on).
+5. The workspace TUI/collab buttons are gated on runtime availability and `ompCollab`.
+   A disabled control blocks clicks, still shows its reason on hover, and suppresses the
+   hover highlight. Verified in `header-toggle-button.test.tsx`.
+
+All 8 locale files are LF. `npm run typecheck` is clean; `npx oxlint` is clean on the
+changed files; the focused suite passes.
+
+## Phase 1 — parity contract (verified)
+
+- `scripts/generate-omp-control-surface.mjs` reads nine OMP surfaces with the TypeScript
+  AST and fails closed on any empty one. `docs/omp/CONTROL-SURFACE.md` is generated from it.
+- `packages/app/src/omp-parity/manifest.ts` is hand-owned; `scripts/generate-omp-parity-doc.mjs`
+  only publishes it to `docs/omp/PARITY.md`. `manifest.test.ts` asserts set equality per
+  surface against the generated inventory, so an OMP bump that adds a name without a
+  manifest row fails the build.
+- `npm run parity:check` is wired into the CI `lint` job (before `npm run lint`, with
+  `submodules: recursive` on checkout) and `docs/omp/**` plus `vendor/oh-my-pi/**` are in
+  the `quality` path filter.
+- A stale doc exits 1; both `--check` modes normalise CRLF.
+
+## Phase 2 — rebase to v18.3.1 (verified)
+
+- Cherry-picked the fork group onto `6204b750`. Four conflicts resolved by combining both
+  sides: `rpc-types.ts` (upstream's `messageId` message-lifecycle framing plus the fork's
+  `RpcVibeFrame`), `rpc-client.ts` (prompt-result/session-settled listeners plus the Vibe
+  and tool-catalog methods), `rpc-mode.ts` (upstream's `RpcModeOptions` plus
+  `dispatchRpcVibeCommand`), and `interactive-mode.ts` (upstream's imports and plan
+  settings plus the shared `VibeModeController`).
+- Upstream moved the vibe session-switch behaviour (owner-scope match, `previousTools`
+  snapshot, rehydrate) into `VibeModeController.reconcileSession`, so TUI and RPC share one
+  implementation. `mode-controller.test.ts` covers a same-owner vibe switch (preserved) and
+  a different-owner switch (torn down, previous toolset restored); mutating `sameScope` makes
+  it fail, so the coverage is not vacuous.
+- Upstream replaced the static `config/settings-schema.ts` object with a runtime registry.
+  The control-surface generator therefore AST-scans every module importing
+  `config/registry` for `register({ id, type, ui })`, resolving templated ids such as
+  `` `magicKeywords.${keyword.id}` `` through the enclosing `.map()`. Verified against a
+  one-off Bun dump of `orderedSettings()`: 512 settings, 384 with UI metadata, both matching.
+- Fork tests: 32 passing across `rpc-vibe`, `rpc-tool-catalog`, `vibe/mode-controller`, and
+  `interactive-mode-vibe-toggle`. `bun run --cwd=packages/coding-agent check:types` is clean
+  (that is the repo's `tsgo` compiler; plain `npx tsc` reports unrelated pre-existing errors
+  because the tree targets TypeScript 7). `oxlint` and the focused app/server tests are clean.
+- Surface changes absorbed into the hand-owned manifest: flags +1 (`--no-ui`), subcommands
+  +2 (`login`, `toks`), tools +2 (`ida`, `wait`) −1 (`hub`), RPC +2 (`open_session`,
+  `set_event_filter`), slash +1 (`slow`), overlays +2, settings +11 −1. Manifest: 857 rows.
+- `scripts/ci-workflow.test.mjs` has two failures that predate this work and are unrelated to
+  it: the desktop job now uses the `@ohmypcode/desktop` workspace name, and the browser-suite
+  ownership assertion. Both were failing before Phase 1 and were not introduced here.
+
+### Regressions found and fixed after the rebase
+
+Running the upstream suites, not just the four fork tests, exposed two real regressions. Both
+are fixed, and the suites now match the clean v18.3.1 baseline exactly (`test/rpc*.test.ts`:
+127 pass / 5 fail; `test/interactive-mode-*.test.ts`: 193 pass / 2 fail).
+
+1. `InteractiveMode` required `session.getToolSession()`. That method is the fork's addition
+   to `AgentSession`, and 16 upstream test doubles build a partial session without it, so
+   every one of those suites threw in the constructor. Fixed with `session.getToolSession?.()`:
+   the constructor accepts any `AgentSession`-shaped object, and the fallback already existed.
+2. `vibeModeEnabled` was a plain field the controller did not know about, so a host assigning it
+   (session restore, the `afterEach` reset in `interactive-mode-loop.test.ts`) left the
+   controller believing vibe was still enabled. The next `/vibe` then took the already-enabled
+   fast path in `#enterLocked`, `#entry` was cleared immediately, and the loop reset guard read
+   `isEntering === false` and ran `/clear` concurrently with the toolset switch. Fixed by making
+   the flag a mirror of the controller: the getter reads `VibeModeController.isEnabled` and the
+   setter calls the new `VibeModeController.adopt(enabled)`, which flips the state flags
+   inline and starts the tool teardown without awaiting it, because a synchronous setter cannot
+   drive the async entry. `enter()`/`exit()` stay the only real transitions.
+
+The remaining failures are pre-existing and were each confirmed individually against a clean
+`6204b750` worktree: `rpc-client.start` and `rpc-client.restart` use POSIX paths
+(`/usr/bin/false`), and `rpc.test.ts` fast-mode, `rpc-output` backpressure, `rpc-subagents`,
+`interactive-mode-lsp-startup` and `interactive-mode-plan-review` time out or fail on Windows.
+
+## Phase 3 — RPC parity layer
+
+### (a) Shared mode controller (committed `d759303f80` + `f34853c21a`)
+
+Plan, goal and loop mode transitions were private to `InteractiveMode` and were its only
+writers of `mode_change` for those modes, so an RPC `set_mode` had no path to them. Writing
+one as a thin `appendModeChange` wrapper would have journalled a mode the tools and model did
+not reflect — the "second implementation" the plan forbids. `OmpModeController`
+(`packages/coding-agent/src/modes/mode-controller.ts`) now owns the flags, the four
+transitions, the reconcile path, and the single `canEnter` guard that replaces the
+"Exit `<mode>` mode first." strings duplicated across nine `InteractiveMode` sites.
+`InteractiveMode` keeps its six public flags as accessors, so `InteractiveModeContext`,
+`input-controller.ts`, `main.ts` and the debug surface are unchanged, and RPC mode can
+construct the controller with no TUI callbacks at all.
+
+Verified: `check:types` clean, `test/interactive-mode-*` 193 pass / 2 fail (the same two
+Windows-environment failures as clean `6204b750`), fork suites 32 pass, and a new
+`test/modes/mode-controller.test.ts` (6 pass).
+
+**Two invariants that no test found on its own, and that a mutation check was needed to
+pin. Both shipped through a green `check:types` and a green 193/2:**
+
+1. The `goal` filter in `enterGoal` is necessary but not sufficient. It guarantees `goal` is
+   never restored, but only the `goalModePreviousTools ??= previousTools` adoption keeps a
+   tool that mounts _between_ the guided interview and the tool-driven create (an MCP tool,
+   a skill) out of the restore set. Single-point mutations of either defence pass, because
+   they are redundant; only the interview-then-mount test distinguishes them.
+2. `setPlanProposalHandler` must receive the real session handler
+   (`title => session.preparePlanForReview(title)`). A `() => undefined` placeholder
+   typechecks and passes every plan-mode test while leaving the agent unable to submit a
+   plan. The test now invokes the captured handler and asserts the `preparePlanForReview`
+   call, not merely that a handler exists.
+
+Lesson worth carrying: a comment describing an invariant the code does not implement is the
+same failure `parity:check` exists to prevent elsewhere. For `set_mode`, the contract is that
+the handler calls `canEnter(target)` and returns its string as `code: "mode_conflict"` — no
+second guard, no message of its own.
+
+### Runtime
+
+Rebuilt after the extraction: `ohmypcode/runtime/omp/win32-x64` records `sourceCommit`
+`f34853c21a9ef82a9d9413cba55d8930bed3bb2f`, `omp/18.3.1`, SHA-256 matches the binary, and
+`npm run ensure:omp-runtime` is clean. The mode controller is compiled into `omp.exe`, so
+this rebuild was required before any packaging or About-dialog verification.
+
+### (b) Per-id keybinding write (committed `7b3af663c1`)
+
+**Correction, verified `0f33cce5ab`:** this entry and the `7b3af663c1` commit message both say
+`set_keybinding` "had nothing to call", which reads as an existing RPC command with a missing
+implementation. There is no `set_keybinding` in `RpcCommand` — `grep` finds no such variant, and
+all 59 declared commands have a case in the switch. What `7b3af663c1` added is the _building
+block_, `KeybindingsManager.setKeybinding` (`packages/tui/src/app-keybindings.ts:687`), which
+nothing calls yet. Declaring `set_keybinding` / `get_keybindings` over RPC is therefore still
+**outstanding Phase 3 work**, not done.
+The writer itself is sound and worth keeping: it persists to `#configPath`, the same layer that
+already wins `mergeKeybindingsConfig`, so a write is never shadowed by the inherited profile on
+the next load. An in-memory manager has no file and reports `persisted: false` so a caller can
+label the change session-only.
+
+One correction worth recording, because the first version had it and the test caught it: the
+write must persist the **profile layer alone**, not the merged set. The merged set is
+`{...inherited, ...profile}`, so writing it into a named profile's own file materialises
+every parent binding as a child override — and unsetting one in the parent would then stop
+taking effect. The manager now tracks the two layers separately (`#userBindings` for reads,
+`#profileBindings` for writes), threads the profile layer out of
+`loadMergedKeybindingsConfig`, and refreshes it on `reload`.
+
+The test round-trips through the real loader (write, then build a fresh manager) and, under
+an explicit `inheritedAgentDir`, asserts the child YAML gains none of the parent's keys.
+Both mutations were confirmed to fail it: replacing the file write with a bare `true`, and
+writing the merged set.
+
+### (c) Mode commands over RPC (committed `0e33daa66b`, semantics fixed in `0f33cce5ab`)
+
+`get_modes` and `set_mode` were in the manifest but unreachable: the transitions were private to
+`InteractiveMode`, so the RPC surface had nothing to call. `dispatchRpcModeCommand` drives the
+shared `OmpModeController` and returns either the post-transition state or `{ conflict }`. The
+guard string is never composed in the protocol layer — it comes from `canEnter`, the same source
+the TUI reads, which is the property the Phase 3 lesson above predicted. `toSetModeResponse` maps
+a conflict to a failure with `code: "mode_conflict"`.
+
+Four things the first versions got wrong, every one caught by the test rather than by review:
+
+1. `paused` was treated as a toggle delta, which is wrong twice over. `set_mode plan
+{ paused: false }` on an active session became a no-op, and no-arg `set_mode plan` from an
+   active session did nothing at all — so a host had no way to leave the mode. `paused` is a
+   target: `undefined` advances the cycle `handlePlanModeCommand` uses (enter, pause, off),
+   `true` means paused, `false` means active. The no-arg case mirrors the TUI on purpose so a
+   host badge and the terminal badge move together. The mapping is a pure function,
+   `nextModeTransition`, readable without a session.
+2. A paused session is not "enabled". `OmpModeController` clears `planModeEnabled` on pause and
+   raises `planModePaused` instead, so the presence check is the union of the two. Reading
+   `planModeEnabled` alone made every paused session look inactive, and the third cycle step
+   re-entered instead of disabling.
+3. `exitPlan` bailed on `if (!this.planModeEnabled)`, which is true for a paused session, so a
+   paused plan could not be disabled through the controller at all — `handlePlanModeCommand` was
+   clearing the flags inline to work around it. The guard now accepts the paused case too. The
+   teardown that follows is already correct: the pause consumed the previous toolset and model,
+   so a second teardown is a no-op rather than a double restore.
+4. The conflict-to-response mapping lived in the switch, where no test could reach it. A mutation
+   reporting a blocked transition as `success: true` passed the whole suite. `toSetModeResponse`
+   is exported and tested directly; both that mutation and changing the code to `"ok"` now fail.
+
+One claim withdrawn. An earlier draft had reactivation exit before entering, with a comment saying
+that was required so the session would not hold the plan toolset beside the restored model. A
+mutation deleting the exit passed the suite: pausing already hands the working toolset and model
+back, so entering alone recaptures the same baseline. The code is now the simpler form and the
+comment says what is actually true. This is the same failure the Phase 3 lesson above names — a
+comment describing an invariant the code does not implement.
+
+`test/rpc-modes.test.ts` is 15 tests. Loop mode asserts no `mode_change` is journaled, because
+`handleLoopCommand` is session-only. After the change: 53 pass / 0 fail across the mode and RPC
+suites; `interactive-mode-*.test.ts` 193/2. Both failures were confirmed pre-existing by stashing
+the change and reproducing them at `0e33daa66b` — LSP startup welcome banner, and plan review
+annotation editor — matching the clean v18.3.1 baseline.
+
+### Where the remaining gap actually is
+
+An audit of all 59 `RpcCommand` variants: every one has a case in the `handleCommand` switch, and
+none falls through to `default`. The OMP fork's RPC surface has no declared-but-empty commands
+left, and plan/goal/loop was the only layering that ever needed extracting.
+
+The real remaining work is the desktop host stack, and it is wiring, not logic. Three gates stand
+between a manifest row and a reachable control, and rows marked `guiHome: "terminal:omp-tui"` are
+stuck at the second:
+
+1. `OmpRuntimeSession` (`packages/server/src/server/agent/providers/omp/runtime.ts`) — ~20 of the
+   audited commands have no member here.
+2. An `omp.*.request`/`.response` pair in `packages/protocol/src/messages.ts`, a row in
+   `operation-permissions.ts`, and a dispatch arm. Only `omp.vibe.*`, `omp.statistics.*`,
+   `omp.collab.*`, `omp.providers.*` exist.
+3. `packages/client/src/daemon-client.ts` plus a composer control — currently zero `omp.*(` methods.
+
+The 11 rows that already cleared all three gates (`rpc:vibe_*` and the two tool-selection rows)
+are the evidence the pattern works; the rest is mechanical wiring debt.
+
+### Parity docs
+
+RPC count 55 -> 57. Both rows are TUI-only with a `reason` naming the Phase 9 deck, and carry no
+capability: mode control is not one of the six server-gated features, and `manifest.test.ts`
+rejects a capability it cannot resolve.
+
+Two pre-existing defects surfaced while committing them, both fixed because the commit could not
+land otherwise:
+
+- `generate-omp-parity-doc.mjs` `JSON.parse`d an array literal lifted out of `manifest.ts`. That
+  works only while every key is quoted; oxfmt's `quoteProps: as-needed` unquotes them and the
+  generator dies on a JSON syntax error. It now evaluates the literal, so the doc no longer
+  depends on which quote style the formatter last chose.
+- The generated `CONTROL-SURFACE.md` and `PARITY.md` reflowed under oxfmt, so formatting them
+  failed `parity:check` and leaving them unformatted failed the pre-commit hook. The two gates
+  were mutually exclusive. Both are now in `ignorePatterns` beside the existing `gen.ts` entries,
+  which is the same call already made for generated TypeScript.
+
+### State
+
+Fork HEAD `0f33cce5ab`; the runtime is rebuilt and verified against it (`sourceCommit` matches,
+SHA-256 matches the binary, omp/18.3.1). Any further `coding-agent` change invalidates it again
+and requires `node scripts/build-omp-runtime.mjs --target win32-x64`.
+
+## Cleanup scope
+
+- Repo: remove only confirmed generated/cache/artifact output and stale temporary sandboxes; do not delete source, vendor, lockfiles, or uncommitted work.
+- External: remove only project-specific temporary smoke/build output. Preserve user runtime data, OMP credentials, installed apps, and unrelated session history.
+
+## Cleanup completed
+
+- Removed the two clean detached worktrees `.release-worktree` and `..OhMyPCode-format-384a954`; `git worktree list` now shows only the active checkout.
+- Removed regenerable output: `vendor/oh-my-pi/target`, `vendor/oh-my-pi/node_modules`, packaged desktop output, package `dist` directories, `.tmp`, `test-results`, the empty stray `node_modules@playwright` folder, `.dev/user-data`, `tsconfig.tsbuildinfo`, and the downloaded Node zip.
+- Removed project-specific external temp directories under `%TEMP%` named `ohmypcode-*`, including smoke and final-verification homes.
+- Removed project-specific external temp prefixes `paseo-e2e-*`, `paseo-invariant-test-*`, `paseo-omp-*`, `paseo-pi-*`, `paseo-worktree-service-*`, `paseo-node-entrypoint-runner-*`, `omp-vibe-lifecycle-*`, `omp-worker-stderr-*`, `omp-history-*`, and `omp-subagent-history-*`, plus `omp-computer-*.png`, `omp-sshots-*.webp`, `omp-desktop-*.txt`, and `omp-rename-*.txt` scratch files.
+- Measured removal sizes total approximately 11.9 GB; this is the only reliable accounting for the OhMyPCode cleanup. Free-space readings reflect parallel cleanup sessions, including PhoneBridge's own sanctioned low-disk cleanup, and are not attributable to this session.
+- No evidence of data loss. `PhoneBridge`'s 3,773 MB to 230 MB drop is documented in `C:\AI Projects\PhoneBridge\state\CURRENT.md:43-47` as that project's own parallel low-disk cleanup, which removed only backups and build output and did not modify the live database. The `Get-ChildItem` "cannot find the file specified" error is consistent with a dangling Windows reparse point, not evidence of a concurrent deleter.
+- Preserved the live OMP session `2026-09-25T04-42-33-844Z_01a0d6df-4df4-7572-bac8-5cbd122c2df9`, root `node_modules`, vendor source, OMP credentials/runtime, user data, and all older session history.
+
+## Resume rebuild requirement
+
+Package `dist` directories were intentionally removed. `@getpaseo/protocol` and `@getpaseo/client` export only `dist/*`, so typecheck, tests, and dev will not resolve until the workspace outputs are rebuilt. Before resuming OMP work:
+
+1. From `vendor/oh-my-pi`, run `bun install --frozen-lockfile`.
+2. From the repository root, run `npm run build` (or at minimum `npm run build:server` and `npm run build:app-deps`).
+3. Then run the focused typechecks/tests for the files being reviewed.
+
+Shared download caches were not deleted: `%LOCALAPPDATA%\electron\Cache`, `electron-builder\Cache`, and `ms-playwright` may be used by other projects.
