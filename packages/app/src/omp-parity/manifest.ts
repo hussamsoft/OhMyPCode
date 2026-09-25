@@ -2025,6 +2025,14 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
       "OMP RPC command; escape hatch via bundled OMP TUI terminal until native host dispatch lands",
   },
   {
+    id: "rpc:get_keybindings",
+    surface: "rpc",
+    name: "get_keybindings",
+    transport: "rpc",
+    guiHome: "terminal:omp-tui",
+    reason: "Reachable over RPC; the host control lands in the Phase 10 screen pass",
+  },
+  {
     id: "rpc:get_last_assistant_text",
     surface: "rpc",
     name: "get_last_assistant_text",
@@ -2077,6 +2085,14 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     guiHome: "terminal:omp-tui",
     reason:
       "OMP RPC command; escape hatch via bundled OMP TUI terminal until native host dispatch lands",
+  },
+  {
+    id: "rpc:get_settings",
+    surface: "rpc",
+    name: "get_settings",
+    transport: "rpc",
+    guiHome: "terminal:omp-tui",
+    reason: "Reachable over RPC; the host control lands in the Phase 10 screen pass",
   },
   {
     id: "rpc:get_state",
@@ -2177,6 +2193,14 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
       "OMP RPC command; escape hatch via bundled OMP TUI terminal until native host dispatch lands",
   },
   {
+    id: "rpc:run_slash_command",
+    surface: "rpc",
+    name: "run_slash_command",
+    transport: "rpc",
+    guiHome: "terminal:omp-tui",
+    reason: "Reachable over RPC; the host control lands in the Phase 10 screen pass",
+  },
+  {
     id: "rpc:set_auto_compaction",
     surface: "rpc",
     name: "set_auto_compaction",
@@ -2249,6 +2273,14 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
       "OMP RPC command; escape hatch via bundled OMP TUI terminal until native host dispatch lands",
   },
   {
+    id: "rpc:set_keybinding",
+    surface: "rpc",
+    name: "set_keybinding",
+    transport: "rpc",
+    guiHome: "terminal:omp-tui",
+    reason: "Reachable over RPC; the host control lands in the Phase 10 screen pass",
+  },
+  {
     id: "rpc:set_mode",
     surface: "rpc",
     name: "set_mode",
@@ -2274,6 +2306,14 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     guiHome: "terminal:omp-tui",
     reason:
       "OMP RPC command; escape hatch via bundled OMP TUI terminal until native host dispatch lands",
+  },
+  {
+    id: "rpc:set_setting",
+    surface: "rpc",
+    name: "set_setting",
+    transport: "rpc",
+    guiHome: "terminal:omp-tui",
+    reason: "Reachable over RPC; the host control lands in the Phase 10 screen pass",
   },
   {
     id: "rpc:set_steering_mode",

@@ -271,9 +271,67 @@ land otherwise:
   were mutually exclusive. Both are now in `ignorePatterns` beside the existing `gen.ts` entries,
   which is the same call already made for generated TypeScript.
 
+### (d) Keybindings, settings and slash commands over RPC (committed `2babb284a3`)
+
+The audit above only covered commands that _exist_. The manifest tracks 70 keybinding rows, 384
+setting rows and 90 slash names, and none had a command to call. All three capabilities already
+lived inside `packages/coding-agent`, so this added the surface, not the logic. RPC count
+57 -> 64; parity manifest 859 -> 864 rows.
+
+Three traps found while wiring, each of which would have been a silent bug:
+
+1. `createSettingsHost()`'s `get`/`set`/`unset` close over the module-level `settings` singleton
+   (`settings-ui.ts:75-78`), not the instance passed in. Calling them would write to the global
+   store rather than the session's. The host is used for display metadata only; reads and writes
+   go through the `Setting` handles against `session.settings`.
+2. That host's `entries` only include settings carrying a `ui.tab`, and the one credential
+   (`auth.broker.token`) has no `ui`. A host-entries projection would contain **zero** credential
+   rows, so the redaction would be untestable and the setting unreachable. The projection covers
+   all of `orderedSettings()` instead.
+3. `Setting.assertWritable` does **not** block credentials — it checks array items, validate and
+   accepts, nothing credential-related. The `credential_read_only` rejection is explicit, and runs
+   before validation so a host cannot wipe a token by sending `value: null`. `value: null` means
+   unset, because `accepts` rejects null for every type.
+
+Keybinding decisions worth keeping:
+
+- `keys` carries the canonical `KeyId` joined by `/`, **not** `getDisplayString`. The display form
+  is platform-dependent (`modifierLabel` renders alt as "Option" and super as "Cmd" on darwin)
+  and nothing it emits parses back, so a GUI echoing what it read would persist a binding that
+  never matches. Read -> write round-trips.
+- `KeybindingsManager` is constructed lazily in RPC mode. The global `getKeybindings()` is
+  deliberately unused: it lazily builds a TUI-only table with no `app.*` entries and no file.
+- Empty `keys` unbinds, and that persists (verified: `#rebuild` treats a present-but-empty
+  override as "no keys" rather than falling back to the default).
+
+Slash: `executeAcpBuiltinSlashCommand` hard-returns `false` when a spec has no `handle`
+(`acp-builtins.ts:65`), so every handleTui-only command is unreachable headlessly. Those return an
+`overlay` descriptor naming the **canonical** command, so `/rewind` answers `branch`. A spec with
+both `handle` and `handleTui` runs its `handle` — handleTui is the terminal's override of a
+command that already works without one. `/plan` routes to a no-arg `set_mode`, which is the same
+enter/pause/off cycle the TUI runs. `/vibe` stays an overlay: vibe is entered and exited rather
+than cycled, so mapping it would mean re-implementing its guard.
+
+The slash runtime literal is hoisted into a factory taking the output sink, because the prompt
+path streams command output as it happens while `run_slash_command` collects it. Neither may
+write a bare string to stdout, which in RPC mode is the JSON channel.
+
+104 new tests. Credential redaction, the overlay branch, and unbind-persists were each confirmed
+load-bearing by mutation. Six suite failures in this area are all pre-existing and were confirmed
+by stashing the change and reproducing each at `0f33cce5ab` — `rpc-client.start`, `rpc.test.ts`
+fast mode, `rpc-output` backpressure and `rpc-subagents` (all POSIX paths or Windows timeouts),
+plus the two `interactive-mode` ones already recorded above.
+
+### Phase 3 status
+
+The OMP fork's RPC surface is now complete against the plan: 64 commands, every one with a case.
+What remains for the plan's Phase 3 is nothing on the fork side. The next real gate is the
+desktop host stack described above — `OmpRuntimeSession` members, `omp.*` protocol pairs, and
+`daemon-client` methods — and those are Phase 4.
+
 ### State
 
-Fork HEAD `0f33cce5ab`; the runtime is rebuilt and verified against it (`sourceCommit` matches,
+Fork HEAD `2babb284a3`; the runtime is rebuilt and verified against it (`sourceCommit` matches,
 SHA-256 matches the binary, omp/18.3.1). Any further `coding-agent` change invalidates it again
 and requires `node scripts/build-omp-runtime.mjs --target win32-x64`.
 
