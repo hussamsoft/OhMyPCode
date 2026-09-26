@@ -26,7 +26,8 @@ async function fixture() {
   const env = {
     ...Object.fromEntries(
       Object.entries(process.env).filter(
-        ([key]) => !key.startsWith("PASEO_") && !key.startsWith("OMPCODE_"),
+        ([key]) =>
+          !key.startsWith("PASEO_") && !key.startsWith("OMPCODE_") && !key.startsWith("OHMYPCODE_"),
       ),
     ),
     HOME: root,
@@ -275,7 +276,7 @@ test("worker restart preserves an already-running legacy supervisor's launch fla
         "--no-relay",
         "--no-web-ui",
       ],
-      // The legacy CLI translated --port into OMPCODE_LISTEN before spawning.
+      // The legacy CLI translated --port into PASEO_LISTEN before spawning.
       env: { ...f.env, OMPCODE_LISTEN: `127.0.0.1:${launchPort}` },
       mode: "deployment",
       timeoutMs: 30_000,

@@ -55,7 +55,7 @@ than downloading a published desktop release.
 Override knobs:
 
 ```bash
-OHMYPCODE_HOME=~/.paseo-blue npm run dev      # explicit home
+PASEO_HOME=~/.paseo-blue npm run dev      # explicit home
 PASEO_DEV_SEED_HOME=/path/to/home npm run dev # seed from a different source home
 PASEO_DEV_RESET_HOME=1 npm run dev            # clear and reseed the derived worktree home
 ```
@@ -313,19 +313,19 @@ guards already prevent throttling from causing a false stall.
 
 ### Daemon logs
 
-Check `$OHMYPCODE_HOME/daemon.log` for daemon logs. The default level is `info`; set
+Check `$PASEO_HOME/daemon.log` for daemon logs. The default level is `info`; set
 `OMPCODE_LOG_LEVEL=trace` before launching the daemon when you need full provider,
 session, and agent-manager traces for stuck-state debugging.
 
 The supervisor rotates `daemon.log`. Persisted `log.file.rotate` settings in
-`$OHMYPCODE_HOME/config.json` win first. Without persisted config, the optional
+`$PASEO_HOME/config.json` win first. Without persisted config, the optional
 `PASEO_LOG_ROTATE_SIZE` and `PASEO_LOG_ROTATE_COUNT` env vars override the
 defaults. The default rotation is `10m` x `3` files everywhere.
 
 ### Git process pressure
 
 If Git refreshes consume too much CPU, disk, or antivirus capacity, especially on Windows, reduce
-the daemon-global Git process limits in `$OHMYPCODE_HOME/config.json`:
+the daemon-global Git process limits in `$PASEO_HOME/config.json`:
 
 ```json
 {
@@ -430,7 +430,7 @@ Service proxy hostnames use the double-dash shape: `web--feature-auth--project.l
 ```
 
 Service ports use OS ephemeral allocation by default. Set `worktrees.servicePorts` in
-`$OHMYPCODE_HOME/config.json`, or replace it for one project with `worktree.servicePorts` in
+`$PASEO_HOME/config.json`, or replace it for one project with `worktree.servicePorts` in
 `paseo.json`. The block accepts an inclusive `range` such as `"3000-4000"` or a `portScript`
 executable. Since `portScript` is executed directly without a shell, it must point to a real executable (e.g., a binary or a script with a proper shebang like `#!/bin/sh`) rather than an inline shell command or shell pipeline. For inline shell commands or pipelines, wrap them in a small script. `portScript` runs in the workspace directory with four arguments: service name,
 workspace ID, branch name, and worktree path. A missing branch is passed as an empty string. The same
@@ -579,19 +579,19 @@ default; pass `--server <server-id>` when targeting another server.
 Agent data lives at:
 
 ```
-$OHMYPCODE_HOME/agents/{cwd-with-dashes}/{agent-id}.json
+$PASEO_HOME/agents/{cwd-with-dashes}/{agent-id}.json
 ```
 
 Find an agent by ID:
 
 ```bash
-find $OHMYPCODE_HOME/agents -name "{agent-id}.json"
+find $PASEO_HOME/agents -name "{agent-id}.json"
 ```
 
 Find by content:
 
 ```bash
-rg -l "some title text" $OHMYPCODE_HOME/agents/
+rg -l "some title text" $PASEO_HOME/agents/
 ```
 
 ## Provider session files

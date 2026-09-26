@@ -155,13 +155,27 @@ export function resolveDaemonTarget(host: string): TransportTarget {
   };
 }
 
+let warnedStalePaseoPassword = false;
+
 export function resolveDaemonPassword(host: string): string | undefined {
   const trimmed = host.trim();
   if (trimmed.startsWith("tcp://")) {
     const fromUri = parseConnectionUri(trimmed).password;
     if (fromUri) return fromUri;
   }
-  const fromEnv = process.env.PASEO_PASSWORD;
+  let fromEnv = process.env.OMPCODE_PASSWORD;
+  // COMPAT(paseoEnv): remove after 2027-01-01.
+  if (fromEnv === undefined && process.env.PASEO_PASSWORD !== undefined) {
+    fromEnv = process.env.PASEO_PASSWORD;
+    if (!warnedStalePaseoPassword) {
+      warnedStalePaseoPassword = true;
+      console.warn(
+        "[client] PASEO_PASSWORD is set but no longer read directly; using its value as a " +
+          "fallback. Rename it to OMPCODE_PASSWORD -- PASEO_PASSWORD support may be removed " +
+          "in a future release.",
+      );
+    }
+  }
   return fromEnv && fromEnv.length > 0 ? fromEnv : undefined;
 }
 

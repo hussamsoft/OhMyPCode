@@ -349,7 +349,10 @@ function resolveServiceProxyPublicBaseUrl(value: string | null): string | null {
   try {
     return new URL(value).toString().replace(/\/$/, "");
   } catch {
-    throw new Error(`Invalid OMPCODE_SERVICE_PROXY_PUBLIC_BASE_URL: ${value}`);
+    throw new Error(
+      "Invalid OMPCODE_SERVICE_PROXY_PUBLIC_BASE_URL (or legacy PASEO_SERVICE_PROXY_PUBLIC_BASE_URL): " +
+        value,
+    );
   }
 }
 

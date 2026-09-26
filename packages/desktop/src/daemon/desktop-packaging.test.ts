@@ -176,6 +176,18 @@ describe("desktop packaging", () => {
       rmSync(bundle.root, { recursive: true, force: true });
     }
   });
+
+  it("both bundled CLI shims mark the daemon desktop-managed under the name pid-lock.ts reads", () => {
+    // Platform-independent: pid-lock.ts reads OHMYPCODE_DESKTOP_MANAGED (config-environment.ts's
+    // CONFIG_CONTEXT_ENV_KEYS), so both shims must set exactly that name. Executing the shims
+    // (rather than just reading them) requires POSIX paths the Windows dev box can't produce, so
+    // this asserts on file content, which is what actually shipped bugs here twice before.
+    const posixShim = readFileSync(join(packageRoot, "bin", "ompc"), "utf8");
+    expect(posixShim).toContain("OHMYPCODE_DESKTOP_MANAGED=1");
+
+    const windowsShim = readFileSync(join(packageRoot, "bin", "ompc.cmd"), "utf8");
+    expect(windowsShim).toContain('set "OHMYPCODE_DESKTOP_MANAGED=1"');
+  });
 });
 
 it("installs the Linux helper as root-owned 4755 regardless of root's namespace access", () => {

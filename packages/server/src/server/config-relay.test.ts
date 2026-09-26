@@ -217,7 +217,9 @@ describe("daemon service proxy config", () => {
       loadConfig(home, {
         env: { PASEO_SERVICE_PROXY_PUBLIC_BASE_URL: "not-a-url" },
       }),
-    ).toThrow("Invalid OMPCODE_SERVICE_PROXY_PUBLIC_BASE_URL: not-a-url");
+    ).toThrow(
+      "Invalid OMPCODE_SERVICE_PROXY_PUBLIC_BASE_URL (or legacy PASEO_SERVICE_PROXY_PUBLIC_BASE_URL): not-a-url",
+    );
   });
 });
 
