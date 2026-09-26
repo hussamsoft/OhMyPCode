@@ -54,6 +54,24 @@ describe("OMP Parity Manifest", () => {
     }
   });
 
+  it("VALID_PROTOCOL_CAPABILITIES stays in sync with the OhMyPCode fork capability flags actually declared in packages/protocol/src/messages.ts, so this test file's hand-maintained set can never silently drift from the real protocol source", () => {
+    const messagesPath = path.join(root, "packages", "protocol", "src", "messages.ts");
+    const messagesSource = fs.readFileSync(messagesPath, "utf8");
+    const anchor = "// OhMyPCode fork capabilities: stock Paseo daemons never set these";
+    const anchorIndex = messagesSource.indexOf(anchor);
+    expect(anchorIndex).toBeGreaterThan(-1);
+    const nextCompatIndex = messagesSource.indexOf("// COMPAT(", anchorIndex);
+    expect(nextCompatIndex).toBeGreaterThan(anchorIndex);
+    const forkCapabilitiesBlock = messagesSource.slice(anchorIndex, nextCompatIndex);
+    const declaredCapabilities = new Set(
+      [...forkCapabilitiesBlock.matchAll(/^\s*(\w+):\s*z\.boolean\(\)\.optional\(\),/gm)].map(
+        (match) => match[1],
+      ),
+    );
+    expect(declaredCapabilities.size).toBeGreaterThan(0);
+    expect([...declaredCapabilities].sort()).toEqual([...VALID_PROTOCOL_CAPABILITIES].sort());
+  });
+
   it("assigns only valid currently-existing GUI homes or terminal escape hatch with reason", () => {
     for (const entry of OMP_PARITY_MANIFEST) {
       expect(VALID_GUI_HOMES.has(entry.guiHome)).toBe(true);
