@@ -95,6 +95,10 @@ describe("provider snapshot message schemas", () => {
   });
 });
 
+// The dynamic import below pulls in the generated AOT validator module
+// (~5 MB of generated source, ws-outbound.aot.ts), whose first transform in a
+// cold test run can outrun vitest's 5s default. Give it real headroom instead
+// of chasing a flaky failure.
 test("accepts a bodyless announcement with separate discovery freshness", async () => {
   const { validateWSOutboundMessage } = await import("./validation/ws-outbound.js");
   const message = {
@@ -110,4 +114,4 @@ test("accepts a bodyless announcement with separate discovery freshness", async 
   expect(ProvidersSnapshotUpdateMessageSchema.parse(message)).toEqual(message);
   const result = validateWSOutboundMessage({ type: "session", message });
   expect(result.success).toBe(true);
-});
+}, 30_000);

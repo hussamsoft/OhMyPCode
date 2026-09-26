@@ -19,12 +19,16 @@ let fetchAgentHistoryBatch: UseAgentHistoryModule["fetchAgentHistoryBatch"];
 let fetchAgentHistoryPage: UseAgentHistoryModule["fetchAgentHistoryPage"];
 let collectAgentHistoryHostErrors: UseAgentHistoryModule["collectAgentHistoryHostErrors"];
 
+// A cold first import of this module (react-query + the full session-store
+// dependency graph) can outrun vitest's 10s default beforeAll timeout on a
+// loaded machine; it isn't an actual hang (confirmed: reproduces in isolation,
+// resolves fine under a longer budget).
 beforeAll(async () => {
   const module = await import("./use-agent-history");
   fetchAgentHistoryBatch = module.fetchAgentHistoryBatch;
   fetchAgentHistoryPage = module.fetchAgentHistoryPage;
   collectAgentHistoryHostErrors = module.collectAgentHistoryHostErrors;
-});
+}, 30_000);
 
 type FetchAgentHistory = DaemonClient["fetchAgentHistory"];
 type FetchAgentHistoryResult = Awaited<ReturnType<FetchAgentHistory>>;

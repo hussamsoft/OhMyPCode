@@ -129,6 +129,10 @@ afterEach(async () => {
 let useAgentInputDraft: typeof import("./input-draft").useAgentInputDraft;
 type DraftRecordForTest = ReturnType<typeof useDraftStore.getState>["drafts"][string];
 
+// A cold first import of ./input-draft (draft store, attachments, composer
+// controls, and their own dependency graphs) can outrun vitest's 10s default
+// beforeAll timeout on a loaded machine; not an actual hang -- confirmed: it
+// reproduces in isolation and resolves fine under a longer budget.
 beforeAll(async () => {
   Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", {
     value: true,
@@ -136,7 +140,7 @@ beforeAll(async () => {
   });
 
   ({ useAgentInputDraft } = await import("./input-draft"));
-});
+}, 30_000);
 
 describe("useAgentInputDraft live contract", () => {
   beforeEach(() => {
