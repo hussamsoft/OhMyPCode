@@ -85,6 +85,9 @@ describe("OmpRuntimeRows", () => {
   let root: Root | null;
 
   beforeEach(() => {
+    vi.stubGlobal("React", React);
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+
     container = document.createElement("div");
     document.body.appendChild(container);
     root = null;
@@ -95,6 +98,7 @@ describe("OmpRuntimeRows", () => {
     container.remove();
     statusState.status = null;
     statusState.isLoading = false;
+    vi.unstubAllGlobals();
   });
 
   it("renders nothing while loading", () => {

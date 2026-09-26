@@ -1,7 +1,7 @@
 // GENERATED FILE -- do not hand-edit.
 // Source: vendor/oh-my-pi/packages/tui/src/theme/{dark,light}.json, symbols.ts
-// Regenerate: node --import tsx scripts/generate-omp-theme-tokens.mjs
-// Verify: node --import tsx scripts/generate-omp-theme-tokens.mjs --check
+// Regenerate: npm run generate:omp-theme
+// Verify: npm run generate:omp-theme:check
 
 export const OMP_DARK_TOKENS: Readonly<Record<string, string | number>> = {
   "accent": "#febc38",
@@ -1039,7 +1039,7 @@ export const OMP_SYMBOLS = {
   },
 } as const;
 
-export const OMP_SPINNER_FRAMES: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
+export const OMP_SPINNER_FRAMES: Readonly<Record<"unicode" | "nerd" | "ascii", Readonly<Record<"status" | "activity", readonly string[]>>>> = {
   "unicode": {
     "status": [
       "⣾",

@@ -3,6 +3,18 @@
 // theme JSON files and symbol tables, vendored at
 // vendor/oh-my-pi/packages/tui/src/theme/{dark,light}.json and symbols.ts.
 //
+// Run: npm run generate:omp-theme  (or npm run generate:omp-theme:check)
+// Equivalent to: node --import tsx scripts/generate-omp-theme-tokens.mjs
+//
+// The `--import tsx` flag is REQUIRED: symbols.ts is imported by file path
+// at runtime (see loadSymbolsModule below) because @oh-my-pi/pi-tui is a
+// vendored submodule, not a resolvable workspace package, so plain `node
+// scripts/generate-omp-theme-tokens.mjs` cannot import a .ts file on its
+// own and will fail with an unsupported-file-extension error. This is a
+// deliberate deviation from OMP_DESKTOP_MASTER_PLAN.md's literal Phase 7
+// gate command (`node scripts/generate-omp-theme-tokens.mjs --check`,
+// no --import flag) -- use the npm script above, not the bare plan text.
+//
 // --check: exit non-zero if the generated file would differ from what's on
 // disk, without writing. Used as a CI/pre-commit drift guard -- if OMP's
 // theme JSON changes shape, this script (and the check) fails loudly rather
@@ -102,8 +114,8 @@ function formatObjectLiteral(value, indent = 0) {
 function buildGeneratedSource({ darkTokens, lightTokens, groupedSymbols, spinnerFrames }) {
   const header = `// GENERATED FILE -- do not hand-edit.
 // Source: vendor/oh-my-pi/packages/tui/src/theme/{dark,light}.json, symbols.ts
-// Regenerate: node --import tsx scripts/generate-omp-theme-tokens.mjs
-// Verify: node --import tsx scripts/generate-omp-theme-tokens.mjs --check
+// Regenerate: npm run generate:omp-theme
+// Verify: npm run generate:omp-theme:check
 `;
 
   const darkBlock = `export const OMP_DARK_TOKENS: Readonly<Record<string, string | number>> = ${formatObjectLiteral(darkTokens)} as const;\n`;
@@ -117,7 +129,7 @@ function buildGeneratedSource({ darkTokens, lightTokens, groupedSymbols, spinner
     .join("\n");
   const symbolsBlock = `export const OMP_SYMBOLS = {\n${symbolPresetBlocks}\n} as const;\n`;
 
-  const spinnerBlock = `export const OMP_SPINNER_FRAMES: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = ${formatObjectLiteral(spinnerFrames)} as const;\n`;
+  const spinnerBlock = `export const OMP_SPINNER_FRAMES: Readonly<Record<"unicode" | "nerd" | "ascii", Readonly<Record<"status" | "activity", readonly string[]>>>> = ${formatObjectLiteral(spinnerFrames)} as const;\n`;
 
   return [header, darkBlock, lightBlock, symbolsBlock, spinnerBlock].join("\n");
 }
@@ -154,7 +166,7 @@ async function main() {
     const current = existsSync(OUTPUT_PATH) ? readFileSync(OUTPUT_PATH, "utf-8") : null;
     if (current !== generated) {
       console.error(
-        `${path.relative(REPO_ROOT, OUTPUT_PATH)} is out of date. Run: node --import tsx scripts/generate-omp-theme-tokens.mjs`,
+        `${path.relative(REPO_ROOT, OUTPUT_PATH)} is out of date. Run: npm run generate:omp-theme`,
       );
       process.exit(1);
     }
