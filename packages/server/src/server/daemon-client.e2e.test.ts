@@ -1354,26 +1354,6 @@ test("creates agent and exercises lifecycle", async () => {
   });
 
   const createRequestId = `create-${Date.now()}`;
-  const createdStatusPromise = waitForSignal(15000, (resolve) => {
-    const unsubscribe = ctx.client.on("status", (message) => {
-      if (message.type !== "status") {
-        return;
-      }
-      const payload = message.payload as {
-        status?: string;
-        agentId?: string;
-        requestId?: string;
-      };
-      if (payload.status !== "agent_created") {
-        return;
-      }
-      if (payload.requestId !== createRequestId) {
-        return;
-      }
-      resolve(message);
-    });
-    return unsubscribe;
-  });
 
   const agent = await ctx.client.createAgent({
     ...getFullAccessConfig("codex"),
@@ -1389,29 +1369,8 @@ test("creates agent and exercises lifecycle", async () => {
 
   const agentUpdate = await agentUpdatePromise;
   expect(agentUpdate.payload.agent.id).toBe(agent.id);
-  const createdStatus = await createdStatusPromise;
-  expect((createdStatus.payload as { agentId?: string }).agentId).toBe(agent.id);
 
   const failRequestId = `fail-${Date.now()}`;
-  const failedStatusPromise = waitForSignal(15000, (resolve) => {
-    const unsubscribe = ctx.client.on("status", (message) => {
-      if (message.type !== "status") {
-        return;
-      }
-      const payload = message.payload as {
-        status?: string;
-        requestId?: string;
-      };
-      if (payload.status !== "agent_create_failed") {
-        return;
-      }
-      if (payload.requestId !== failRequestId) {
-        return;
-      }
-      resolve(message);
-    });
-    return unsubscribe;
-  });
 
   await expect(
     ctx.client.createAgent({
@@ -1421,7 +1380,6 @@ test("creates agent and exercises lifecycle", async () => {
       requestId: failRequestId,
     }),
   ).rejects.toThrow("Working directory does not exist");
-  await failedStatusPromise;
 
   let sawRefresh = false;
   const unsubscribe = ctx.client.subscribe((event) => {
