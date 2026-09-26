@@ -32,6 +32,7 @@ vi.mock("react-native-reanimated", () => ({
   interpolateColor: (value: number, _input: number[], output: string[]) =>
     value >= 1 ? output[1] : output[0],
   useAnimatedStyle: (factory: () => unknown) => factory(),
+  useReducedMotion: () => false,
   useDerivedValue: (factory: () => unknown) => ({ value: factory() }),
   withTiming: (value: unknown) => value,
 }));

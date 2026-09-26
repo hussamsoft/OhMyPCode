@@ -6,7 +6,31 @@ import { VibeWorkerTranscript } from "@/omp-vibe/vibe-worker-detail";
 import { VibeWorkerList } from "@/omp-vibe/vibe-worker-list";
 
 vi.mock("react-native-reanimated", () => ({
+  default: { View: "div" },
+  useAnimatedStyle: (factory: () => unknown) => factory(),
   useReducedMotion: () => true,
+}));
+
+// The browser vitest project does not load vitest.setup.ts (only the unit
+// project does), so expo-router's real module — and its native-only
+// react-native-screens dependency — would otherwise load for real here.
+vi.mock("expo-router", () => ({
+  router: {
+    back: vi.fn(),
+    canGoBack: vi.fn(() => false),
+    navigate: vi.fn(),
+    push: vi.fn(),
+    replace: vi.fn(),
+    setParams: vi.fn(),
+  },
+  useRouter: vi.fn(() => ({
+    back: vi.fn(),
+    canGoBack: vi.fn(() => false),
+    navigate: vi.fn(),
+    push: vi.fn(),
+    replace: vi.fn(),
+    setParams: vi.fn(),
+  })),
 }));
 
 const mounted: Array<{ container: HTMLDivElement; root: Root }> = [];
@@ -41,13 +65,7 @@ function mountList(workers: OmpVibeWorker[]) {
   const root = createRoot(container);
   const render = (nextWorkers: OmpVibeWorker[]) => {
     act(() => {
-      root.render(
-        <VibeWorkerList
-          workers={nextWorkers}
-          selectedWorkerId={null}
-          onSelect={noop}
-        />,
-      );
+      root.render(<VibeWorkerList workers={nextWorkers} selectedWorkerId={null} onSelect={noop} />);
     });
   };
   render(workers);

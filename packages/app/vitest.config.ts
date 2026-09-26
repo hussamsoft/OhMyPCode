@@ -81,6 +81,12 @@ export default defineConfig({
       "react-native-reanimated",
       "react-native-gesture-handler",
       "react-native-keyboard-controller",
+      // Same class of bug as gesture-handler above: expo-modules-core's
+      // requireNativeModule.ts imports TurboModuleRegistry from react-native,
+      // which react-native-web does not export. It has a requireNativeModule.web.ts
+      // that resolve.extensions picks up normally, but esbuild's dependency scan
+      // does not honor resolve.extensions and dies on the native file first.
+      "expo-modules-core",
     ],
   },
   // The globals a React Native bundler defines, which esbuild is no longer there to supply for
