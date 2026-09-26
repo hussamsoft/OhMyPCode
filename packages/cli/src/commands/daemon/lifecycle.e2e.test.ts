@@ -24,7 +24,11 @@ async function port() {
 async function fixture() {
   const root = await mkdtemp(path.join(tmpdir(), "paseo lifecycle "));
   const env = {
-    ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("PASEO_"))),
+    ...Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([key]) => !key.startsWith("PASEO_") && !key.startsWith("OMPCODE_"),
+      ),
+    ),
     HOME: root,
     USERPROFILE: root,
   };
@@ -124,10 +128,10 @@ test("managed two-home restart retains its supervisor and never routes ordinary 
     const poisoned = {
       PASEO_HOME: a,
       PASEO_HOST: `127.0.0.1:${portA}`,
-      PASEO_LISTEN: `127.0.0.1:${portA}`,
+      OMPCODE_LISTEN: `127.0.0.1:${portA}`,
       PORT: String(portA),
-      PASEO_WEB_UI_ENABLED: "true",
-      PASEO_RELAY_ENABLED: "true",
+      OMPCODE_WEB_UI_ENABLED: "true",
+      OMPCODE_RELAY_ENABLED: "true",
     };
     const launchB = await f.ok(["daemon", "start", "--home", b, "--timeout", "30"], poisoned);
     expect(launchA.listen).toBe(`127.0.0.1:${portA}`);
@@ -271,15 +275,15 @@ test("worker restart preserves an already-running legacy supervisor's launch fla
         "--no-relay",
         "--no-web-ui",
       ],
-      // The legacy CLI translated --port into PASEO_LISTEN before spawning.
-      env: { ...f.env, PASEO_LISTEN: `127.0.0.1:${launchPort}` },
+      // The legacy CLI translated --port into OMPCODE_LISTEN before spawning.
+      env: { ...f.env, OMPCODE_LISTEN: `127.0.0.1:${launchPort}` },
       mode: "deployment",
       timeoutMs: 30_000,
     });
     const before = await f.liveStatus(home);
     expect(before.listen).toBe(`127.0.0.1:${launchPort}`);
     const restarted = await f.ok(["restart", "--home", home, "--timeout", "30"], {
-      PASEO_LISTEN: `127.0.0.1:${filePort}`,
+      OMPCODE_LISTEN: `127.0.0.1:${filePort}`,
     });
     expect(restarted.supervisorPid).toBe(launch.instance.pid);
     expect(restarted.workerPid).not.toBe(before.workerPid);
@@ -511,7 +515,7 @@ test("foreground deployment retains environment until its owner ends the launch;
     await f.configure(home, fileEndpoint);
     deployment = spawn(process.execPath, [cli, "daemon", "run", "--home", home], {
       cwd: f.root,
-      env: { ...f.env, PASEO_LISTEN: deploymentEndpoint, PASEO_RELAY_ENABLED: "false" },
+      env: { ...f.env, OMPCODE_LISTEN: deploymentEndpoint, OMPCODE_RELAY_ENABLED: "false" },
       stdio: "ignore",
     });
     await expect
@@ -534,7 +538,7 @@ test("foreground deployment retains environment until its owner ends the launch;
       home,
     ]);
     expect(changed.overrideControlledPaths).toContain("daemon.listen");
-    const restarted = await f.ok(["restart", "--home", home], { PASEO_LISTEN: fileEndpoint });
+    const restarted = await f.ok(["restart", "--home", home], { OMPCODE_LISTEN: fileEndpoint });
     expect(restarted.supervisorPid).toBe(before.pid);
     expect((await f.ok(["status", "--home", home])).listen).toBe(deploymentEndpoint);
     const exited = new Promise((resolve) => deployment!.once("exit", resolve));

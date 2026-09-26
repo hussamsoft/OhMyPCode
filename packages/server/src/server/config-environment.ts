@@ -4,52 +4,52 @@ export const DAEMON_SETTING_ENV_KEYS = [
   "MCP_DEBUG",
   "OPENAI_STT_BASE_URL",
   "OPENAI_TTS_BASE_URL",
-  "PASEO_ALLOWED_HOSTS",
-  "PASEO_APP_BASE_URL",
-  "PASEO_CORS_ORIGINS",
-  "PASEO_DICTATION_ENABLED",
-  "PASEO_DICTATION_LANGUAGE",
-  "PASEO_DICTATION_LOCAL_STT_MODEL",
-  "PASEO_DICTATION_STT_PROVIDER",
-  "PASEO_GIT_CONCURRENCY",
-  "PASEO_GIT_MAX_PROCESSES_PER_SECOND",
-  "PASEO_GIT_MAX_PROCESS_CONCURRENCY",
-  "PASEO_HOSTNAMES",
-  "PASEO_LISTEN",
-  "PASEO_LOCAL_MODELS_DIR",
-  "PASEO_LOG",
-  "PASEO_LOG_CONSOLE_FORMAT",
-  "PASEO_LOG_CONSOLE_LEVEL",
-  "PASEO_LOG_FILE_LEVEL",
-  "PASEO_LOG_FILE_PATH",
-  "PASEO_LOG_FILE_ROTATE_COUNT",
-  "PASEO_LOG_FILE_ROTATE_SIZE",
-  "PASEO_LOG_FORMAT",
-  "PASEO_LOG_LEVEL",
-  "PASEO_LOG_ROTATE_COUNT",
-  "PASEO_LOG_ROTATE_SIZE",
-  "PASEO_PASSWORD",
-  "PASEO_RELAY_ENABLED",
-  "PASEO_RELAY_ENDPOINT",
-  "PASEO_RELAY_PUBLIC_ENDPOINT",
-  "PASEO_RELAY_PUBLIC_USE_TLS",
-  "PASEO_RELAY_USE_TLS",
-  "PASEO_SERVICE_PROXY_ENABLED",
-  "PASEO_SERVICE_PROXY_LISTEN",
-  "PASEO_SERVICE_PROXY_PUBLIC_BASE_URL",
-  "PASEO_TRUSTED_PROXIES",
-  "PASEO_VOICE_LANGUAGE",
-  "PASEO_VOICE_LLM_PROVIDER",
-  "PASEO_VOICE_LOCAL_STT_MODEL",
-  "PASEO_VOICE_LOCAL_TTS_MODEL",
-  "PASEO_VOICE_LOCAL_TTS_SPEAKER_ID",
-  "PASEO_VOICE_LOCAL_TTS_SPEED",
-  "PASEO_VOICE_MODE_ENABLED",
-  "PASEO_VOICE_STT_PROVIDER",
-  "PASEO_VOICE_TTS_PROVIDER",
-  "PASEO_VOICE_TURN_DETECTION_PROVIDER",
-  "PASEO_WEB_UI_DIST_DIR",
-  "PASEO_WEB_UI_ENABLED",
+  "OMPCODE_ALLOWED_HOSTS",
+  "OMPCODE_APP_BASE_URL",
+  "OMPCODE_CORS_ORIGINS",
+  "OMPCODE_DICTATION_ENABLED",
+  "OMPCODE_DICTATION_LANGUAGE",
+  "OMPCODE_DICTATION_LOCAL_STT_MODEL",
+  "OMPCODE_DICTATION_STT_PROVIDER",
+  "OMPCODE_GIT_CONCURRENCY",
+  "OMPCODE_GIT_MAX_PROCESSES_PER_SECOND",
+  "OMPCODE_GIT_MAX_PROCESS_CONCURRENCY",
+  "OMPCODE_HOSTNAMES",
+  "OMPCODE_LISTEN",
+  "OMPCODE_LOCAL_MODELS_DIR",
+  "OMPCODE_LOG",
+  "OMPCODE_LOG_CONSOLE_FORMAT",
+  "OMPCODE_LOG_CONSOLE_LEVEL",
+  "OMPCODE_LOG_FILE_LEVEL",
+  "OMPCODE_LOG_FILE_PATH",
+  "OMPCODE_LOG_FILE_ROTATE_COUNT",
+  "OMPCODE_LOG_FILE_ROTATE_SIZE",
+  "OMPCODE_LOG_FORMAT",
+  "OMPCODE_LOG_LEVEL",
+  "OMPCODE_LOG_ROTATE_COUNT",
+  "OMPCODE_LOG_ROTATE_SIZE",
+  "OMPCODE_PASSWORD",
+  "OMPCODE_RELAY_ENABLED",
+  "OMPCODE_RELAY_ENDPOINT",
+  "OMPCODE_RELAY_PUBLIC_ENDPOINT",
+  "OMPCODE_RELAY_PUBLIC_USE_TLS",
+  "OMPCODE_RELAY_USE_TLS",
+  "OMPCODE_SERVICE_PROXY_ENABLED",
+  "OMPCODE_SERVICE_PROXY_LISTEN",
+  "OMPCODE_SERVICE_PROXY_PUBLIC_BASE_URL",
+  "OMPCODE_TRUSTED_PROXIES",
+  "OMPCODE_VOICE_LANGUAGE",
+  "OMPCODE_VOICE_LLM_PROVIDER",
+  "OMPCODE_VOICE_LOCAL_STT_MODEL",
+  "OMPCODE_VOICE_LOCAL_TTS_MODEL",
+  "OMPCODE_VOICE_LOCAL_TTS_SPEAKER_ID",
+  "OMPCODE_VOICE_LOCAL_TTS_SPEED",
+  "OMPCODE_VOICE_MODE_ENABLED",
+  "OMPCODE_VOICE_STT_PROVIDER",
+  "OMPCODE_VOICE_TTS_PROVIDER",
+  "OMPCODE_VOICE_TURN_DETECTION_PROVIDER",
+  "OMPCODE_WEB_UI_DIST_DIR",
+  "OMPCODE_WEB_UI_ENABLED",
   "PORT",
   "STT_CONFIDENCE_THRESHOLD",
   "STT_MODEL",
@@ -66,10 +66,35 @@ const CONFIG_CONTEXT_ENV_KEYS = [
   "OPENAI_TTS_API_KEY",
 ] as const;
 
+const warnedStaleDaemonEnvKeys = new Set<string>();
+
+// COMPAT(paseoEnv): remove after 2027-01-01. `PASEO_*` was the daemon config
+// prefix before the OhMyPCode rename; a stock `paseo` CLI on the same machine
+// may still export these, so an unrenamed caller keeps working until the
+// compat window closes.
+function legacyDaemonEnvKey(key: string): string | undefined {
+  return key.startsWith("OMPCODE_") ? `PASEO_${key.slice("OMPCODE_".length)}` : undefined;
+}
+
 export function configurationEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  return Object.fromEntries(
+  const resolved = Object.fromEntries(
     [...DAEMON_SETTING_ENV_KEYS, ...CONFIG_CONTEXT_ENV_KEYS].map((key) => [key, env[key]]),
   );
+  for (const key of Object.keys(resolved)) {
+    if (resolved[key] !== undefined) continue;
+    const legacyKey = legacyDaemonEnvKey(key);
+    const legacyValue = legacyKey === undefined ? undefined : env[legacyKey];
+    if (legacyKey === undefined || legacyValue === undefined) continue;
+    resolved[key] = legacyValue;
+    if (!warnedStaleDaemonEnvKeys.has(legacyKey)) {
+      warnedStaleDaemonEnvKeys.add(legacyKey);
+      console.warn(
+        `[config] ${legacyKey} is set but no longer read directly; using its value as a ` +
+          `fallback for ${key}. Rename it -- ${legacyKey} support may be removed in a future release.`,
+      );
+    }
+  }
+  return resolved;
 }
 
 export function daemonLaunchEnvironment(input: {
@@ -80,7 +105,11 @@ export function daemonLaunchEnvironment(input: {
 }): NodeJS.ProcessEnv {
   const env = { ...input.env };
   if (input.mode === "managed") {
-    for (const key of DAEMON_SETTING_ENV_KEYS) delete env[key];
+    for (const key of DAEMON_SETTING_ENV_KEYS) {
+      delete env[key];
+      const legacyKey = legacyDaemonEnvKey(key);
+      if (legacyKey !== undefined) delete env[legacyKey];
+    }
   }
   delete env.PASEO_HOST;
   delete env.OHMYPCODE_DESKTOP_MANAGED;

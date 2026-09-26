@@ -13,7 +13,7 @@ The official image:
 - builds `@getpaseo/server` and `@getpaseo/cli` from source-built workspace tarballs
 - runs the daemon as the non-root `paseo` user
 - listens on `0.0.0.0:6767` inside the container
-- enables the bundled daemon web UI with `PASEO_WEB_UI_ENABLED=true`
+- enables the bundled daemon web UI with `OMPCODE_WEB_UI_ENABLED=true`
 - stores daemon state and agent credentials under `/home/paseo`
 - leaves agent CLIs out of the base image
 
@@ -122,11 +122,11 @@ or `compose.environment`; Paseo passes them to launched agents.
 
 The image defaults:
 
-| Variable       | Default              |
-| -------------- | -------------------- |
-| `HOME`         | `/home/paseo`        |
-| `PASEO_HOME`   | `/home/paseo/.paseo` |
-| `PASEO_LISTEN` | `0.0.0.0:6767`       |
+| Variable         | Default              |
+| ---------------- | -------------------- |
+| `HOME`           | `/home/paseo`        |
+| `PASEO_HOME`     | `/home/paseo/.paseo` |
+| `OMPCODE_LISTEN` | `0.0.0.0:6767`       |
 
 If you bind-mount host directories on Linux, make sure the container user can
 write them. The built-in `paseo` user has uid/gid `1000:1000`. For a different

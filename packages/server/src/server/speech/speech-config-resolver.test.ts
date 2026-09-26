@@ -70,18 +70,18 @@ describe("resolveSpeechConfig", () => {
       },
     });
     const env = {
-      PASEO_DICTATION_LOCAL_STT_MODEL: "parakeet-tdt-0.6b-v2-int8",
-      PASEO_VOICE_LOCAL_STT_MODEL: "parakeet-tdt-0.6b-v2-int8",
-      PASEO_VOICE_LOCAL_TTS_MODEL: "kokoro-en-v0_19",
-      PASEO_VOICE_LOCAL_TTS_SPEAKER_ID: "5",
-      PASEO_VOICE_LOCAL_TTS_SPEED: "1.35",
-      PASEO_DICTATION_LANGUAGE: "es",
-      PASEO_VOICE_LANGUAGE: "pt",
-      PASEO_LOCAL_MODELS_DIR: "/tmp/models",
+      OMPCODE_DICTATION_LOCAL_STT_MODEL: "parakeet-tdt-0.6b-v2-int8",
+      OMPCODE_VOICE_LOCAL_STT_MODEL: "parakeet-tdt-0.6b-v2-int8",
+      OMPCODE_VOICE_LOCAL_TTS_MODEL: "kokoro-en-v0_19",
+      OMPCODE_VOICE_LOCAL_TTS_SPEAKER_ID: "5",
+      OMPCODE_VOICE_LOCAL_TTS_SPEED: "1.35",
+      OMPCODE_DICTATION_LANGUAGE: "es",
+      OMPCODE_VOICE_LANGUAGE: "pt",
+      OMPCODE_LOCAL_MODELS_DIR: "/tmp/models",
       OPENAI_API_KEY: "env-key",
-      PASEO_VOICE_STT_PROVIDER: "openai",
-      PASEO_DICTATION_STT_PROVIDER: "local",
-      PASEO_VOICE_TTS_PROVIDER: "local",
+      OMPCODE_VOICE_STT_PROVIDER: "openai",
+      OMPCODE_DICTATION_STT_PROVIDER: "local",
+      OMPCODE_VOICE_TTS_PROVIDER: "local",
     } as NodeJS.ProcessEnv;
 
     const result = resolveSpeechConfig({
@@ -153,8 +153,8 @@ describe("resolveSpeechConfig", () => {
     const result = resolveSpeechConfig({
       paseoHome: "/tmp/paseo-home",
       env: {
-        PASEO_DICTATION_LANGUAGE: "es",
-        PASEO_VOICE_LANGUAGE: "  ",
+        OMPCODE_DICTATION_LANGUAGE: "es",
+        OMPCODE_VOICE_LANGUAGE: "  ",
       } as NodeJS.ProcessEnv,
       persisted,
     });
