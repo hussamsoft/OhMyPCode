@@ -60,7 +60,24 @@ function loadThemeJson(fileName) {
   for (const [key, value] of Object.entries(raw.colors)) {
     resolved[key] = resolveVarRefs(value, vars);
   }
-  return resolved;
+  // App-only surfaces (pane backgrounds, hover, focus ring, border on
+  // scrollbar gutters) derive from statusLineBg (already in `colors` above)
+  // plus these two `export` object fields, per the master plan's Phase 7
+  // bullet -- a separate top-level JSON section, not part of the
+  // ThemeColor|ThemeBg schema `colors` reads.
+  if (typeof raw.export !== "object" || raw.export === null) {
+    throw new Error(`${fileName}: missing or invalid "export" object`);
+  }
+  for (const key of ["pageBg", "cardBg"]) {
+    if (raw.export[key] === undefined) {
+      throw new Error(`${fileName}: missing "export.${key}"`);
+    }
+  }
+  const exportColors = {
+    pageBg: resolveVarRefs(raw.export.pageBg, vars),
+    cardBg: resolveVarRefs(raw.export.cardBg, vars),
+  };
+  return { colors: resolved, exportColors };
 }
 
 /** Groups a flat SymbolKey -> string map ("status.success": "✓") into a
@@ -111,7 +128,14 @@ function formatObjectLiteral(value, indent = 0) {
   return `{\n${lines.join("\n")}\n${pad}}`;
 }
 
-function buildGeneratedSource({ darkTokens, lightTokens, groupedSymbols, spinnerFrames }) {
+function buildGeneratedSource({
+  darkTokens,
+  lightTokens,
+  darkExportTokens,
+  lightExportTokens,
+  groupedSymbols,
+  spinnerFrames,
+}) {
   const header = `// GENERATED FILE -- do not hand-edit.
 // Source: vendor/oh-my-pi/packages/tui/src/theme/{dark,light}.json, symbols.ts
 // Regenerate: npm run generate:omp-theme
@@ -120,6 +144,11 @@ function buildGeneratedSource({ darkTokens, lightTokens, groupedSymbols, spinner
 
   const darkBlock = `export const OMP_DARK_TOKENS: Readonly<Record<string, string | number>> = ${formatObjectLiteral(darkTokens)} as const;\n`;
   const lightBlock = `export const OMP_LIGHT_TOKENS: Readonly<Record<string, string | number>> = ${formatObjectLiteral(lightTokens)} as const;\n`;
+
+  // App-only surfaces (see omp-theme/theme.ts) derive from these plus
+  // statusLineBg, which is already part of OMP_{DARK,LIGHT}_TOKENS above.
+  const darkExportBlock = `export const OMP_DARK_EXPORT_TOKENS: Readonly<Record<"pageBg" | "cardBg", string>> = ${formatObjectLiteral(darkExportTokens)} as const;\n`;
+  const lightExportBlock = `export const OMP_LIGHT_EXPORT_TOKENS: Readonly<Record<"pageBg" | "cardBg", string>> = ${formatObjectLiteral(lightExportTokens)} as const;\n`;
 
   const symbolPresetBlocks = Object.entries(groupedSymbols)
     .map(
@@ -131,14 +160,22 @@ function buildGeneratedSource({ darkTokens, lightTokens, groupedSymbols, spinner
 
   const spinnerBlock = `export const OMP_SPINNER_FRAMES: Readonly<Record<"unicode" | "nerd" | "ascii", Readonly<Record<"status" | "activity", readonly string[]>>>> = ${formatObjectLiteral(spinnerFrames)} as const;\n`;
 
-  return [header, darkBlock, lightBlock, symbolsBlock, spinnerBlock].join("\n");
+  return [
+    header,
+    darkBlock,
+    lightBlock,
+    darkExportBlock,
+    lightExportBlock,
+    symbolsBlock,
+    spinnerBlock,
+  ].join("\n");
 }
 
 async function main() {
   const checkOnly = process.argv.includes("--check");
 
-  const darkTokens = loadThemeJson("dark.json");
-  const lightTokens = loadThemeJson("light.json");
+  const { colors: darkTokens, exportColors: darkExportTokens } = loadThemeJson("dark.json");
+  const { colors: lightTokens, exportColors: lightExportTokens } = loadThemeJson("light.json");
 
   const symbolsModule = await loadSymbolsModule();
   const { SYMBOL_PRESETS, SPINNER_FRAMES } = symbolsModule;
@@ -158,6 +195,8 @@ async function main() {
   const generated = buildGeneratedSource({
     darkTokens,
     lightTokens,
+    darkExportTokens,
+    lightExportTokens,
     groupedSymbols,
     spinnerFrames: SPINNER_FRAMES,
   });

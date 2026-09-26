@@ -142,6 +142,16 @@ export const OMP_LIGHT_TOKENS: Readonly<Record<string, string | number>> = {
   "pythonMode": "#9a7326",
 } as const;
 
+export const OMP_DARK_EXPORT_TOKENS: Readonly<Record<"pageBg" | "cardBg", string>> = {
+  "pageBg": "#18181e",
+  "cardBg": "#1e1e24",
+} as const;
+
+export const OMP_LIGHT_EXPORT_TOKENS: Readonly<Record<"pageBg" | "cardBg", string>> = {
+  "pageBg": "#f8f8f8",
+  "cardBg": "#ffffff",
+} as const;
+
 export const OMP_SYMBOLS = {
   "unicode": {
     "status": {
