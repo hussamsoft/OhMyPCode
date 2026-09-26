@@ -738,6 +738,7 @@ export const es: TranslationResources = {
         browser: "Navegador",
         agent: "Agent",
         workspace: "Workspace",
+        vibe: "Vibe",
       },
       switcher: {
         trigger: "Cambiar pestañas ({{count}}abierto)",

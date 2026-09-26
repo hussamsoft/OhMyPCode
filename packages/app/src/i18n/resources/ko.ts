@@ -733,6 +733,7 @@ export const ko: TranslationResources = {
         browser: "브라우저",
         agent: "에이전트",
         workspace: "워크스페이스",
+        vibe: "Vibe",
       },
       switcher: {
         trigger: "탭 전환 ({{count}}개 열림)",

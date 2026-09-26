@@ -1,5 +1,5 @@
 import { useMemo, type ReactElement, type ReactNode } from "react";
-import { Text, View, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
+import { Text, View, type PressableProps, type PressableStateCallbackType, type StyleProp, type ViewStyle } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Shortcut } from "@/components/ui/shortcut";
@@ -49,7 +49,7 @@ export function HeaderToggleButton({
 
   const combinedStyle = useMemo(
     () =>
-      ({ focused, hovered, pressed }: HeaderToggleButtonState) =>
+      ({ focused, hovered, pressed }: PressableStateCallbackType & { focused?: boolean }) =>
         iconButtonChromeStyle({
           size: "large",
           state: { focused, hovered, pressed },
@@ -69,8 +69,12 @@ export function HeaderToggleButton({
         style={combinedStyle}
       >
         {typeof children === "function"
-          ? (state: { pressed: boolean; hovered?: boolean }) =>
-              children({ hovered: Boolean(state.hovered), pressed: state.pressed })
+          ? (state: { pressed: boolean; hovered?: boolean; focused?: boolean }) =>
+              children({
+                hovered: Boolean(state.hovered),
+                focused: Boolean(state.focused),
+                pressed: state.pressed,
+              })
           : children}
       </TooltipTrigger>
       <TooltipContent testID={tooltipTestID} side={tooltipSide} align="center" offset={8}>

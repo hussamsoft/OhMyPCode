@@ -27,6 +27,7 @@ import type { AgentLifecycleStatus } from "@getpaseo/protocol/agent-lifecycle";
 import type {
   AgentPermissionRequest,
   AgentFeature,
+  AgentToolDefinition,
   AgentProvider,
   AgentMode,
   AgentCapabilityFlags,
@@ -85,6 +86,11 @@ export interface Agent {
   pendingPermissions: AgentPermissionRequest[];
   persistence: AgentPersistenceHandle | null;
   runtimeInfo?: AgentRuntimeInfo;
+  /**
+   * The agent's live tool catalogue. Optional: absent until the tool-selection
+   * capability resolves it, which is why the snapshot projects it conditionally.
+   */
+  tools?: AgentToolDefinition[];
   lastUsage?: AgentUsage;
   lastError?: string | null;
   title: string | null;

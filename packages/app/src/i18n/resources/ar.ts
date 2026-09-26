@@ -732,6 +732,7 @@ export const ar: TranslationResources = {
         browser: "المتصفح",
         agent: "Agent",
         workspace: "Workspace",
+        vibe: "Vibe",
       },
       switcher: {
         trigger: "تبديل علامات التبويب (فتح{{count}})",

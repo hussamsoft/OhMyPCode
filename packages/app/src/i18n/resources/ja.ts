@@ -738,6 +738,7 @@ export const ja: TranslationResources = {
         browser: "ブラウザ",
         agent: "エージェント",
         workspace: "ワークスペース",
+        vibe: "Vibe",
       },
       switcher: {
         trigger: "タブを切り替え（{{count}}件開いています）",

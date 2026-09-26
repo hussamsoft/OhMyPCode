@@ -228,6 +228,9 @@ export function buildDeterministicWorkspaceTabId(target: WorkspaceTabTarget): st
       ? `plugin_workspace_${identity}`
       : `plugin_agent_${identity}_${target.agentId.length}_${target.agentId}`;
   }
+  if (target.kind === "omp_vibe") {
+    return `omp_vibe_${target.agentId.length}_${target.agentId}`;
+  }
   return `file_${target.path}`;
 }
 

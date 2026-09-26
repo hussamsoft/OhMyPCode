@@ -739,6 +739,7 @@ export const fr: TranslationResources = {
         browser: "Navigateur",
         agent: "Agent",
         workspace: "Workspace",
+        vibe: "Vibe",
       },
       switcher: {
         trigger: "Changer d'onglet ({{count}}ouvert)",

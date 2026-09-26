@@ -739,6 +739,7 @@ export const ru: TranslationResources = {
         browser: "Браузер",
         agent: "Агент",
         workspace: "Рабочее пространство",
+        vibe: "Vibe",
       },
       switcher: {
         trigger: "Переключить вкладки (открыто: {{count}})",

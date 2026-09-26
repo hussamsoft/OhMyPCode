@@ -737,6 +737,7 @@ export const ptBR: TranslationResources = {
         browser: "Navegador",
         agent: "Agente",
         workspace: "Workspace",
+        vibe: "Vibe",
       },
       switcher: {
         trigger: "Alternar abas ({{count}} abertas)",

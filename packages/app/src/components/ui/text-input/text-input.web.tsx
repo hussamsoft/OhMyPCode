@@ -5,8 +5,14 @@ import type { EditingTextInputHandle, EditingTextInputProps } from "./types";
 interface WebTextInputElement extends TextInput {
   value?: string;
   setSelectionRange?: (start: number, end: number) => void;
-  addEventListener(type: "compositionstart" | "compositionend", listener: EventListener): void;
-  removeEventListener(type: "compositionstart" | "compositionend", listener: EventListener): void;
+  addEventListener(
+    type: "compositionstart" | "compositionend" | "input",
+    listener: EventListener,
+  ): void;
+  removeEventListener(
+    type: "compositionstart" | "compositionend" | "input",
+    listener: EventListener,
+  ): void;
 }
 
 export const EditingTextInput = forwardRef<EditingTextInputHandle, EditingTextInputProps>(

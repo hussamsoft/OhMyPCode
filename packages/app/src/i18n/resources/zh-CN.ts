@@ -732,6 +732,7 @@ export const zhCN: TranslationResources = {
         browser: "浏览器",
         agent: "Agent",
         workspace: "Workspace",
+        vibe: "Vibe",
       },
       switcher: {
         trigger: "切换标签（已打开 {{count}} 个）",

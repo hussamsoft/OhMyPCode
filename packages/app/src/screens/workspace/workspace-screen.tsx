@@ -313,6 +313,7 @@ function getFallbackTabOptionLabel(
     changes: string;
     files: string;
     pullRequest: string;
+    vibe: string;
   },
 ): string {
   if (tab.target.kind === "new_tab") {
@@ -345,6 +346,9 @@ function getFallbackTabOptionLabel(
   if (tab.target.kind === "commit_diff") {
     return tab.target.sha.slice(0, 7);
   }
+  if (tab.target.kind === "omp_vibe") {
+    return labels.vibe;
+  }
   return labels.agent;
 }
 
@@ -359,6 +363,7 @@ function getFallbackTabOptionDescription(
     browser: string;
     changes: string;
     files: string;
+    vibe: string;
     pullRequest: string;
   },
 ): string {
@@ -397,6 +402,9 @@ function getFallbackTabOptionDescription(
   }
   if (tab.target.kind === "plugin") {
     return tab.target.panelId;
+  }
+  if (tab.target.kind === "omp_vibe") {
+    return labels.vibe;
   }
   return tab.target.path;
 }
@@ -597,6 +605,7 @@ function MobileWorkspaceTabOption({
       changes: t("panels.diff.changesLabel"),
       files: t("panels.files.label"),
       pullRequest: t("panels.pullRequest.label"),
+      vibe: t("workspace.tabs.fallback.vibe"),
     }),
     [t],
   );
@@ -2365,6 +2374,7 @@ function WorkspaceScreenContent({
       changes: t("panels.diff.changesLabel"),
       files: t("panels.files.label"),
       pullRequest: t("panels.pullRequest.label"),
+      vibe: t("workspace.tabs.fallback.vibe"),
     }),
     [t],
   );

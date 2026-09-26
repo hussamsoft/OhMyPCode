@@ -729,6 +729,7 @@ export const en = {
         browser: "Browser",
         agent: "Agent",
         workspace: "Workspace",
+        vibe: "Vibe",
       },
       switcher: {
         trigger: "Switch tabs ({{count}} open)",
