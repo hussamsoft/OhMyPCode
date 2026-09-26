@@ -5,10 +5,17 @@ import { expect, test } from "vitest";
 import { createPaseoApi } from "@getpaseo/client";
 import { DaemonClient } from "../test-utils/daemon-client.js";
 import { createTestPaseoDaemon } from "../test-utils/paseo-daemon.js";
+import { resolveDaemonVersion } from "../daemon-version.js";
 
 test("an RPC-only plugin receives no agent, project or provider data", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "paseo-quiet-plugin-"));
-  await writeFile(path.join(directory, "paseo-plugin.json"), JSON.stringify({ id: "quiet" }));
+  await writeFile(
+    path.join(directory, "paseo-plugin.json"),
+    JSON.stringify({
+      id: "quiet",
+      requirements: { paseo: `>=${resolveDaemonVersion(import.meta.url)}` },
+    }),
+  );
   await writeFile(
     path.join(directory, "index.server.ts"),
     `
@@ -16,18 +23,34 @@ import { defineRpc } from "@getpaseo/plugin";
 import { z } from "zod";
 export default function contribute(server) {
   const counts = {};
+  let attached = false;
   const observe = message => {
-    if (message.type !== "paseo_frame" || typeof message.data !== "string") return;
+    if (!attached || message.type !== "paseo_frame" || typeof message.data !== "string") return;
     const frame = JSON.parse(message.data);
     const type = frame.message?.type;
     if (type) counts[type] = (counts[type] ?? 0) + 1;
   };
   process.on("message", observe);
+  server.handle(defineRpc({name:"connect", input:z.object({}), output:z.null()}), () => new Promise(resolve => {
+    if (attached) return resolve(null);
+    const ready = message => {
+      if (message.type !== "paseo_frame" || typeof message.data !== "string") return;
+      const frame = JSON.parse(message.data);
+      if (frame.type !== "session" || frame.message.type !== "status" || frame.message.payload.status !== "server_info") return;
+      process.off("message", ready);
+      attached = true;
+      resolve(null);
+    };
+    process.on("message", ready);
+    process.send({ type: "paseo_frame", isBinary: false, data: JSON.stringify({
+      type: "hello", clientId: "plugin:quiet", clientType: "cli", protocolVersion: 1,
+    }) });
+  }));
   server.handle(defineRpc({name:"counts", input:z.object({}), output:z.record(z.string(),z.number())}), () => counts);
   return () => process.off("message", observe);
 }`,
   );
-  const daemon = await createTestPaseoDaemon();
+  const daemon = await createTestPaseoDaemon({ providerOverrides: { claude: { enabled: true } } });
   const client = new DaemonClient({ url: `ws://127.0.0.1:${daemon.port}/ws` });
   const idle = new DaemonClient({ url: `ws://127.0.0.1:${daemon.port}/ws` });
   const legacy = new DaemonClient({
@@ -48,6 +71,7 @@ export default function contribute(server) {
     await legacy.connect();
     await client.patchDaemonConfig({ pluginsEnabled: true });
     await client.installDirectoryPlugin(directory);
+    await client.invokePluginRpc("quiet", "connect", {});
     const agent = await client.createAgent({ provider: "claude", cwd: directory });
     const api = createPaseoApi(client);
     const received: string[] = [];
