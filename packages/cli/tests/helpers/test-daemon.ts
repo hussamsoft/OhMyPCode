@@ -305,6 +305,10 @@ export async function startTestDaemon(options?: {
   daemonProcess.on("exit", (code) => {
     if (code !== 0 && code !== null) {
       console.error(`Daemon process exited with code ${code}`);
+      const stdoutText = formatOutputCapture(stdout);
+      if (stdoutText) {
+        console.error("Daemon stdout:", stdoutText);
+      }
       const stderrText = formatOutputCapture(stderr);
       if (stderrText) {
         console.error("Daemon stderr:", stderrText);

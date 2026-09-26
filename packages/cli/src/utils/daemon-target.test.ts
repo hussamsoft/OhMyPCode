@@ -39,6 +39,41 @@ test("OMPCODE_HOST is canonical; PASEO_HOST is a COMPAT(paseoEnv) fallback", () 
   ).toThrow(/OHMYPCODE_HOME and PASEO_HOST are both set/);
 });
 
+test("empty or whitespace-only PASEO_HOST/OMPCODE_HOST are treated as unset, not an endpoint", () => {
+  // Regression: PASEO_HOST: "" (e.g. a test explicitly clearing an ambient
+  // override) previously satisfied `!== undefined` and produced
+  // { kind: "endpoint", host: "" }, silently routing status/stop commands
+  // through the endpoint path instead of falling back to home resolution.
+  expect(selectDaemonTarget({}, { PASEO_HOME: "/tmp/a", PASEO_HOST: "" })).toEqual({
+    kind: "instance",
+    home: path.resolve("/tmp/a"),
+  });
+  expect(selectDaemonTarget({}, { PASEO_HOME: "/tmp/a", PASEO_HOST: "   " })).toEqual({
+    kind: "instance",
+    home: path.resolve("/tmp/a"),
+  });
+  expect(selectDaemonTarget({}, { OMPCODE_HOST: "", PASEO_HOST: "legacy:1" })).toEqual({
+    kind: "endpoint",
+    host: "legacy:1",
+  });
+});
+
+test("empty or whitespace-only OHMYPCODE_HOME/PASEO_HOME are treated as unset, not ambiguous", () => {
+  // Regression: PASEO_HOME: "" previously satisfied `!== undefined` and made
+  // resolveHomeEnvKey() report "PASEO_HOME" as set, spuriously throwing
+  // TARGET_AMBIGUOUS against a genuinely-set PASEO_HOST instead of routing to
+  // the endpoint. Same class of bug as the PASEO_HOST case above, in the
+  // sibling home-side resolver.
+  expect(selectDaemonTarget({}, { PASEO_HOME: "", PASEO_HOST: "legacy:1" })).toEqual({
+    kind: "endpoint",
+    host: "legacy:1",
+  });
+  expect(selectDaemonTarget({}, { OHMYPCODE_HOME: "   ", PASEO_HOST: "legacy:1" })).toEqual({
+    kind: "endpoint",
+    host: "legacy:1",
+  });
+});
+
 test("local operations ignore routing environment but reject an explicit endpoint", () => {
   expect(
     selectDaemonTarget({}, { PASEO_HOME: "/tmp/b", PASEO_HOST: "unused:12345" }, true),

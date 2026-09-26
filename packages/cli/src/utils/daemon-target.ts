@@ -8,8 +8,9 @@ let warnedStalePaseoHost = false;
 function resolveDaemonHostEnv(
   env: NodeJS.ProcessEnv,
 ): { value: string; key: "OMPCODE_HOST" | "PASEO_HOST" } | undefined {
-  if (env.OMPCODE_HOST !== undefined) return { value: env.OMPCODE_HOST, key: "OMPCODE_HOST" };
-  if (env.PASEO_HOST === undefined) return undefined;
+  if (env.OMPCODE_HOST !== undefined && env.OMPCODE_HOST.trim())
+    return { value: env.OMPCODE_HOST, key: "OMPCODE_HOST" };
+  if (env.PASEO_HOST === undefined || !env.PASEO_HOST.trim()) return undefined;
   if (!warnedStalePaseoHost) {
     warnedStalePaseoHost = true;
     console.warn(
@@ -22,8 +23,8 @@ function resolveDaemonHostEnv(
 }
 
 function resolveHomeEnvKey(env: NodeJS.ProcessEnv): "OHMYPCODE_HOME" | "PASEO_HOME" | undefined {
-  if (env.OHMYPCODE_HOME !== undefined) return "OHMYPCODE_HOME";
-  if (env.PASEO_HOME !== undefined) return "PASEO_HOME";
+  if (env.OHMYPCODE_HOME !== undefined && env.OHMYPCODE_HOME.trim()) return "OHMYPCODE_HOME";
+  if (env.PASEO_HOME !== undefined && env.PASEO_HOME.trim()) return "PASEO_HOME";
   return undefined;
 }
 
