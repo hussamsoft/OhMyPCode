@@ -49,8 +49,22 @@ export function encodeOfferToFragmentUrl(args: {
   return `${args.appBaseUrl.replace(/\/$/, "")}/#offer=${encoded}`;
 }
 
+let warnedStalePrimaryLanIp = false;
+
 function getPrimaryLanIp(): string | null {
-  const override = process.env.PASEO_PRIMARY_LAN_IP?.trim();
+  let override = process.env.OMPCODE_PRIMARY_LAN_IP?.trim();
+  // COMPAT(paseoEnv): remove after 2027-01-01.
+  if (!override && process.env.PASEO_PRIMARY_LAN_IP !== undefined) {
+    override = process.env.PASEO_PRIMARY_LAN_IP.trim();
+    if (!warnedStalePrimaryLanIp) {
+      warnedStalePrimaryLanIp = true;
+      console.warn(
+        "[connection-offer] PASEO_PRIMARY_LAN_IP is set but no longer read directly; using " +
+          "its value as a fallback. Rename it to OMPCODE_PRIMARY_LAN_IP -- " +
+          "PASEO_PRIMARY_LAN_IP support may be removed in a future release.",
+      );
+    }
+  }
   if (override) return override;
 
   const nets = os.networkInterfaces();
