@@ -16,6 +16,7 @@ import pino from "pino";
 
 import {
   getAgentStreamEventTurnId,
+  type AgentClient,
   type AgentSession,
   type AgentStreamEvent,
 } from "../../agent-sdk-types.js";
@@ -30,7 +31,12 @@ import {
 // ---------------------------------------------------------------------------
 
 const logger = pino({ level: "silent" });
-const client = createRealProviderClient("claude", logger);
+// Deferred: see the identical fix and rationale in the sibling
+// agent.real.e2e.test.ts -- createRealProviderClient throws when
+// OPENROUTER_API_KEY is absent, so it must not run eagerly at module
+// scope. Assigned in beforeAll below, only once canRunRealProvider
+// confirms credentials exist.
+let client: AgentClient;
 
 function tmpCwd(prefix: string): string {
   return mkdtempSync(path.join(tmpdir(), prefix));
@@ -205,6 +211,7 @@ let canRun = false;
 
 beforeAll(async () => {
   canRun = await canRunRealProvider("claude");
+  if (canRun) client = createRealProviderClient("claude", logger);
 });
 
 beforeEach((context) => {

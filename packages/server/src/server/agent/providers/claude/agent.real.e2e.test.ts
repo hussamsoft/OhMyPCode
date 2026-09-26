@@ -6,6 +6,7 @@ import pino from "pino";
 import type { SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 
 import type {
+  AgentClient,
   AgentSession,
   AgentStreamEvent,
   ToolCallTimelineItem,
@@ -22,7 +23,14 @@ import { claudeQuery } from "./query.js";
 import { streamSession } from "../test-utils/session-stream-adapter.js";
 
 const logger = pino({ level: "silent" });
-const client = createRealProviderClient("claude", logger);
+// Deferred: createRealProviderClient("claude", ...) throws when
+// OPENROUTER_API_KEY is absent (real-provider tests deliberately route
+// claude through OpenRouter). Creating it eagerly at module scope crashed
+// the whole file at import time instead of skipping cleanly -- assigned
+// inside beforeAll, only once canRunRealProvider confirms credentials
+// exist; every consuming test is already gated behind that same check via
+// beforeEach's context.skip() below.
+let client: AgentClient;
 
 function tmpCwd(prefix: string): string {
   return mkdtempSync(path.join(tmpdir(), prefix));
@@ -179,6 +187,7 @@ describe("ClaudeAgentSession integration", () => {
 
   beforeAll(async () => {
     canRun = await canRunRealProvider("claude");
+    if (canRun) client = createRealProviderClient("claude", logger);
   });
 
   beforeEach((context) => {
