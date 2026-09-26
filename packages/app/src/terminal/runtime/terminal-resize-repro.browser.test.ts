@@ -61,7 +61,7 @@ function mount(width: number, height: number): Mounted {
     scrollback: 10_000,
     theme: { background: "#0b0b0b", foreground: "#e6e6e6", cursor: "#e6e6e6" },
   });
-  const terminal = window.__paseoTerminal as InspectableTerminal | undefined;
+  const terminal = window.__ompcodeTerminal as InspectableTerminal | undefined;
   if (!terminal) {
     throw new Error("terminal did not mount");
   }

@@ -16,6 +16,7 @@
     "**/*.gen.ts",
     "**/*.gen.tsx",
     "docs/omp/CONTROL-SURFACE.md",
-    "docs/omp/PARITY.md"
+    "docs/omp/PARITY.md",
+    "packages/app/src/terminal/webview/terminal-emulator-webview-html.ts"
   ]
 }

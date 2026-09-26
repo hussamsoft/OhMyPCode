@@ -107,9 +107,9 @@ export async function installTerminalRenderProbe(page: Page): Promise<void> {
 
     const win = window as unknown as Record<string, unknown> & {
       __terminalRenderProbe?: ProbeState;
-      __paseoTerminal?: ProbeTerm;
+      __ompcodeTerminal?: ProbeTerm;
     };
-    const existingDescriptor = Object.getOwnPropertyDescriptor(win, "__paseoTerminal");
+    const existingDescriptor = Object.getOwnPropertyDescriptor(win, "__ompcodeTerminal");
     const getExisting = () =>
       existingDescriptor?.get ? existingDescriptor.get.call(win) : existingDescriptor?.value;
 
@@ -184,7 +184,7 @@ export async function installTerminalRenderProbe(page: Page): Promise<void> {
       value: probe,
     });
 
-    Object.defineProperty(win, "__paseoTerminal", {
+    Object.defineProperty(win, "__ompcodeTerminal", {
       configurable: true,
       get() {
         return probe.term;
@@ -644,12 +644,12 @@ export async function installTerminalKeystrokeStressProbe(page: Page): Promise<v
     Object.defineProperty(InstrumentedWebSocket, "CLOSED", { value: NativeWebSocket.CLOSED });
     window.WebSocket = InstrumentedWebSocket as typeof WebSocket;
 
-    const existingDescriptor = Object.getOwnPropertyDescriptor(window, "__paseoTerminal");
+    const existingDescriptor = Object.getOwnPropertyDescriptor(window, "__ompcodeTerminal");
     const getExisting = () =>
       existingDescriptor?.get ? existingDescriptor.get.call(window) : existingDescriptor?.value;
 
     let terminal = getExisting();
-    Object.defineProperty(window, "__paseoTerminal", {
+    Object.defineProperty(window, "__ompcodeTerminal", {
       configurable: true,
       get() {
         return terminal;
