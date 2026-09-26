@@ -541,6 +541,31 @@ const ghosttyDarkColors = buildDarkSemanticColors({
   terminalBrightBlack: "#4a4f5e",
 });
 
+// The OhMyPCode brand palette. Ink #0D0D0D, paper #FAFAFA, signal #F97316 — the
+// three anchors every other surface derives from. These are brand constants: the
+// mark has to read against them, so changing one is a release-gated brand change
+// rather than a theme tweak.
+const ohmypcodeDarkColors = buildDarkSemanticColors({
+  surface0: "#0D0D0D",
+  surface1: "#1A1A1A",
+  surface2: "#242424",
+  surface3: "#333333",
+  surface4: "#3D3D3D",
+  surfaceDiffEmpty: "#141414",
+  surfaceSidebar: "#0A0A0A",
+  foreground: "#FAFAFA",
+  foregroundMuted: "#B4B4B4",
+  foregroundExtraMuted: "#8A8A8A",
+  border: "#2A2A2A",
+  borderAccent: "#3A3A3A",
+  accent: "#F97316",
+  accentBright: "#FB923C",
+  accentForeground: "#0D0D0D",
+  destructive: "#EF4444",
+  terminalBlack: "#0D0D0D",
+  terminalBrightBlack: "#333333",
+});
+
 export const SPACING = {
   0: 0,
   0.5: 2,
@@ -640,6 +665,15 @@ interface CommonTheme {
   borderRadius: typeof BORDER_RADIUS;
   borderWidth: typeof BORDER_WIDTH;
   opacity: typeof OPACITY;
+  /**
+   * Desktop shell metrics. These are structural dimensions, not appearance: the
+   * navigation rail and the single title/tab strip must stay fixed so the
+   * workspace canvas keeps a stable width as panels resize.
+   */
+  desktopShell: {
+    navigationRailWidth: number;
+    titleBarHeight: number;
+  };
 }
 
 const commonTheme: CommonTheme = {
@@ -652,6 +686,7 @@ const commonTheme: CommonTheme = {
   borderRadius: BORDER_RADIUS,
   borderWidth: BORDER_WIDTH,
   opacity: OPACITY,
+  desktopShell: { navigationRailWidth: 56, titleBarHeight: 44 },
 };
 
 const darkShadow = {
@@ -693,6 +728,7 @@ export const darkZincTheme = buildDarkTheme(zincDarkColors);
 export const darkMidnightTheme = buildDarkTheme(midnightDarkColors);
 export const darkClaudeTheme = buildDarkTheme(claudeDarkColors);
 export const darkGhosttyTheme = buildDarkTheme(ghosttyDarkColors);
+export const darkOhMyPCodeTheme = buildDarkTheme(ohmypcodeDarkColors);
 
 // Pure black — zero-luminance background with high-contrast surfaces.
 const pureBlackDarkColors = buildDarkSemanticColors({
@@ -798,6 +834,13 @@ export const THEME_OPTIONS = [
     unistylesName: "darkGhostty",
     theme: darkGhosttyTheme,
     swatch: "#8caaee",
+  },
+  {
+    name: "ohMyPCode",
+    group: "variant",
+    unistylesName: "darkOhMyPCode",
+    theme: darkOhMyPCodeTheme,
+    swatch: "#F97316",
   },
   {
     name: "pureBlack",

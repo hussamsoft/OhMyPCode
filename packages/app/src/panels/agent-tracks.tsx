@@ -21,6 +21,7 @@ import { buildWorkspaceTabPersistenceKey } from "@/workspace-tabs/model";
 import { openPreferredWorkspaceTarget } from "@/workspace-tabs/open-beside";
 import { openComposerChanges } from "@/workspace-tabs/open-supporting-view";
 import { VibeStrip } from "@/omp-vibe/vibe-strip";
+import { useSessionStore } from "@/stores/session-store";
 
 /**
  * The pane's ambient context — workspace changes, subagents, and tasks — as a row of pills above

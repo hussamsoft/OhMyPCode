@@ -20,6 +20,7 @@ interface ScreenHeaderProps {
   rightStyle?: StyleProp<ViewStyle>;
   borderless?: boolean;
   onRowLayout?: (event: LayoutChangeEvent) => void;
+  rowStyle?: StyleProp<ViewStyle>;
 }
 
 /**
@@ -33,6 +34,7 @@ export function ScreenHeader({
   rightStyle,
   borderless,
   onRowLayout,
+  rowStyle,
 }: ScreenHeaderProps) {
   const { theme } = useUnistyles();
   const insets = useSafeAreaInsets();
@@ -45,7 +47,10 @@ export function ScreenHeader({
     () => [styles.inner, { paddingTop: insets.top + topPadding }],
     [insets.top, topPadding],
   );
-  const rowStyle = useMemo(() => [styles.row, borderless && styles.borderless], [borderless]);
+  const combinedRowStyle = useMemo(
+    () => [styles.row, borderless && styles.borderless, rowStyle],
+    [borderless, rowStyle],
+  );
   const leftCombinedStyle = useMemo(() => [styles.left, leftStyle], [leftStyle]);
   const rightCombinedStyle = useMemo(() => [styles.right, rightStyle], [rightStyle]);
 
@@ -56,7 +61,7 @@ export function ScreenHeader({
           placement="inline"
           horizontalPadding={baseHorizontalPadding}
           onLayout={onRowLayout}
-          style={rowStyle}
+          style={combinedRowStyle}
         >
           <TitlebarDragRegion />
           <View style={leftCombinedStyle}>{left}</View>

@@ -8,6 +8,7 @@ import {
   type SegmentedControlSize,
 } from "@/components/ui/control-geometry";
 import type { Theme } from "@/styles/theme";
+import { isWeb } from "@/constants/platform";
 
 type SegmentedControlIconRenderer = (props: { color: string; size: number }) => ReactNode;
 
@@ -112,6 +113,12 @@ function SegmentItem<T extends string>({
   optionIndex,
   onValueChange,
 }: {
+  option: SegmentedControlOption<T>;
+  isSelected: boolean;
+  iconSize: number;
+  hideLabels: boolean;
+  segmentSizeStyle: { minHeight: number; paddingHorizontal: number; borderRadius: number };
+  labelSizeStyle: { fontSize: number };
   currentValue: T;
   options: readonly SegmentedControlOption<T>[];
   optionIndex: number;
@@ -159,18 +166,22 @@ function SegmentItem<T extends string>({
     () => ({ checked: isSelected, disabled: option.disabled }),
     [isSelected, option.disabled],
   );
+  // `aria-checked` and `onKeyDown` exist only in react-native-web. Passing them
+  // unconditionally does not typecheck against RN's Pressable, and a native build
+  // has no DOM to deliver them, so they are spread in on web alone.
+  const webOnlyProps = isWeb
+    ? { "aria-checked": isSelected, onKeyDown: handleKeyDown }
+    : undefined;
   return (
     <Pressable
       accessibilityLabel={option.label}
       accessibilityRole="radio"
       accessibilityState={accessibilityState}
-      aria-checked={isSelected}
       disabled={option.disabled}
-      focusable
-      onKeyDown={handleKeyDown}
       testID={option.testID}
       onPress={handlePress}
       style={pressableStyle}
+      {...webOnlyProps}
     >
       {option.icon ? (
         <ThemedSegmentIcon
