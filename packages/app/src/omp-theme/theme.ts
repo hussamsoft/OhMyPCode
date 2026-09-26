@@ -202,9 +202,13 @@ const SCHEMA_KEYS: readonly OmpThemeSchemaKey[] = [
  * key name. Throws if the generated tokens are missing a schema-declared
  * key (other than the always-optional `thinkingMax`, which this palette
  * type doesn't include at all) -- a real gap, not something to paper over
- * with a fallback value. No unsafe cast: every entry is built from a
- * verified-present token value, so the resulting record structurally
- * satisfies OmpThemePalette without needing `as`.
+ * with a fallback value. Every entry is built from a verified-present
+ * token value before assembly, so the only remaining `as` is the single,
+ * unavoidable one below: `Object.fromEntries` always returns the widened
+ * `{ [k: string]: T }`, which TypeScript can't narrow back down to the
+ * exact key set on its own even though every SCHEMA_KEYS entry was
+ * checked -- unlike the prior version of this function, there's no cast
+ * doing double duty to also paper over an untyped/mismatched value.
  */
 function buildOmpThemePalette(
   tokens: Readonly<Record<string, OmpColorValue | undefined>>,
@@ -242,11 +246,21 @@ export const OMP_LIGHT_THEME_PALETTE: OmpThemePalette = buildOmpThemePalette(OMP
  *   slightly-raised fill relative to the page background in OMP's own
  *   export rendering, which is exactly the relationship a hover state
  *   needs relative to its resting background.
- * - `focusRing` and `scrollbarGutterBorder` = `statusLineBg` -- both are
- *   thin structural/outline roles, not fills; `statusLineBg` is the one
- *   remaining source and is tonally distinct from both page and card
- *   fills, which is what a visible ring/border needs. Reused for both
- *   since they're the same kind of role (outline, not fill).
+ * - `scrollbarGutterBorder` = `statusLineBg` -- a thin structural role,
+ *   not a fill; tonally distinct from both page and card fills, which is
+ *   what a visible-but-unobtrusive gutter border needs. Subtle is correct
+ *   here -- a scrollbar gutter isn't meant to draw attention.
+ * - `focusRing` DELIBERATELY DOES NOT use `statusLineBg`, deviating from
+ *   the plan's literal 3-source list -- `statusLineBg` (#121212 dark,
+ *   #e0e0e0 light) sits almost exactly on top of `export.pageBg` (#18181e
+ *   dark, #f8f8f8 light) in both themes: a near-zero-contrast pairing that
+ *   would make the ring effectively invisible against the surface it
+ *   outlines. That directly conflicts with this same Phase 7 bullet's own
+ *   accessibility requirement ("a visible 2px `ring` focus ring"), so
+ *   accessibility wins: `focusRing` uses `accent` instead (#febc38 dark,
+ *   #5a8080 light -- already part of OmpThemePalette, not a value foreign
+ *   to the OMP data model, just a different one of its 66 keys), which has
+ *   real contrast against pageBg in both themes.
  */
 export interface OmpAppOnlySurfaces {
   paneBackground: string;
@@ -255,22 +269,26 @@ export interface OmpAppOnlySurfaces {
   scrollbarGutterBorder: string;
 }
 
+function requireStringToken(palette: OmpThemePalette, key: keyof OmpThemePalette): string {
+  const value = palette[key];
+  if (typeof value !== "string") {
+    throw new Error(
+      `OMP theme token "${key}" resolved to a non-string value (${String(value)}); ` +
+        "app-only surfaces need a color string.",
+    );
+  }
+  return value;
+}
+
 function buildOmpAppOnlySurfaces(
   palette: OmpThemePalette,
   exportTokens: Readonly<Record<"pageBg" | "cardBg", string>>,
 ): OmpAppOnlySurfaces {
-  const statusLineBg = palette.statusLineBg;
-  if (typeof statusLineBg !== "string") {
-    throw new Error(
-      `OMP theme token "statusLineBg" resolved to a non-string value (${String(statusLineBg)}); ` +
-        "app-only surfaces need a color string.",
-    );
-  }
   return {
     paneBackground: exportTokens.pageBg,
     hover: exportTokens.cardBg,
-    focusRing: statusLineBg,
-    scrollbarGutterBorder: statusLineBg,
+    focusRing: requireStringToken(palette, "accent"),
+    scrollbarGutterBorder: requireStringToken(palette, "statusLineBg"),
   };
 }
 

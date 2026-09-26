@@ -597,4 +597,11 @@ describe("translation resources", () => {
     expect(en.startup.logs.unavailable).toBe("No daemon logs available.");
     expect(en.startup.logs.loadFailed).toBe("Unable to load daemon logs: {{message}}");
   });
+
+  it("includes openProject.tiles.connectProviders -- regression guard for a real bug: open-project-screen.tsx read a differently-named key (setupProviders) that never existed, rendering raw key paths on the welcome screen's third tile instead of translated text", () => {
+    expect(en.openProject.tiles.connectProviders.title).toBe("Connect providers");
+    expect(en.openProject.tiles.connectProviders.description).toBe(
+      "Sign in to Anthropic, OpenAI, OpenRouter and more",
+    );
+  });
 });

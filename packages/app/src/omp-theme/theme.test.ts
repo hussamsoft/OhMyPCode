@@ -59,14 +59,19 @@ describe("OMP app-only surfaces", () => {
     expect(OMP_LIGHT_APP_ONLY_SURFACES.hover).toBe(OMP_LIGHT_EXPORT_TOKENS.cardBg);
   });
 
-  test("focusRing and scrollbarGutterBorder both reuse statusLineBg from the main palette", () => {
-    expect(OMP_DARK_APP_ONLY_SURFACES.focusRing).toBe(OMP_DARK_THEME_PALETTE.statusLineBg);
+  test("scrollbarGutterBorder reuses statusLineBg from the main palette", () => {
     expect(OMP_DARK_APP_ONLY_SURFACES.scrollbarGutterBorder).toBe(
       OMP_DARK_THEME_PALETTE.statusLineBg,
     );
-    expect(OMP_LIGHT_APP_ONLY_SURFACES.focusRing).toBe(OMP_LIGHT_THEME_PALETTE.statusLineBg);
     expect(OMP_LIGHT_APP_ONLY_SURFACES.scrollbarGutterBorder).toBe(
       OMP_LIGHT_THEME_PALETTE.statusLineBg,
     );
+  });
+
+  test("focusRing uses accent, not statusLineBg -- regression guard for a real contrast bug: statusLineBg (#121212 dark, #e0e0e0 light) sits almost exactly on top of the pane background (#18181e dark, #f8f8f8 light) in both themes, making a ring in that color effectively invisible", () => {
+    expect(OMP_DARK_APP_ONLY_SURFACES.focusRing).toBe(OMP_DARK_THEME_PALETTE.accent);
+    expect(OMP_DARK_APP_ONLY_SURFACES.focusRing).not.toBe(OMP_DARK_THEME_PALETTE.statusLineBg);
+    expect(OMP_LIGHT_APP_ONLY_SURFACES.focusRing).toBe(OMP_LIGHT_THEME_PALETTE.accent);
+    expect(OMP_LIGHT_APP_ONLY_SURFACES.focusRing).not.toBe(OMP_LIGHT_THEME_PALETTE.statusLineBg);
   });
 });
