@@ -181,6 +181,7 @@ describe("agent MCP end-to-end (offline)", () => {
       mcpDebug: false,
       agentClients: createTestAgentClients(),
       agentStoragePath: path.join(paseoHome, "agents"),
+      providerOverrides: { claude: { enabled: true }, codex: { enabled: true } },
     };
 
     const daemon = await createPaseoDaemon(daemonConfig, pino({ level: "silent" }));
@@ -229,9 +230,9 @@ describe("agent MCP end-to-end (offline)", () => {
       }
       await client.close();
       await daemon.stop();
-      await rm(paseoHome, { recursive: true, force: true });
-      await rm(staticDir, { recursive: true, force: true });
-      await rm(agentCwd, { recursive: true, force: true });
+      await rm(paseoHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(staticDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(agentCwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   }, 30_000);
 
@@ -251,6 +252,7 @@ describe("agent MCP end-to-end (offline)", () => {
       mcpDebug: false,
       agentClients: createTestAgentClients(),
       agentStoragePath: path.join(paseoHome, "agents"),
+      providerOverrides: { claude: { enabled: true }, codex: { enabled: true } },
       auth: { password: hashDaemonPassword("daemon-secret") },
     };
 
@@ -299,9 +301,9 @@ describe("agent MCP end-to-end (offline)", () => {
       }
       await client?.close();
       await daemon.stop();
-      await rm(paseoHome, { recursive: true, force: true });
-      await rm(staticDir, { recursive: true, force: true });
-      await rm(agentCwd, { recursive: true, force: true });
+      await rm(paseoHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(staticDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(agentCwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   }, 30_000);
 
@@ -322,6 +324,7 @@ describe("agent MCP end-to-end (offline)", () => {
       mcpDebug: false,
       agentClients: createMcpRecordingAgentClients(recorder),
       agentStoragePath: path.join(paseoHome, "agents"),
+      providerOverrides: { claude: { enabled: true }, codex: { enabled: true } },
     };
 
     const daemon = await createPaseoDaemon(daemonConfig, pino({ level: "silent" }));
@@ -345,6 +348,7 @@ describe("agent MCP end-to-end (offline)", () => {
       mcpDebug: false,
       agentClients: createMcpRecordingAgentClients(disabledRecorder),
       agentStoragePath: path.join(disabledPaseoHome, "agents"),
+      providerOverrides: { claude: { enabled: true }, codex: { enabled: true } },
     };
     const disabledDaemon = await createPaseoDaemon(disabledDaemonConfig, pino({ level: "silent" }));
     await disabledDaemon.start();
@@ -406,14 +410,14 @@ describe("agent MCP end-to-end (offline)", () => {
       }
       await disabledClient.close();
       await disabledDaemon.stop();
-      await rm(disabledPaseoHome, { recursive: true, force: true });
-      await rm(disabledStaticDir, { recursive: true, force: true });
-      await rm(disabledAgentCwd, { recursive: true, force: true });
+      await rm(disabledPaseoHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(disabledStaticDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(disabledAgentCwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       await client.close();
       await daemon.stop();
-      await rm(paseoHome, { recursive: true, force: true });
-      await rm(staticDir, { recursive: true, force: true });
-      await rm(agentCwd, { recursive: true, force: true });
+      await rm(paseoHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(staticDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(agentCwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   }, 30_000);
 
@@ -434,6 +438,7 @@ describe("agent MCP end-to-end (offline)", () => {
       mcpDebug: false,
       agentClients: createMcpRecordingAgentClients(recorder),
       agentStoragePath: path.join(paseoHome, "agents"),
+      providerOverrides: { claude: { enabled: true }, codex: { enabled: true } },
     };
 
     const daemon = await createPaseoDaemon(daemonConfig, pino({ level: "silent" }));
@@ -472,9 +477,9 @@ describe("agent MCP end-to-end (offline)", () => {
       }
       await client.close();
       await daemon.stop();
-      await rm(paseoHome, { recursive: true, force: true });
-      await rm(staticDir, { recursive: true, force: true });
-      await rm(agentCwd, { recursive: true, force: true });
+      await rm(paseoHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(staticDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(agentCwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   }, 30_000);
 
@@ -494,6 +499,7 @@ describe("agent MCP end-to-end (offline)", () => {
       mcpDebug: false,
       agentClients: createTestAgentClients(),
       agentStoragePath: path.join(paseoHome, "agents"),
+      providerOverrides: { claude: { enabled: true }, codex: { enabled: true } },
     };
 
     const daemon = await createPaseoDaemon(daemonConfig, pino({ level: "silent" }));
@@ -532,9 +538,9 @@ describe("agent MCP end-to-end (offline)", () => {
       }
       await client.close();
       await daemon.stop();
-      await rm(paseoHome, { recursive: true, force: true });
-      await rm(staticDir, { recursive: true, force: true });
-      await rm(agentCwd, { recursive: true, force: true });
+      await rm(paseoHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(staticDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(agentCwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   }, 30_000);
 
@@ -675,6 +681,7 @@ describe("agent MCP end-to-end (offline)", () => {
         codex: new StartTurnFailureClient(),
       },
       agentStoragePath: path.join(paseoHome, "agents"),
+      providerOverrides: { claude: { enabled: true }, codex: { enabled: true } },
     };
 
     const daemon = await createPaseoDaemon(daemonConfig, pino({ level: "silent" }));
@@ -717,9 +724,9 @@ describe("agent MCP end-to-end (offline)", () => {
       }
       await client.close();
       await daemon.stop();
-      await rm(paseoHome, { recursive: true, force: true });
-      await rm(staticDir, { recursive: true, force: true });
-      await rm(agentCwd, { recursive: true, force: true });
+      await rm(paseoHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(staticDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(agentCwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   }, 30_000);
 
@@ -739,6 +746,7 @@ describe("agent MCP end-to-end (offline)", () => {
       mcpDebug: false,
       agentClients: createTestAgentClients(),
       agentStoragePath: path.join(paseoHome, "agents"),
+      providerOverrides: { claude: { enabled: true }, codex: { enabled: true } },
     };
 
     const daemon = await createPaseoDaemon(daemonConfig, pino({ level: "silent" }));
@@ -748,7 +756,7 @@ describe("agent MCP end-to-end (offline)", () => {
 
     let agentId: string | null = null;
     try {
-      const { execSync } = await import("node:child_process");
+      const { execSync, execFileSync } = await import("node:child_process");
       execSync("git init -b main", { cwd: repoRoot, stdio: "pipe" });
       execSync("git config user.email 'test@test.com'", { cwd: repoRoot, stdio: "pipe" });
       execSync("git config user.name 'Test'", { cwd: repoRoot, stdio: "pipe" });
@@ -774,7 +782,10 @@ describe("agent MCP end-to-end (offline)", () => {
         "utf8",
       );
       execSync("git add paseo.json", { cwd: repoRoot, stdio: "pipe" });
-      execSync("git -c commit.gpgsign=false commit -m 'add worktree config'", {
+      // execSync runs through cmd.exe on Windows, where single quotes are
+      // not a quoting mechanism -- a message with spaces gets tokenized
+      // into multiple positional args instead of one -m value.
+      execFileSync("git", ["-c", "commit.gpgsign=false", "commit", "-m", "add worktree config"], {
         cwd: repoRoot,
         stdio: "pipe",
       });
@@ -821,9 +832,9 @@ describe("agent MCP end-to-end (offline)", () => {
       }
       await client.close();
       await daemon.stop();
-      await rm(paseoHome, { recursive: true, force: true });
-      await rm(staticDir, { recursive: true, force: true });
-      await rm(repoRoot, { recursive: true, force: true });
+      await rm(paseoHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(staticDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await rm(repoRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   }, 60_000);
 });
