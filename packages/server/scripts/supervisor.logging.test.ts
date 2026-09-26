@@ -154,6 +154,40 @@ describe("supervisor durable logging", () => {
     });
   });
 
+  test("OMPCODE_LOG_ROTATE_* is the canonical name; PASEO_LOG_ROTATE_* is a COMPAT(paseoEnv) fallback", () => {
+    const paseoHome = path.join(path.sep, "tmp", "paseo-home");
+
+    expect(
+      resolveSupervisorLogFile(
+        paseoHome,
+        {},
+        {
+          OMPCODE_LOG_ROTATE_SIZE: "75m",
+          OMPCODE_LOG_ROTATE_COUNT: "5",
+        },
+      ),
+    ).toEqual({
+      path: path.join(paseoHome, "daemon.log"),
+      rotate: { maxSize: "75m", maxFiles: 5 },
+    });
+
+    expect(
+      resolveSupervisorLogFile(
+        paseoHome,
+        {},
+        {
+          OMPCODE_LOG_ROTATE_SIZE: "75m",
+          OMPCODE_LOG_ROTATE_COUNT: "5",
+          PASEO_LOG_ROTATE_SIZE: "ignored",
+          PASEO_LOG_ROTATE_COUNT: "1",
+        },
+      ),
+    ).toEqual({
+      path: path.join(paseoHome, "daemon.log"),
+      rotate: { maxSize: "75m", maxFiles: 5 },
+    });
+  });
+
   test("writes supervised worker stdout and stderr to daemon.log", async () => {
     const result = await runSupervisorFixture({
       workerSource: `

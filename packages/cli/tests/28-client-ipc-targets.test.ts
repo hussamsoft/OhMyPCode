@@ -1,6 +1,7 @@
 #!/usr/bin/env npx tsx
 
 import assert from "node:assert";
+import path from "node:path";
 import {
   getDaemonHost,
   normalizeDaemonHost,
@@ -82,8 +83,9 @@ console.log("=== CLI IPC Target Helpers ===\n");
     { home: "/tmp/selected-home" },
     { PASEO_HOST: "ignored:12345", PASEO_LISTEN: "ignored:23456" },
   );
-  assert.deepStrictEqual(target, { kind: "instance", home: "/tmp/selected-home" });
-  assert.strictEqual(getDaemonHost({ target }), "home /tmp/selected-home");
+  const resolvedHome = path.resolve("/tmp/selected-home");
+  assert.deepStrictEqual(target, { kind: "instance", home: resolvedHome });
+  assert.strictEqual(getDaemonHost({ target }), `home ${resolvedHome}`);
   assert.throws(() => selectDaemonTarget({}, { PASEO_HOME: "/tmp/a", PASEO_HOST: "unused:12345" }));
 }
 
@@ -95,9 +97,11 @@ console.log("=== CLI IPC Target Helpers ===\n");
 
 {
   console.log("Test 10: daemon password resolution prefers TCP URI query, falls back to env");
-  const previousEnv = process.env.PASEO_PASSWORD;
+  const previousPaseoEnv = process.env.PASEO_PASSWORD;
+  const previousOmpcodeEnv = process.env.OMPCODE_PASSWORD;
   try {
     delete process.env.PASEO_PASSWORD;
+    delete process.env.OMPCODE_PASSWORD;
     assert.strictEqual(
       resolveDaemonPassword("tcp://example.com:6767?ssl=true&password=query-secret"),
       "query-secret",
@@ -129,11 +133,38 @@ console.log("=== CLI IPC Target Helpers ===\n");
       undefined,
       "Empty env var should be treated as unset",
     );
+    delete process.env.PASEO_PASSWORD;
+
+    process.env.OMPCODE_PASSWORD = "ompcode-secret";
+    assert.strictEqual(
+      resolveDaemonPassword("localhost:6767"),
+      "ompcode-secret",
+      "OMPCODE_PASSWORD should be read as the canonical env var",
+    );
+
+    process.env.PASEO_PASSWORD = "legacy-secret";
+    assert.strictEqual(
+      resolveDaemonPassword("localhost:6767"),
+      "ompcode-secret",
+      "OMPCODE_PASSWORD should take precedence over legacy PASEO_PASSWORD",
+    );
+
+    delete process.env.OMPCODE_PASSWORD;
+    assert.strictEqual(
+      resolveDaemonPassword("localhost:6767"),
+      "legacy-secret",
+      "PASEO_PASSWORD should still work as a COMPAT(paseoEnv) fallback",
+    );
   } finally {
-    if (previousEnv === undefined) {
+    if (previousPaseoEnv === undefined) {
       delete process.env.PASEO_PASSWORD;
     } else {
-      process.env.PASEO_PASSWORD = previousEnv;
+      process.env.PASEO_PASSWORD = previousPaseoEnv;
+    }
+    if (previousOmpcodeEnv === undefined) {
+      delete process.env.OMPCODE_PASSWORD;
+    } else {
+      process.env.OMPCODE_PASSWORD = previousOmpcodeEnv;
     }
   }
   console.log("✓ daemon password resolution prefers TCP URI query, falls back to env\n");
