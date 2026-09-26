@@ -36,7 +36,6 @@ export function parseOmpVibeState(value: unknown): OmpVibeState | null {
   return parsed.success ? parsed.data : null;
 }
 
-
 export function isOmpVibeState(value: unknown): value is OmpVibeState {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const state = value as { revision?: unknown; enabled?: unknown; workers?: unknown };

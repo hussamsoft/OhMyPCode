@@ -60,9 +60,7 @@ export const AgentTracks = memo(function AgentTracks({
   const canDetachSubagents = useSessionStore(
     (state) => state.sessions[serverId]?.serverInfo?.features?.agentDetach === true,
   );
-  const hasVibe = useOmpVibeStore(
-    (state) => state.stateByAgent[agentId]?.enabled === true,
-  );
+  const hasVibe = useOmpVibeStore((state) => state.stateByAgent[agentId]?.enabled === true);
   const archiveSubagent = useArchiveSubagent({ serverId });
   const detachSubagent = useDetachSubagent({ serverId });
   const handleOpenSubagent = useCallback(

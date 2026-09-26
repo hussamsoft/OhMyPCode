@@ -2672,11 +2672,13 @@ export const zhCN: TranslationResources = {
           offlineTitle: "Host 离线",
           offlineMessage: "这个 Host 已离线。OhMyPCode 会自动重连，请等它恢复在线后再重启。",
           requestFailedTitle: "错误",
-          requestFailedMessage: "发送重启请求失败。OhMyPCode 会自动重连，请在 Host 显示在线后重试。",
+          requestFailedMessage:
+            "发送重启请求失败。OhMyPCode 会自动重连，请在 Host 显示在线后重试。",
           dialogFailedMessage: "无法打开重启确认对话框。",
         },
         update: {
-          desktopManagedHint: "此 Daemon 由 OhMyPCode Desktop 管理。请在 Host 上更新 OhMyPCode Desktop。",
+          desktopManagedHint:
+            "此 Daemon 由 OhMyPCode Desktop 管理。请在 Host 上更新 OhMyPCode Desktop。",
           title: "Update daemon",
           hint: "Update the daemon to the latest version and restart it",
           confirm: "Update",

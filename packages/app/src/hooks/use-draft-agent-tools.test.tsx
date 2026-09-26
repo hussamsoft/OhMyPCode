@@ -170,10 +170,7 @@ describe("useDraftAgentTools", () => {
     const { result } = renderDraftTools({ provider: "omp" });
 
     expect(() => result.current.setAllowedTools(["bash"])).toThrow();
-    expect(harness.preferences.providerPreferences?.omp?.allowedTools).toEqual([
-      "read",
-      "write",
-    ]);
+    expect(harness.preferences.providerPreferences?.omp?.allowedTools).toEqual(["read", "write"]);
   });
 
   it("resolves draft tools rows where saved write enables write while bash stays off", async () => {

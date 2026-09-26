@@ -63,20 +63,20 @@ export const EditingTextInput = forwardRef<EditingTextInputHandle, EditingTextIn
       onChangeTextRef.current?.(nextText);
     }, []);
 
-  useEffect(() => {
-    const input = inputRef.current as WebTextInputElement | null;
-    if (!input) return;
+    useEffect(() => {
+      const input = inputRef.current as WebTextInputElement | null;
+      if (!input) return;
 
-    const handleInput = () => {
-      if (isComposingRef.current) return;
-      const nextText = input.value ?? "";
-      if (nextText === textRef.current) return;
-      textRef.current = nextText;
-      onChangeTextRef.current?.(nextText);
-    };
-    input.addEventListener("input", handleInput);
-    return () => input.removeEventListener("input", handleInput);
-  }, []);
+      const handleInput = () => {
+        if (isComposingRef.current) return;
+        const nextText = input.value ?? "";
+        if (nextText === textRef.current) return;
+        textRef.current = nextText;
+        onChangeTextRef.current?.(nextText);
+      };
+      input.addEventListener("input", handleInput);
+      return () => input.removeEventListener("input", handleInput);
+    }, []);
 
     useImperativeHandle(ref, () => ({
       focus: () => inputRef.current?.focus(),

@@ -2111,7 +2111,8 @@ export const fr: TranslationResources = {
   },
   ompProviders: {
     title: "Fournisseurs LLM",
-    description: "Connectez des fournisseurs de modèles à OMP. Les identifiants restent dans le coffre OMP de cet hôte.",
+    description:
+      "Connectez des fournisseurs de modèles à OMP. Les identifiants restent dans le coffre OMP de cet hôte.",
     connected: "Connecté",
     available: "Disponible",
     connect: "Connecter",

@@ -168,7 +168,11 @@ export function OmpProvidersPage({ serverId }: { serverId: string }) {
       try {
         await client.logoutOmpProvider(provider.id);
         const refreshed = await refetch();
-        if (refreshed?.providers.some((candidate) => candidate.id === provider.id && candidate.authenticated)) {
+        if (
+          refreshed?.providers.some(
+            (candidate) => candidate.id === provider.id && candidate.authenticated,
+          )
+        ) {
           toast.show(t("ompProviders.stillConnected"), { variant: "warning" });
         }
       } catch (cause) {
@@ -188,7 +192,11 @@ export function OmpProvidersPage({ serverId }: { serverId: string }) {
         </View>
 
         {!supportsOmpProviders ? (
-          <Alert variant="info" title={t("ompProviders.updateHost")} testID="omp-providers-unsupported" />
+          <Alert
+            variant="info"
+            title={t("ompProviders.updateHost")}
+            testID="omp-providers-unsupported"
+          />
         ) : null}
 
         {supportsOmpProviders ? (
@@ -207,7 +215,9 @@ export function OmpProvidersPage({ serverId }: { serverId: string }) {
                 <ThemedLoadingSpinner size={14} uniProps={foregroundMutedMapping} />
               </View>
             ) : null}
-            {error ? <Alert variant="error" title={t("ompProviders.failed")} description={error.message} /> : null}
+            {error ? (
+              <Alert variant="error" title={t("ompProviders.failed")} description={error.message} />
+            ) : null}
             {!isLoading && !error ? (
               <View style={styles.sections}>
                 <ProviderSection

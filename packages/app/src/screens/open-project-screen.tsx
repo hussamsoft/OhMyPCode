@@ -42,8 +42,11 @@ export function OpenProjectScreen() {
   const localServerId = useLocalDaemonServerId();
   const localHostConnected = useHostRuntimeIsConnected(localServerId ?? "");
   const supportsOmpProviders = useHostFeature(localServerId, "ompProviders");
-  const { providers, isLoading: isLoadingProviders, error: providersError } =
-    useOmpProviders(localServerId);
+  const {
+    providers,
+    isLoading: isLoadingProviders,
+    error: providersError,
+  } = useOmpProviders(localServerId);
   const [isPairDeviceOpen, setIsPairDeviceOpen] = useState(false);
 
   const isCompactLayout = useIsCompactFormFactor();

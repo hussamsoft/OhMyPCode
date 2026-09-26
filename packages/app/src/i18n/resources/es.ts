@@ -2105,7 +2105,8 @@ export const es: TranslationResources = {
   },
   ompProviders: {
     title: "Proveedores de LLM",
-    description: "Conecta proveedores de modelos a OMP. Las credenciales permanecen en la bóveda de OMP de este host.",
+    description:
+      "Conecta proveedores de modelos a OMP. Las credenciales permanecen en la bóveda de OMP de este host.",
     connected: "Conectado",
     available: "Disponible",
     connect: "Conectar",

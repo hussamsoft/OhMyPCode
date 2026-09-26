@@ -9,23 +9,21 @@ import {
 } from "@/omp-vibe/store";
 import type { OmpVibeState } from "@/omp-vibe/model";
 
-
 afterEach(() => {
   vi.useRealTimers();
 });
 
 type ProjectorWorker = OmpVibeState["workers"][number];
 
-function projectorTurnStatus(workerState: ProjectorWorker["state"]): ProjectorWorker["lastTurnStatus"] {
+function projectorTurnStatus(
+  workerState: ProjectorWorker["state"],
+): ProjectorWorker["lastTurnStatus"] {
   if (workerState === "dead") return "cancelled";
   if (workerState === "idle") return "completed";
   return "running";
 }
 
-function state(
-  revision: number,
-  workerState: ProjectorWorker["state"] = "running",
-): OmpVibeState {
+function state(revision: number, workerState: ProjectorWorker["state"] = "running"): OmpVibeState {
   return {
     revision,
     enabled: true,
@@ -92,7 +90,11 @@ describe("OMP Vibe runtime hydration", () => {
 });
 describe("OMP Vibe UI state", () => {
   beforeEach(() => {
-    useOmpVibeStore.setState({ selectedWorkerByAgent: {}, pendingByAgent: {}, snapshotRevisionByAgent: {} });
+    useOmpVibeStore.setState({
+      selectedWorkerByAgent: {},
+      pendingByAgent: {},
+      snapshotRevisionByAgent: {},
+    });
   });
 
   it("keeps selection and pending operation scoped to the agent", () => {
@@ -100,7 +102,11 @@ describe("OMP Vibe UI state", () => {
     store.selectWorker("agent-1", "worker-1");
     store.beginPending("agent-1", { kind: "spawn", workerId: null, startedRevision: 7 });
     expect(useOmpVibeStore.getState().selectedWorkerByAgent["agent-1"]).toBe("worker-1");
-    expect(useOmpVibeStore.getState().pendingByAgent["agent-1"]).toEqual({ kind: "spawn", workerId: null, startedRevision: 7 });
+    expect(useOmpVibeStore.getState().pendingByAgent["agent-1"]).toEqual({
+      kind: "spawn",
+      workerId: null,
+      startedRevision: 7,
+    });
     store.selectWorker("agent-2", "worker-2");
     expect(useOmpVibeStore.getState().selectedWorkerByAgent["agent-2"]).toBe("worker-2");
     expect(useOmpVibeStore.getState().pendingByAgent["agent-2"]).toBeUndefined();
@@ -129,7 +135,11 @@ describe("OMP Vibe UI state", () => {
       workerId: null,
       startedRevision: 9,
     });
-    expect(shouldClearPendingOperation(useOmpVibeStore.getState().pendingByAgent["agent-1"], 9)).toBe(false);
-    expect(shouldClearPendingOperation(useOmpVibeStore.getState().pendingByAgent["agent-1"], 10)).toBe(true);
+    expect(
+      shouldClearPendingOperation(useOmpVibeStore.getState().pendingByAgent["agent-1"], 9),
+    ).toBe(false);
+    expect(
+      shouldClearPendingOperation(useOmpVibeStore.getState().pendingByAgent["agent-1"], 10),
+    ).toBe(true);
   });
 });

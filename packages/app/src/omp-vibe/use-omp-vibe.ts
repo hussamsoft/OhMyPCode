@@ -2,7 +2,12 @@ import { useCallback, useEffect } from "react";
 import { useHostRuntimeClient } from "@/runtime/host-runtime";
 import { useOmpCapabilities } from "@/hooks/use-omp-capabilities";
 import { parseOmpVibeState, type OmpVibeState } from "@/omp-vibe/model";
-import { shouldClearPendingOperation, seedOmpVibeState, useOmpVibeStore, type OmpVibePendingOperation } from "@/omp-vibe/store";
+import {
+  shouldClearPendingOperation,
+  seedOmpVibeState,
+  useOmpVibeStore,
+  type OmpVibePendingOperation,
+} from "@/omp-vibe/store";
 import { useSessionStore } from "@/stores/session-store";
 
 export interface SpawnOmpVibeWorkerInput {
@@ -22,9 +27,7 @@ export function useOmpVibe(serverId: string, agentId: string) {
   }, [agentId, runtimeVibe]);
   const capabilities = useOmpCapabilities(serverId, agentId);
   const state = useOmpVibeStore((store) => store.stateByAgent[agentId] ?? null);
-  const selectedWorkerId = useOmpVibeStore(
-    (store) => store.selectedWorkerByAgent[agentId] ?? null,
-  );
+  const selectedWorkerId = useOmpVibeStore((store) => store.selectedWorkerByAgent[agentId] ?? null);
   const pending = useOmpVibeStore((store) => store.pendingByAgent[agentId] ?? null);
   const clearPending = useOmpVibeStore((store) => store.clearPending);
   const beginPending = useOmpVibeStore((store) => store.beginPending);

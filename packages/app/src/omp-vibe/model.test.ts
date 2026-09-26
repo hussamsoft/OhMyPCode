@@ -33,12 +33,16 @@ describe("OMP Vibe model", () => {
 
   it("rejects malformed worker state", () => {
     expect(parseOmpVibeState({ revision: -1, enabled: true, workers: [] })).toBeNull();
-    expect(parseOmpVibeState({ revision: 1, enabled: true, workers: [{ ...worker, state: "busy" }] })).toBeNull();
+    expect(
+      parseOmpVibeState({ revision: 1, enabled: true, workers: [{ ...worker, state: "busy" }] }),
+    ).toBeNull();
   });
 
   it("gives terminal status a spoken label", () => {
     expect(ompVibeWorkerStatusLabel(worker)).toBe("Running");
-    expect(ompVibeWorkerStatusLabel({ ...worker, state: "dead", lastTurnStatus: "cancelled" })).toBe("Killed");
+    expect(
+      ompVibeWorkerStatusLabel({ ...worker, state: "dead", lastTurnStatus: "cancelled" }),
+    ).toBe("Killed");
   });
 
   it("builds one atomic count and worker-status announcement", () => {

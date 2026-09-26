@@ -3,7 +3,10 @@ import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
 import { buildWorkspaceTabPersistenceKey } from "@/workspace-tabs/model";
 
 /** Opens the Vibe team or a worker transcript in its owning workspace. */
-export function openOmpVibeTarget(input: { agentId: string; workerId: string | null }): string | null {
+export function openOmpVibeTarget(input: {
+  agentId: string;
+  workerId: string | null;
+}): string | null {
   const session = useSessionStore.getState().sessions;
   for (const serverSession of Object.values(session)) {
     const agent = serverSession.agents.get(input.agentId);

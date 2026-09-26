@@ -1,8 +1,5 @@
 import { create } from "zustand";
-import {
-  ompVibeStateHasTerminalTransition,
-  type OmpVibeState,
-} from "@/omp-vibe/model";
+import { ompVibeStateHasTerminalTransition, type OmpVibeState } from "@/omp-vibe/model";
 
 export const OMP_VIBE_RENDER_INTERVAL_MS = 100;
 

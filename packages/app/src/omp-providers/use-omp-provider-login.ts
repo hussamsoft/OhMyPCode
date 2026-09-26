@@ -20,10 +20,13 @@ interface OmpProviderLoginResult {
   openUrl: OmpProviderLoginOpenUrl | null;
   error: string | null;
   start: (providerId: string) => Promise<void>;
-  respond: (response: { value?: string; confirmed?: boolean; cancelled?: boolean }) => Promise<void>;
+  respond: (response: {
+    value?: string;
+    confirmed?: boolean;
+    cancelled?: boolean;
+  }) => Promise<void>;
   cancel: () => Promise<void>;
 }
-
 
 export function useOmpProviderLogin(serverId: string): OmpProviderLoginResult {
   const client = useHostRuntimeClient(serverId);

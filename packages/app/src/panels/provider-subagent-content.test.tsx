@@ -264,9 +264,9 @@ describe("ProviderSubagentContent", () => {
     });
 
     expect(container?.textContent).toContain("Review the release diff");
-    expect(container?.querySelector('[data-testid="provider-subagent-transcript"]')?.textContent).toBe(
-      "Current answer.Load older",
-    );
+    expect(
+      container?.querySelector('[data-testid="provider-subagent-transcript"]')?.textContent,
+    ).toBe("Current answer.Load older");
     const child = container
       ?.querySelector('[data-testid="provider-subagent-children"]')
       ?.querySelector("button");

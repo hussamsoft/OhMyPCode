@@ -10,7 +10,6 @@ const WIDE_VIEWPORT = { width: 1280, height: 900 };
 const HALF_WIDTH_VIEWPORT = { width: 900, height: 700 };
 const COMPACT_VIEWPORT = { width: 390, height: 844 };
 
-
 // Keep the visual contract strict while allowing only small font/antialias rasterization drift.
 const VISUAL_SCREENSHOT_OPTIONS = {
   animations: "disabled" as const,
@@ -48,7 +47,6 @@ async function stabilizeVisualFixture(page: Page, projectLabel: string): Promise
     }
   }, projectLabel);
 }
-
 
 async function enterVibe(page: Page): Promise<void> {
   await focusByKeyboard(page, "omp-mode-vibe");
@@ -121,7 +119,9 @@ test.describe("OMP desktop control deck", () => {
       configureFakeOmpScenario({ failNextEnter: true });
       await vibe.focus();
       await vibe.press("Enter");
-      await expect(page.getByRole("alert").filter({ hasText: "Fixture Vibe entry failed" })).toBeVisible();
+      await expect(
+        page.getByRole("alert").filter({ hasText: "Fixture Vibe entry failed" }),
+      ).toBeVisible();
       await expect(build).toHaveAttribute("aria-checked", "true");
       await expect(vibe).toHaveAttribute("aria-checked", "false");
       await expect(page.getByTestId("omp-vibe-strip")).toHaveCount(0);
@@ -164,10 +164,12 @@ test.describe("OMP desktop control deck", () => {
       configureFakeOmpScenario({ failNextToolUpdate: true });
       await shell.click();
       await expect(sheet.getByRole("alert")).toContainText("Fixture tool update failed");
-      await expect.poll(() => server.toolRequests()).toEqual([
-        ["write", "create_agent"],
-        ["write", "bash", "create_agent"],
-      ]);
+      await expect
+        .poll(() => server.toolRequests())
+        .toEqual([
+          ["write", "create_agent"],
+          ["write", "bash", "create_agent"],
+        ]);
       await expect(count).toHaveText("2/4 tools");
       await expect(shell).toHaveAttribute("aria-checked", "false");
       await expect(read).toHaveAttribute("aria-checked", "false");
@@ -176,7 +178,9 @@ test.describe("OMP desktop control deck", () => {
     }
   });
 
-  test("marks Access as launch-only and keeps the deck usable in compact layout", async ({ page }) => {
+  test("marks Access as launch-only and keeps the deck usable in compact layout", async ({
+    page,
+  }) => {
     const agent = await seedOmpAgentWorkspace({
       repoPrefix: "omp-compact-access-",
       title: "OMP compact access",
@@ -194,7 +198,9 @@ test.describe("OMP desktop control deck", () => {
 
       await page.setViewportSize(COMPACT_VIEWPORT);
       await expect(page.getByTestId("omp-control-deck")).toBeHidden();
-      const compactModelSelector = page.getByTestId("combined-model-selector").filter({ visible: true });
+      const compactModelSelector = page
+        .getByTestId("combined-model-selector")
+        .filter({ visible: true });
       await expect(compactModelSelector).toBeVisible();
       await compactModelSelector.click();
       const compactSheet = page.getByTestId("agent-controls-model-sheet");
@@ -203,9 +209,9 @@ test.describe("OMP desktop control deck", () => {
       await expect(compactAccess).toHaveCount(1);
       await expect(compactAccess).toHaveAccessibleName("Select access level (Full access)");
       await expect(compactAccess).toContainText("Full access");
-      await expect(page.getByTestId("workspace-explorer-sidebar").filter({ visible: true })).toHaveCount(
-        0,
-      );
+      await expect(
+        page.getByTestId("workspace-explorer-sidebar").filter({ visible: true }),
+      ).toHaveCount(0);
     } finally {
       await agent.cleanup();
     }

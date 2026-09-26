@@ -678,6 +678,18 @@ interface CommonTheme {
   };
 }
 
+/**
+ * The desktop shell's structural metrics. Exported as a plain constant as well
+ * as mirrored onto every theme, because these are fixed layout dimensions: code
+ * that only needs the number should not subscribe to the Unistyles runtime
+ * (see docs/unistyles.md on why `useUnistyles()` is banned).
+ */
+export const DESKTOP_SHELL_METRICS = {
+  navigationRailWidth: 56,
+  titleBarHeight: 44,
+  radius: { pane: BORDER_RADIUS.md },
+} as const;
+
 const commonTheme: CommonTheme = {
   spacing: SPACING,
   fontSize: FONT_SIZE,
@@ -688,7 +700,7 @@ const commonTheme: CommonTheme = {
   borderRadius: BORDER_RADIUS,
   borderWidth: BORDER_WIDTH,
   opacity: OPACITY,
-  desktopShell: { navigationRailWidth: 56, titleBarHeight: 44, radius: { pane: BORDER_RADIUS.md } },
+  desktopShell: DESKTOP_SHELL_METRICS,
 };
 
 const darkShadow = {

@@ -22,10 +22,7 @@ describe("selectOmpCapabilityState", () => {
     [{ serverSupportsVibe: false }, { canUseVibe: false, canSelectTools: false }],
     [{ serverSupportsTools: false }, { canUseVibe: false, canSelectTools: false }],
     [{ supportsOmpVibe: false }, { canUseVibe: false, canSelectTools: true }],
-    [
-      { supportsOmpToolSelection: false },
-      { canUseVibe: true, canSelectTools: false },
-    ],
+    [{ supportsOmpToolSelection: false }, { canUseVibe: true, canSelectTools: false }],
   ])("fails closed when a required gate is absent: %o", (override, expected) => {
     expect(selectOmpCapabilityState({ ...supported, ...override })).toEqual(expected);
   });

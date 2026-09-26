@@ -111,7 +111,7 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
       webSocket.send(message);
     });
   });
-  return { toolRequests: () => toolRequests.map((request) => [...request]) };
+  return { toolRequests: () => toolRequests.map((request) => request.slice()) };
 }
 
 export async function openOmpAgentRoute(

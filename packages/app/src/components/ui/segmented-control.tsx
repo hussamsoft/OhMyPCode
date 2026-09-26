@@ -151,7 +151,11 @@ function SegmentItem<T extends string>({
     [onValueChange, option.disabled, optionIndex, options],
   );
   const pressableStyle = useCallback(
-    ({ focused, hovered, pressed }: PressableStateCallbackType & { focused?: boolean; hovered?: boolean }) => [
+    ({
+      focused,
+      hovered,
+      pressed,
+    }: PressableStateCallbackType & { focused?: boolean; hovered?: boolean }) => [
       styles.segment,
       segmentSizeStyle,
       focused && styles.segmentFocused,
@@ -169,9 +173,7 @@ function SegmentItem<T extends string>({
   // `aria-checked` and `onKeyDown` exist only in react-native-web. Passing them
   // unconditionally does not typecheck against RN's Pressable, and a native build
   // has no DOM to deliver them, so they are spread in on web alone.
-  const webOnlyProps = isWeb
-    ? { "aria-checked": isSelected, onKeyDown: handleKeyDown }
-    : undefined;
+  const webOnlyProps = isWeb ? { "aria-checked": isSelected, onKeyDown: handleKeyDown } : undefined;
   return (
     <Pressable
       accessibilityLabel={option.label}
@@ -246,10 +248,10 @@ const styles = StyleSheet.create((theme) => {
     segmentDisabled: {
       opacity: theme.opacity[50],
     },
-  segmentFocused: {
-    borderWidth: 2,
-    borderColor: theme.colors.ring,
-  },
+    segmentFocused: {
+      borderWidth: 2,
+      borderColor: theme.colors.ring,
+    },
     iconContainer: {
       alignItems: "center",
       justifyContent: "center",

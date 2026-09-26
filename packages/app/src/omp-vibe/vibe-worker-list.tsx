@@ -74,15 +74,23 @@ const WorkerRow = memo(function WorkerRow({
         <View style={styles.statusIcon}>
           <WorkerStatusIcon worker={worker} />
         </View>
-        <Text style={styles.name} numberOfLines={1}>{worker.name}</Text>
+        <Text style={styles.name} numberOfLines={1}>
+          {worker.name}
+        </Text>
         <Text style={styles.tier}>{worker.cli === "fast" ? "Fast" : "Good"}</Text>
       </View>
-      <Text style={styles.statusText} numberOfLines={1}>{statusLabel}</Text>
+      <Text style={styles.statusText} numberOfLines={1}>
+        {statusLabel}
+      </Text>
       <Text style={styles.meta} numberOfLines={1}>
-        {worker.resolvedModel ?? "Model resolving"} · {worker.turnCount} turns · {worker.queuedMessages} queued · {formatElapsed(worker.createdAt)}
+        {worker.resolvedModel ?? "Model resolving"} · {worker.turnCount} turns ·{" "}
+        {worker.queuedMessages} queued · {formatElapsed(worker.createdAt)}
       </Text>
       <Text style={styles.activity} numberOfLines={1}>
-        {worker.currentTool ?? worker.lastActivity ?? worker.outputTail.at(-1) ?? "Waiting for activity"}
+        {worker.currentTool ??
+          worker.lastActivity ??
+          worker.outputTail.at(-1) ??
+          "Waiting for activity"}
       </Text>
     </Pressable>
   );
@@ -142,7 +150,11 @@ const styles = StyleSheet.create((theme) => ({
   rowFocused: { borderColor: theme.colors.ring },
   pressedRow: { opacity: theme.opacity[50] },
   rowHeader: { flexDirection: "row", alignItems: "center", gap: theme.spacing[2] },
-  statusIcon: { width: RUNNING_BADGE_WIDTH, alignItems: "center", color: theme.colors.foregroundMuted },
+  statusIcon: {
+    width: RUNNING_BADGE_WIDTH,
+    alignItems: "center",
+    color: theme.colors.foregroundMuted,
+  },
   runningBadge: {
     minWidth: RUNNING_BADGE_WIDTH,
     height: 16,

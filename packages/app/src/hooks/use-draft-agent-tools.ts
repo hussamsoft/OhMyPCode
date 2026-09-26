@@ -26,7 +26,11 @@ export type DraftToolSelectionState =
   | { status: "ready" }
   | { status: "loading" }
   | { status: "error"; error: Error }
-  | { status: "unavailable"; reason: DraftToolUnavailableReason; savedAllowedTools: readonly string[] };
+  | {
+      status: "unavailable";
+      reason: DraftToolUnavailableReason;
+      savedAllowedTools: readonly string[];
+    };
 const EMPTY_TOOLS: readonly AgentToolDefinition[] = [];
 
 function resolveUnavailableReason(params: {
@@ -52,10 +56,17 @@ function resolveToolSelectionState(params: {
   isLoading: boolean;
 }): DraftToolSelectionState {
   if (params.unavailableReason) {
-    return { status: "unavailable", reason: params.unavailableReason, savedAllowedTools: params.savedToolNames };
+    return {
+      status: "unavailable",
+      reason: params.unavailableReason,
+      savedAllowedTools: params.savedToolNames,
+    };
   }
   if (params.isError) {
-    return { status: "error", error: params.error instanceof Error ? params.error : new Error("Failed to load OMP tools") };
+    return {
+      status: "error",
+      error: params.error instanceof Error ? params.error : new Error("Failed to load OMP tools"),
+    };
   }
   if (params.isLoading) {
     return { status: "loading" };
@@ -81,7 +92,8 @@ export function useDraftAgentTools(input: {
   const client = useHostRuntimeClient(input.serverId ?? "");
   const isConnected = useHostRuntimeIsConnected(input.serverId ?? "");
   const supportsToolSelection = useSessionStore(
-    (state) => state.sessions[input.serverId ?? ""]?.serverInfo?.features?.ompToolSelection === true,
+    (state) =>
+      state.sessions[input.serverId ?? ""]?.serverInfo?.features?.ompToolSelection === true,
   );
   const supportsVibe = useSessionStore(
     (state) => state.sessions[input.serverId ?? ""]?.serverInfo?.features?.ompVibe === true,

@@ -2077,7 +2077,8 @@ export const ja: TranslationResources = {
   },
   ompProviders: {
     title: "LLM プロバイダー",
-    description: "モデルプロバイダーを OMP に接続します。認証情報はこのホストの OMP 保管庫に保存されます。",
+    description:
+      "モデルプロバイダーを OMP に接続します。認証情報はこのホストの OMP 保管庫に保存されます。",
     connected: "接続済み",
     available: "利用可能",
     connect: "接続",

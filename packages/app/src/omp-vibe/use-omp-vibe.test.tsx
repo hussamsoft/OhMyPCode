@@ -26,7 +26,6 @@ vi.mock("@/stores/session-store", () => ({
     selector({ sessions: {} }),
 }));
 
-
 describe("useOmpVibe pending operations", () => {
   beforeEach(() => {
     useOmpVibeStore.getState().clearAgent("agent-1");

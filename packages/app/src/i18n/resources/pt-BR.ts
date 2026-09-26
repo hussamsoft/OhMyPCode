@@ -1552,7 +1552,8 @@ export const ptBR: TranslationResources = {
     },
     rosetta: {
       title: "Baixar a build para Apple Silicon",
-      runningIntel: "Você está executando a build Intel do OhMyPCode pelo Rosetta no Apple Silicon.",
+      runningIntel:
+        "Você está executando a build Intel do OhMyPCode pelo Rosetta no Apple Silicon.",
       highCpu: "Isso causa alto uso de CPU. Baixe a build para Apple Silicon para corrigir.",
       download: "Baixar",
     },
@@ -2090,7 +2091,8 @@ export const ptBR: TranslationResources = {
   },
   ompProviders: {
     title: "Provedores de LLM",
-    description: "Conecte provedores de modelos ao OMP. As credenciais ficam no cofre do OMP neste host.",
+    description:
+      "Conecte provedores de modelos ao OMP. As credenciais ficam no cofre do OMP neste host.",
     connected: "Conectado",
     available: "Disponível",
     connect: "Conectar",

@@ -1,0 +1,52 @@
+import type { AgentHookPluginFileInstallStrategy } from "../agent-hook-installer.js";
+
+export const OMP_HOOK_SOURCE = [
+  "let pendingHook = Promise.resolve();",
+  "",
+  "function runPaseoHook(event) {",
+  "  if (!process.env.PASEO_TERMINAL_ID) return;",
+  '  const cli = process.env.PASEO_HOOK_CLI || "paseo";',
+  "  pendingHook = pendingHook.then(async () => {",
+  "    try {",
+  '      const child = Bun.spawn([cli, "hooks", "omp", event], {',
+  '        stdin: "ignore",',
+  '        stdout: "ignore",',
+  '        stderr: "ignore",',
+  "      });",
+  "      await child.exited;",
+  "    } catch {}",
+  "  });",
+  "  return pendingHook;",
+  "}",
+  "",
+  "export default function (pi) {",
+  '  pi.on("agent_start", async (_event, ctx) => {',
+  "    if (!ctx.hasUI) return;",
+  '    await runPaseoHook("agent_start");',
+  "  });",
+  '  pi.on("agent_settled", async (_event, ctx) => {',
+  "    if (!ctx.hasUI) return;",
+  '    await runPaseoHook("agent_settled");',
+  "  });",
+  '  pi.on("tool_call", async (event, ctx) => {',
+  '    if (!ctx.hasUI || event.toolName !== "ask") return;',
+  '    await runPaseoHook("tool_call");',
+  "  });",
+  '  pi.on("tool_result", async (event, ctx) => {',
+  '    if (!ctx.hasUI || event.toolName !== "ask") return;',
+  '    await runPaseoHook("tool_result");',
+  "  });",
+  "}",
+  "",
+].join("\n");
+
+export function createOmpHookInstallStrategy(): AgentHookPluginFileInstallStrategy {
+  return {
+    kind: "plugin-file",
+    configDir: ".omp/agent",
+    configFile: "hooks/post/paseo-terminal-activity.js",
+    configDirEnvOverride: "PI_CODING_AGENT_DIR",
+    hookMarker: "paseo hooks omp",
+    source: OMP_HOOK_SOURCE,
+  };
+}

@@ -20,12 +20,7 @@ const ompLogoColorMapping = (theme: Theme) => ({
   surface0: theme.colors.surface0,
 });
 
-function ThemedOmpLogo({
-  size = 64,
-  foreground,
-  accent,
-  surface0,
-}: ThemedOmpLogoProps) {
+function ThemedOmpLogo({ size = 64, foreground, accent, surface0 }: ThemedOmpLogoProps) {
   return (
     <Svg width={size} height={size * 0.75} viewBox="0 0 120 90">
       <Rect x="10" y="8" width="100" height="12" rx="2" fill={foreground} />

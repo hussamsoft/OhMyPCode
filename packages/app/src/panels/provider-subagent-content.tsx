@@ -100,7 +100,11 @@ export function ProviderSubagentContent({
   const childTrackClearance = resolveChildTrackClearance(childRows.length, isCompact);
   const openProviderChild = useCallback(
     (childParentId: string, childSubagentId: string) => {
-      openTab({ kind: "provider_subagent", parentAgentId: childParentId, subagentId: childSubagentId });
+      openTab({
+        kind: "provider_subagent",
+        parentAgentId: childParentId,
+        subagentId: childSubagentId,
+      });
     },
     [openTab],
   );
@@ -198,7 +202,11 @@ export function ProviderSubagentContent({
     <View style={styles.container} testID="provider-subagent-panel">
       {subtitle ? (
         <View style={styles.subtitleHeader}>
-          <Text style={styles.subtitleText} numberOfLines={1} testID="provider-subagent-pane-subtitle">
+          <Text
+            style={styles.subtitleText}
+            numberOfLines={1}
+            testID="provider-subagent-pane-subtitle"
+          >
             {subtitle}
           </Text>
         </View>
@@ -236,6 +244,11 @@ const styles = StyleSheet.create((theme) => ({
     borderBottomColor: theme.colors.border,
   },
   subtitleText: { color: theme.colors.foregroundMuted, fontSize: theme.fontSize.sm },
-  unsupported: { flex: 1, alignItems: "center", justifyContent: "center", padding: theme.spacing[6] },
+  unsupported: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: theme.spacing[6],
+  },
   unsupportedText: { color: theme.colors.foregroundMuted, textAlign: "center" },
 }));

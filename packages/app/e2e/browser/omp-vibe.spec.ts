@@ -43,11 +43,9 @@ async function spawnWorker(
 test.use({ e2eOmpRuntime: true, viewport: WIDE_VIEWPORT });
 
 test.describe("OMP Vibe browser workflow", () => {
-
   test.beforeEach(() => {
     configureFakeOmpScenario({});
   });
-
 
   test("covers spawn, delivery outcomes, wait, kill, projected transcript, and toolset restore", async ({
     page,
@@ -84,7 +82,10 @@ test.describe("OMP Vibe browser workflow", () => {
       await expect(page.getByTestId("omp-vibe-worker-worker-2")).toContainText("Good reviewer");
 
       await page.getByTestId("omp-vibe-worker-worker-1").click();
-      const workerDetail = page.getByTestId("omp-vibe-worker-detail").filter({ visible: true }).first();
+      const workerDetail = page
+        .getByTestId("omp-vibe-worker-detail")
+        .filter({ visible: true })
+        .first();
       await expect(workerDetail).toContainText("Fast scout");
       await expect(page.getByTestId("omp-vibe-worker-transcript")).toContainText(
         "Fast scout accepted the brief",
@@ -143,10 +144,9 @@ test.describe("OMP Vibe browser workflow", () => {
       await page.getByTestId("omp-tools-control").click();
       const restoredTools = page.getByTestId("omp-tools-sheet");
       await expect(restoredTools.getByRole("status")).toHaveText("2/4 tools");
-      await expect(restoredTools.getByRole("switch", { name: "Read tool", exact: true })).toHaveAttribute(
-        "aria-checked",
-        "true",
-      );
+      await expect(
+        restoredTools.getByRole("switch", { name: "Read tool", exact: true }),
+      ).toHaveAttribute("aria-checked", "true");
       await expect(
         restoredTools.getByRole("switch", { name: "Write tool", exact: true }),
       ).toHaveAttribute("aria-checked", "false");

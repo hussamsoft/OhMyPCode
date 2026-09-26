@@ -1,6 +1,7 @@
 import { memo, useMemo, type ReactNode } from "react";
 import { Text, View } from "react-native";
-import { StyleSheet, useUnistyles } from "react-native-unistyles";
+import { StyleSheet } from "react-native-unistyles";
+import { DESKTOP_SHELL_METRICS } from "@/styles/theme";
 import { SidebarMenuToggle } from "@/components/headers/menu-header";
 import { ScreenHeader } from "@/components/headers/screen-header";
 import { ScreenTitle } from "@/components/headers/screen-title";
@@ -8,17 +9,17 @@ import { HostBadge } from "@/hosts/host-badge";
 import { useHostBadges } from "@/hosts/use-host-badges";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { WorkspaceScriptsButton } from "@/screens/workspace/workspace-scripts-button";
-import { WorkspaceHeaderMenuDesktop, WorkspaceHeaderMenuMobile } from "@/screens/workspace/workspace-header-menu";
+import {
+  WorkspaceHeaderMenuDesktop,
+  WorkspaceHeaderMenuMobile,
+} from "@/screens/workspace/workspace-header-menu";
 import type { WorkspaceDescriptor } from "@/stores/session-store";
 import type { TerminalProfile } from "@getpaseo/protocol/messages";
 import {
   resolveWorkspaceFrameHeaderHeight,
   resolveWorkspaceFrameLayout,
 } from "@/screens/workspace/workspace-frame-layout";
-import {
-  NewTabLauncherProvider,
-  type NewTabLauncher,
-} from "@/workspace-tabs/launcher";
+import { NewTabLauncherProvider, type NewTabLauncher } from "@/workspace-tabs/launcher";
 
 interface WorkspaceHeaderProjectRowProps {
   subtitle: string;
@@ -189,10 +190,9 @@ export interface WorkspaceFrameProps {
   renderFallbackTabs: () => ReactNode;
 }
 export function WorkspaceFrameHeader({ right, ...header }: WorkspaceFrameHeaderProps) {
-  const { theme } = useUnistyles();
   const headerHeight = resolveWorkspaceFrameHeaderHeight({
     isMobile: header.isMobile,
-    desktopTitleBarHeight: theme.desktopShell.titleBarHeight,
+    desktopTitleBarHeight: DESKTOP_SHELL_METRICS.titleBarHeight,
   });
   const rowStyle = useMemo(
     () => (headerHeight === undefined ? undefined : { height: headerHeight }),
@@ -224,8 +224,6 @@ function WorkspacePanelContent({
     </NewTabLauncherProvider>
   );
 }
-
-
 
 export const WorkspaceFrame = memo(function WorkspaceFrame({
   isMobile,

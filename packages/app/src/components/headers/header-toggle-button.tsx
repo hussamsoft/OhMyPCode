@@ -1,5 +1,12 @@
 import { useMemo, type ReactElement, type ReactNode } from "react";
-import { Text, View, type PressableProps, type PressableStateCallbackType, type StyleProp, type ViewStyle } from "react-native";
+import {
+  Text,
+  View,
+  type PressableProps,
+  type PressableStateCallbackType,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Shortcut } from "@/components/ui/shortcut";

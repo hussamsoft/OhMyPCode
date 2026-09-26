@@ -2090,7 +2090,8 @@ export const ru: TranslationResources = {
   },
   ompProviders: {
     title: "Провайдеры LLM",
-    description: "Подключайте поставщиков моделей к OMP. Учётные данные остаются в хранилище OMP на этом хосте.",
+    description:
+      "Подключайте поставщиков моделей к OMP. Учётные данные остаются в хранилище OMP на этом хосте.",
     connected: "Подключено",
     available: "Доступно",
     connect: "Подключить",

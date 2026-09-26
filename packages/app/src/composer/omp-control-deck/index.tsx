@@ -18,7 +18,10 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { AgentFeature, AgentToolDefinition } from "@getpaseo/protocol/agent-types";
 import { resolveToolCallIcon, type ToolCallIconComponent } from "@/utils/tool-call-icon";
 import { useComposerControlLayout } from "@/composer/agent-controls/layout-context";
-import { AgentModeControl, type AgentModeControlValue } from "@/composer/agent-controls/mode-control";
+import {
+  AgentModeControl,
+  type AgentModeControlValue,
+} from "@/composer/agent-controls/mode-control";
 import { toErrorMessage } from "@/utils/error-messages";
 import { ControlChip } from "./control-chip";
 import {
@@ -28,7 +31,6 @@ import {
   type OmpMode,
 } from "./model";
 export { OMP_VIBE_FEATURE_ID, resolveOmpEnabledTools } from "./model";
-
 
 export type OmpDeckSource = "live" | "draft";
 
@@ -53,7 +55,6 @@ export interface OmpToolControls {
   set(enabledTools: string[]): Promise<AgentToolDefinition[]>;
 }
 
-
 export interface OmpControlDeckProps {
   source: OmpDeckSource;
   modelSelector: ReactNode;
@@ -69,12 +70,9 @@ export interface OmpControlDeckProps {
   onDropdownClose?: () => void;
 }
 
-
-
 function getModeIcon(enabled: boolean): AgentControlIcon {
   return enabled ? Sparkles : Brain;
 }
-
 
 interface OmpIconProps {
   icon: AgentControlIcon;
@@ -90,7 +88,15 @@ const ThemedOmpIcon = withUnistyles(OmpIcon, (theme) => ({
   color: theme.colors.foregroundMuted,
 }));
 
-function OmpToolIcon({ icon: Icon, size, color }: { icon: ToolCallIconComponent; size: number; color: string }) {
+function OmpToolIcon({
+  icon: Icon,
+  size,
+  color,
+}: {
+  icon: ToolCallIconComponent;
+  size: number;
+  color: string;
+}) {
   return <Icon size={size} color={color} />;
 }
 const ThemedOmpToolIcon = withUnistyles(OmpToolIcon, (theme) => ({
@@ -109,14 +115,12 @@ interface OmpComboboxRenderProps {
 }
 
 function renderOmpComboboxOption({ option, selected, active, onPress }: OmpComboboxRenderProps) {
-  return <ComboboxItem label={option.label} selected={selected} active={active} onPress={onPress} />;
+  return (
+    <ComboboxItem label={option.label} selected={selected} active={active} onPress={onPress} />
+  );
 }
 
-function OmpModeControl({
-  vibe,
-}: {
-  vibe: OmpVibeControls;
-}) {
+function OmpModeControl({ vibe }: { vibe: OmpVibeControls }) {
   const { t } = useTranslation();
   const [pendingMode, setPendingMode] = useState<OmpMode | null>(null);
   const [optimisticMode, setOptimisticMode] = useState<OmpMode | null>(null);
@@ -178,9 +182,7 @@ function OmpModeControl({
           testID="omp-mode-vibe"
         />
       </View>
-      {pendingMode ? (
-        <ThemedLoadingSpinner />
-      ) : null}
+      {pendingMode ? <ThemedLoadingSpinner /> : null}
       {error ? (
         <Text accessibilityRole="alert" style={styles.inlineError}>
           {error}
@@ -271,7 +273,10 @@ function OmpFeatureRow({
   const isTriState = selectFeature?.options.some((option) => option.id === "default") === true;
   let value = t("agentControls.omp.off");
   if (selectFeature) {
-    value = selectFeature.options.find((option) => option.id === selectFeature.value)?.label ?? selectFeature.value ?? "";
+    value =
+      selectFeature.options.find((option) => option.id === selectFeature.value)?.label ??
+      selectFeature.value ??
+      "";
   } else if (feature.value) {
     value = t("agentControls.omp.on");
   }
@@ -358,11 +363,15 @@ function OmpFeatureRow({
         <ThemedOmpIcon icon={Icon} size={16} />
         <View style={styles.featureText}>
           <Text style={styles.featureLabel}>{feature.label}</Text>
-          {feature.description ? <Text style={styles.featureDescription}>{feature.description}</Text> : null}
+          {feature.description ? (
+            <Text style={styles.featureDescription}>{feature.description}</Text>
+          ) : null}
         </View>
       </View>
       {control}
-      {launchOnly ? <Text style={styles.launchOnly}>{t("agentControls.omp.startsNewSession")}</Text> : null}
+      {launchOnly ? (
+        <Text style={styles.launchOnly}>{t("agentControls.omp.startsNewSession")}</Text>
+      ) : null}
     </View>
   );
 }
@@ -381,18 +390,33 @@ function OmpSettingsSheet({
   const groups = useMemo(() => buildOmpSettingsGroups(features), [features]);
   const header = useMemo<SheetHeader>(() => ({ title: t("agentControls.omp.settings") }), [t]);
   return (
-    <AdaptiveModalSheet header={header} visible={visible} onClose={onClose} testID="omp-settings-sheet">
+    <AdaptiveModalSheet
+      header={header}
+      visible={visible}
+      onClose={onClose}
+      testID="omp-settings-sheet"
+    >
       <View style={styles.settingsSection}>
         <Text style={styles.sectionTitle}>{t("agentControls.omp.behavior")}</Text>
         {groups.behavior.map((feature) => (
-          <OmpFeatureRow key={feature.id} feature={feature} onSetFeature={onSetFeature} launchOnly={false} />
+          <OmpFeatureRow
+            key={feature.id}
+            feature={feature}
+            onSetFeature={onSetFeature}
+            launchOnly={false}
+          />
         ))}
       </View>
       {groups.startup.length > 0 ? (
         <View style={styles.settingsSection}>
           <Text style={styles.sectionTitle}>{t("agentControls.omp.startup")}</Text>
           {groups.startup.map((feature) => (
-            <OmpFeatureRow key={feature.id} feature={feature} onSetFeature={onSetFeature} launchOnly />
+            <OmpFeatureRow
+              key={feature.id}
+              feature={feature}
+              onSetFeature={onSetFeature}
+              launchOnly
+            />
           ))}
         </View>
       ) : null}
@@ -443,14 +467,13 @@ function OmpToolRow({
         <View style={styles.toolTitleRow}>
           <Text style={styles.toolLabel}>{tool.label}</Text>
           <Text style={styles.sourceBadge}>{t(`agentControls.omp.toolSource.${tool.source}`)}</Text>
-          {tool.required ? <Text style={styles.requiredBadge}>{t("agentControls.omp.required")}</Text> : null}
+          {tool.required ? (
+            <Text style={styles.requiredBadge}>{t("agentControls.omp.required")}</Text>
+          ) : null}
         </View>
         <Text style={styles.toolDescription}>{tool.description}</Text>
       </View>
-      <Switch
-        pointerEvents="none"
-        value={tool.enabled}
-      />
+      <Switch pointerEvents="none" value={tool.enabled} />
     </Pressable>
   );
 }
@@ -492,7 +515,11 @@ function OmpToolsSheet({
   const header = useMemo<SheetHeader>(
     () => ({
       title: t("agentControls.omp.tools"),
-      search: { onChange: setQuery, placeholder: t("agentControls.omp.searchTools"), testID: "omp-tools-search" },
+      search: {
+        onChange: setQuery,
+        placeholder: t("agentControls.omp.searchTools"),
+        testID: "omp-tools-search",
+      },
     }),
     [t],
   );
@@ -529,7 +556,9 @@ function OmpToolsSheet({
   const filteredRows = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return rows;
-    return rows.filter((tool) => `${tool.label} ${tool.description} ${tool.source}`.toLowerCase().includes(normalized));
+    return rows.filter((tool) =>
+      `${tool.label} ${tool.description} ${tool.source}`.toLowerCase().includes(normalized),
+    );
   }, [query, rows]);
   const enabledToolCount = rows.filter((tool) => tool.enabled).length;
   const toolCountLabel = t("agentControls.omp.toolCount", {
@@ -537,22 +566,30 @@ function OmpToolsSheet({
     total: rows.length,
   });
   return (
-    <AdaptiveModalSheet header={header} visible={visible} onClose={onClose} testID="omp-tools-sheet">
+    <AdaptiveModalSheet
+      header={header}
+      visible={visible}
+      onClose={onClose}
+      testID="omp-tools-sheet"
+    >
       <View style={styles.toolsStatus}>
-        <Text
-          accessibilityLiveRegion="polite"
-          role="status"
-          aria-atomic
-          style={styles.toolCount}
-        >
+        <Text accessibilityLiveRegion="polite" role="status" aria-atomic style={styles.toolCount}>
           {toolCountLabel}
         </Text>
         {pending ? <ThemedLoadingSpinner /> : null}
       </View>
-      {error ? <Text accessibilityRole="alert" style={styles.sheetError}>{error}</Text> : null}
-      {filteredRows.length === 0 ? <Text style={styles.emptyTools}>{t("agentControls.omp.noTools")}</Text> : null}
+      {error ? (
+        <Text accessibilityRole="alert" style={styles.sheetError}>
+          {error}
+        </Text>
+      ) : null}
+      {filteredRows.length === 0 ? (
+        <Text style={styles.emptyTools}>{t("agentControls.omp.noTools")}</Text>
+      ) : null}
       <ToolRows rows={filteredRows} pending={pending} onToggle={handleToggle} />
-      {tools.isLoading ? <Text style={styles.emptyTools}>{t("agentControls.omp.loadingTools")}</Text> : null}
+      {tools.isLoading ? (
+        <Text style={styles.emptyTools}>{t("agentControls.omp.loadingTools")}</Text>
+      ) : null}
     </AdaptiveModalSheet>
   );
 }
@@ -598,7 +635,8 @@ export function OmpControlDeck({
     keptToolCount > 0
       ? t("agentControls.omp.toolsUnavailableSaved", { count: keptToolCount })
       : undefined;
-  const defaultUnavailableLabel = tools.unavailableReason ?? t("agentControls.omp.toolsUnavailable");
+  const defaultUnavailableLabel =
+    tools.unavailableReason ?? t("agentControls.omp.toolsUnavailable");
   let toolsValueLabel = toolCountLabel;
   if (toolsUnavailable) {
     toolsValueLabel = keptToolsLabel
@@ -622,11 +660,7 @@ export function OmpControlDeck({
         disabled={disabled}
       />
       <View style={styles.accessSlot}>
-        <AgentModeControl
-          {...access}
-          surface="toolbar"
-          onClose={onDropdownClose}
-        />
+        <AgentModeControl {...access} surface="toolbar" onClose={onDropdownClose} />
       </View>
       <ControlChip
         icon={Wrench}
@@ -653,7 +687,12 @@ export function OmpControlDeck({
         disabled={disabled}
         testID="omp-settings-control"
       />
-      <OmpSettingsSheet visible={activeSheet === "settings"} onClose={closeSheet} features={features} onSetFeature={onSetFeature} />
+      <OmpSettingsSheet
+        visible={activeSheet === "settings"}
+        onClose={closeSheet}
+        features={features}
+        onSetFeature={onSetFeature}
+      />
       <OmpToolsSheet visible={activeSheet === "tools"} onClose={closeSheet} tools={tools} />
     </View>
   );

@@ -11,7 +11,13 @@ export interface OmpLabelVisibility {
 }
 
 const OMP_FEATURE_ORDER = {
-  behavior: ["fast_mode", "omp_advisor", "omp_skillful", "omp_extended_context", "omp_computer_use"],
+  behavior: [
+    "fast_mode",
+    "omp_advisor",
+    "omp_skillful",
+    "omp_extended_context",
+    "omp_computer_use",
+  ],
   startup: ["omp_plan_yolo", "omp_prewalk", "omp_smol_model", "omp_slow_model", "omp_plan_model"],
 } as const;
 
@@ -68,9 +74,10 @@ export function applyOmpToolSelection(input: {
     );
 }
 
-export function buildOmpSettingsGroups(
-  features: readonly AgentFeature[] | undefined,
-): { behavior: AgentFeature[]; startup: AgentFeature[] } {
+export function buildOmpSettingsGroups(features: readonly AgentFeature[] | undefined): {
+  behavior: AgentFeature[];
+  startup: AgentFeature[];
+} {
   const byId = new Map((features ?? []).map((feature) => [feature.id, feature]));
   const pick = (ids: readonly string[]) =>
     ids.flatMap((id) => {

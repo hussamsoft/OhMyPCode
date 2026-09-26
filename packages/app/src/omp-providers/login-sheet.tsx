@@ -52,7 +52,9 @@ function LoginOpenUrlCard({
   if (!openUrl) return null;
   return (
     <View style={styles.openUrlCard}>
-      {openUrl.instructions ? <Text style={styles.instructions}>{openUrl.instructions}</Text> : null}
+      {openUrl.instructions ? (
+        <Text style={styles.instructions}>{openUrl.instructions}</Text>
+      ) : null}
       <Text style={styles.url} selectable>
         {openUrl.url}
       </Text>
@@ -273,10 +275,7 @@ export function OmpProviderLoginSheet({
   const { status, pendingPrompt, notices, openUrl, error, start, respond, cancel } =
     useOmpProviderLogin(serverId);
   const startedProviderIdRef = useRef<string | null>(null);
-  const header = useMemo<SheetHeader>(
-    () => ({ title: provider?.name ?? "" }),
-    [provider?.name],
-  );
+  const header = useMemo<SheetHeader>(() => ({ title: provider?.name ?? "" }), [provider?.name]);
   useEffect(() => {
     if (!visible) {
       startedProviderIdRef.current = null;

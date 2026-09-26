@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { Pause, Plus, Users, X } from "lucide-react-native";
 import invariant from "tiny-invariant";
-import { AdaptiveModalSheet, AdaptiveTextInput, type SheetHeader } from "@/components/adaptive-modal-sheet";
+import {
+  AdaptiveModalSheet,
+  AdaptiveTextInput,
+  type SheetHeader,
+} from "@/components/adaptive-modal-sheet";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { usePaneContext } from "@/panels/pane-context";
@@ -11,6 +15,12 @@ import { definePanel, type PanelDescriptor } from "@/panels/panel-registry";
 import { useOmpVibe } from "@/omp-vibe/use-omp-vibe";
 import { VibeWorkerDetail } from "@/omp-vibe/vibe-worker-detail";
 import { VibeWorkerList } from "@/omp-vibe/vibe-worker-list";
+
+// Hoisted so the three action buttons pass a stable element rather than
+// building a new one on every render of the panel.
+const SPAWN_ICON = <Plus size={14} />;
+const WAIT_ICON = <Pause size={14} />;
+const END_ICON = <X size={14} />;
 
 function useOmpVibeDescriptor(
   target: { kind: "omp_vibe"; agentId: string; workerId: string | null },
@@ -58,7 +68,8 @@ function SpawnWorkerSheet({
       setError(cause instanceof Error ? cause.message : "Unable to spawn worker");
     }
   }, [brief, name, onSpawn, tier]);
-  const header: SheetHeader = { title: "Spawn worker" };
+  const header = useMemo<SheetHeader>(() => ({ title: "Spawn worker" }), []);
+  const handleSubmitPress = useCallback(() => void submit(), [submit]);
   return (
     <AdaptiveModalSheet visible={visible} onClose={onClose} header={header}>
       <View style={styles.sheetBody}>
@@ -77,7 +88,10 @@ function SpawnWorkerSheet({
           accessibilityLabel="Worker tier"
           value={tier}
           onValueChange={setTier}
-          options={[{ value: "fast", label: "Fast" }, { value: "good", label: "Good" }]}
+          options={[
+            { value: "fast", label: "Fast" },
+            { value: "good", label: "Good" },
+          ]}
           testID="omp-vibe-worker-tier"
         />
         <Text style={styles.fieldLabel}>Brief</Text>
@@ -90,8 +104,12 @@ function SpawnWorkerSheet({
           style={styles.briefInput}
           testID="omp-vibe-worker-brief"
         />
-        {error ? <Text style={styles.error} role="alert">{error}</Text> : null}
-        <Button disabled={pending} onPress={() => void submit()} testID="omp-vibe-spawn-submit">
+        {error ? (
+          <Text style={styles.error} role="alert">
+            {error}
+          </Text>
+        ) : null}
+        <Button disabled={pending} onPress={handleSubmitPress} testID="omp-vibe-spawn-submit">
           {pending ? "Spawning..." : "Spawn worker"}
         </Button>
       </View>
@@ -139,7 +157,7 @@ function OmpVibePanel() {
     }
   }, [pending, spawnAttempted, spawnFailed]);
   const selectedWorker = target.workerId
-    ? state?.workers.find((worker) => worker.id === target.workerId) ?? null
+    ? (state?.workers.find((worker) => worker.id === target.workerId) ?? null)
     : null;
   const running = state?.workers.filter((worker) => worker.state === "running").length ?? 0;
   const handleWait = useCallback(async () => {
@@ -158,19 +176,62 @@ function OmpVibePanel() {
       setActionError(cause instanceof Error ? cause.message : "Unable to end Vibe");
     }
   }, [exit]);
+  const handleWaitPress = useCallback(() => void handleWait(), [handleWait]);
+  const handleExitPress = useCallback(() => void handleExit(), [handleExit]);
+  const handleSpawnClose = useCallback(() => {
+    if (pending === null) setSpawnVisible(false);
+  }, [pending]);
+  const handleSpawnPress = useCallback(() => {
+    spawnFailedRef.current = false;
+    setSpawnAttempted(false);
+    setSpawnFailed(false);
+    setSpawnVisible(true);
+  }, []);
   return (
     <View style={styles.container} testID="omp-vibe-panel">
       <View style={styles.header}>
         <View style={styles.heading}>
           <Text style={styles.title}>Vibe team</Text>
-          <Text style={styles.summary}>{state ? `${running}/${state.workers.length} running` : "Loading"}</Text>
+          <Text style={styles.summary}>
+            {state ? `${running}/${state.workers.length} running` : "Loading"}
+          </Text>
         </View>
         <View style={styles.actions}>
-          <Button size="sm" variant="outline" leftIcon={<Plus size={14} />} onPress={() => { spawnFailedRef.current = false; setSpawnAttempted(false); setSpawnFailed(false); setSpawnVisible(true); }} testID="omp-vibe-spawn-worker">Spawn</Button>
-          <Button size="sm" variant="outline" leftIcon={<Pause size={14} />} disabled={pending !== null} onPress={() => void handleWait()} testID="omp-vibe-wait">Wait</Button>
-          <Button size="sm" variant="outline" leftIcon={<X size={14} />} disabled={pending !== null} onPress={() => void handleExit()} testID="omp-vibe-end">{pending?.kind === "exit" ? "Ending..." : "End Vibe"}</Button>
+          <Button
+            size="sm"
+            variant="outline"
+            leftIcon={SPAWN_ICON}
+            onPress={handleSpawnPress}
+            testID="omp-vibe-spawn-worker"
+          >
+            Spawn
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            leftIcon={WAIT_ICON}
+            disabled={pending !== null}
+            onPress={handleWaitPress}
+            testID="omp-vibe-wait"
+          >
+            Wait
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            leftIcon={END_ICON}
+            disabled={pending !== null}
+            onPress={handleExitPress}
+            testID="omp-vibe-end"
+          >
+            {pending?.kind === "exit" ? "Ending..." : "End Vibe"}
+          </Button>
         </View>
-        {actionError ? <Text accessibilityRole="alert" style={styles.error}>{actionError}</Text> : null}
+        {actionError ? (
+          <Text accessibilityRole="alert" style={styles.error}>
+            {actionError}
+          </Text>
+        ) : null}
       </View>
       {target.workerId && selectedWorker ? (
         <VibeWorkerDetail serverId={serverId} agentId={target.agentId} workerId={target.workerId} />
@@ -184,7 +245,7 @@ function OmpVibePanel() {
       <SpawnWorkerSheet
         visible={spawnVisible}
         pending={pending?.kind === "spawn"}
-        onClose={() => { if (pending === null) setSpawnVisible(false); }}
+        onClose={handleSpawnClose}
         onSpawn={submitSpawn}
       />
     </View>
@@ -197,14 +258,40 @@ export const ompVibePanelRegistration = definePanel("omp_vibe", {
 });
 
 const styles = StyleSheet.create((theme) => ({
-  container: { flex: 1, minHeight: 0, width: "100%", maxWidth: 440, backgroundColor: theme.colors.surface1 },
-  header: { padding: theme.spacing[3], borderBottomWidth: theme.borderWidth[1], borderBottomColor: theme.colors.border, gap: theme.spacing[2] },
+  container: {
+    flex: 1,
+    minHeight: 0,
+    width: "100%",
+    maxWidth: 440,
+    backgroundColor: theme.colors.surface1,
+  },
+  header: {
+    padding: theme.spacing[3],
+    borderBottomWidth: theme.borderWidth[1],
+    borderBottomColor: theme.colors.border,
+    gap: theme.spacing[2],
+  },
   heading: { gap: theme.spacing[1] },
-  title: { color: theme.colors.foreground, fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.medium },
+  title: {
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.base,
+    fontWeight: theme.fontWeight.medium,
+  },
   summary: { color: theme.colors.foregroundMuted, fontSize: theme.fontSize.sm },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing[2] },
   sheetBody: { gap: theme.spacing[2], padding: theme.spacing[4] },
-  fieldLabel: { color: theme.colors.foreground, fontSize: theme.fontSize.sm, fontWeight: theme.fontWeight.medium },
-  briefInput: { minHeight: 100, color: theme.colors.foreground, borderWidth: theme.borderWidth[1], borderColor: theme.colors.border, borderRadius: theme.borderRadius.md, padding: theme.spacing[2] },
+  fieldLabel: {
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+  },
+  briefInput: {
+    minHeight: 100,
+    color: theme.colors.foreground,
+    borderWidth: theme.borderWidth[1],
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing[2],
+  },
   error: { color: theme.colors.statusDanger, fontSize: theme.fontSize.sm },
 }));

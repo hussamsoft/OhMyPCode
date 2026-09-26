@@ -1457,7 +1457,8 @@ export const ko: TranslationResources = {
         pauseAndStop: "일시 중지 후 중지",
         registrationFailed:
           "내장 데몬이 시작되었지만 OhMyPCode가 localhost 연결을 저장하지 못했습니다. 데몬 관리를 껐다가 다시 켜거나 localhost를 수동으로 추가하세요.",
-        pausedStopFailed: "내장 데몬 관리가 일시 중지되었지만 OhMyPCode가 데몬을 중지하지 못했습니다.",
+        pausedStopFailed:
+          "내장 데몬 관리가 일시 중지되었지만 OhMyPCode가 데몬을 중지하지 못했습니다.",
         updateFailed: "내장 데몬 관리를 업데이트할 수 없습니다.",
       },
       keepRunning: {
@@ -2067,7 +2068,8 @@ export const ko: TranslationResources = {
   },
   ompProviders: {
     title: "LLM 프로바이더",
-    description: "모델 프로바이더를 OMP에 연결합니다. 자격 증명은 이 호스트의 OMP 보관함에 보관됩니다.",
+    description:
+      "모델 프로바이더를 OMP에 연결합니다. 자격 증명은 이 호스트의 OMP 보관함에 보관됩니다.",
     connected: "연결됨",
     available: "사용 가능",
     connect: "연결",

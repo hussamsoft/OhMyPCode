@@ -44,7 +44,7 @@ afterEach(() => {
 });
 
 describe("SegmentedControl accessibility", () => {
-  it("keeps one tabbable checked radio and supports keyboard activation",  () => {
+  it("keeps one tabbable checked radio and supports keyboard activation", () => {
     const container = mountHarness();
     const group = requireElement(container.querySelector('[role="radiogroup"]'), "radio group");
     const build = requireElement(

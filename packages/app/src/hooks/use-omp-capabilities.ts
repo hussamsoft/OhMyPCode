@@ -14,13 +14,10 @@ export function selectOmpCapabilityState(input: {
   serverSupportsTools: boolean | undefined;
 }): OmpCapabilityState {
   const isOmp = input.provider === "omp";
-  const hasServerFeatures =
-    input.serverSupportsVibe === true && input.serverSupportsTools === true;
+  const hasServerFeatures = input.serverSupportsVibe === true && input.serverSupportsTools === true;
   return {
-    canUseVibe:
-      isOmp && hasServerFeatures && input.supportsOmpVibe === true,
-    canSelectTools:
-      isOmp && hasServerFeatures && input.supportsOmpToolSelection === true,
+    canUseVibe: isOmp && hasServerFeatures && input.supportsOmpVibe === true,
+    canSelectTools: isOmp && hasServerFeatures && input.supportsOmpToolSelection === true,
   };
 }
 
