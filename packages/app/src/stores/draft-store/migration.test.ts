@@ -7,6 +7,7 @@ import {
   type MigrateLegacyImages,
   PersistedDraftStoreSchema,
 } from "./migration";
+import { useDraftStore } from "./index";
 import { isAttachmentMetadata, type DraftRecord } from "./state";
 
 const passThroughMigrateLegacyImages: MigrateLegacyImages = async (images) =>
@@ -364,5 +365,11 @@ describe("draft store legacy key fallback", () => {
     const stored = await storage.getItem("ohmypcode-drafts");
 
     expect(stored?.state.drafts).toEqual({});
+  });
+});
+
+describe("draft store persist wiring", () => {
+  it("is configured with the renamed key", () => {
+    expect(useDraftStore.persist.getOptions().name).toBe("ohmypcode-drafts");
   });
 });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { StateStorage } from "zustand/middleware";
 import type { ParsedDiffFile } from "@/git/use-diff-query";
 import { createValidatedPersistStorage } from "@/storage/validated-persist-storage";
-import { buildReviewAttachmentSnapshot, buildReviewDraftKey } from "./store";
+import { buildReviewAttachmentSnapshot, buildReviewDraftKey, useReviewDraftStore } from "./store";
 import {
   addCommentToState,
   clearReviewInState,
@@ -148,6 +148,12 @@ describe("review draft store legacy key fallback", () => {
     const stored = await storage.getItem("@ohmypcode:review-draft-store");
 
     expect(stored?.state.drafts.current).toEqual([makeComment()]);
+  });
+});
+
+describe("review draft store persist wiring", () => {
+  it("is configured with the renamed key", () => {
+    expect(useReviewDraftStore.persist.getOptions().name).toBe("@ohmypcode:review-draft-store");
   });
 });
 
