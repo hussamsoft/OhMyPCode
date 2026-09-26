@@ -21,6 +21,12 @@ const repoRoot = join(__dirname, "..", "..", "..");
 // npm workspace scripts only add the local node_modules/.bin to PATH; hoisted
 // packages live in the root. Prepend it so `npx paseo` resolves locally.
 const rootNodeModulesBin = join(repoRoot, "node_modules", ".bin");
+// spawn("npx", ["tsx", ...]) fails with ENOENT on Windows: spawn() without a
+// shell doesn't do PATHEXT/.cmd resolution the way a shell invocation would.
+// Spawn tsx's own CLI entry directly through process.execPath instead --
+// shell-free, cross-platform, no PATH/quoting involved at all. Matches
+// helpers/local-cli.ts's identical fix for the same class of issue.
+const tsxCliPath = join(repoRoot, "node_modules", "tsx", "dist", "cli.mjs");
 const args = process.argv.slice(2);
 const testEnvDefaults = {
   PASEO_LOCAL_SPEECH_AUTO_DOWNLOAD: process.env.PASEO_LOCAL_SPEECH_AUTO_DOWNLOAD ?? "0",
@@ -200,7 +206,7 @@ async function runSingleTest(testFile: string): Promise<TestOutcome> {
 
   try {
     return await new Promise<TestOutcome>((resolve) => {
-      const proc = spawn("npx", ["tsx", testPath], {
+      const proc = spawn(process.execPath, [tsxCliPath, testPath], {
         env: {
           ...Object.fromEntries(
             Object.entries(process.env).filter(([key]) => !key.startsWith("PASEO_")),
