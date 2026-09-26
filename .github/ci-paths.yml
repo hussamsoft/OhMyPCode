@@ -28,6 +28,7 @@ format:
 quality:
   - "**/*.{cjs,js,json,jsx,mjs,ts,tsx}"
   - "packages/expo-two-way-audio/**"
+  - "docs/omp/**"
 
 hub:
   - "packages/cli/src/commands/hub/**"
@@ -48,6 +49,7 @@ desktop:
 app:
   - "packages/app/**"
   - "packages/expo-two-way-audio/**"
+  - "docs/omp/**"
 
 sdk:
   - "packages/plugin/**"

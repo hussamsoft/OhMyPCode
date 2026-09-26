@@ -64,8 +64,8 @@ describe("OMP Parity Manifest", () => {
     }
   });
 
-  it("derives a non-empty VALID_PROTOCOL_CAPABILITIES set from messages.ts (guards against the anchor regex silently matching nothing)", () => {
-    expect(VALID_PROTOCOL_CAPABILITIES.size).toBeGreaterThan(0);
+  it("derives at least the 10 currently-known OhMyPCode capability flags from messages.ts (a hard count floor, not just non-empty -- guards against the anchor regex silently matching a partial/reformatted subset instead of nothing at all)", () => {
+    expect(VALID_PROTOCOL_CAPABILITIES.size).toBeGreaterThanOrEqual(10);
   });
 
   it("assigns only valid currently-existing GUI homes or terminal escape hatch with reason", () => {
