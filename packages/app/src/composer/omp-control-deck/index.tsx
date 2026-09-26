@@ -8,7 +8,7 @@ import {
   type LayoutChangeEvent,
   type PressableStateCallbackType,
 } from "react-native";
-import { Brain, Settings2, Sparkles, Wrench } from "lucide-react-native";
+import { Brain, Settings2, Shield, Sparkles, Wrench } from "lucide-react-native";
 import { getAgentFeatureIcon, type AgentControlIcon } from "@/agent-controls/icons";
 import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
 import { Combobox, ComboboxItem, type ComboboxOption } from "@/components/ui/combobox";
@@ -18,18 +18,31 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { AgentFeature, AgentToolDefinition } from "@ohmypcode/protocol/agent-types";
 import { resolveToolCallIcon, type ToolCallIconComponent } from "@/utils/tool-call-icon";
 import { useComposerControlLayout } from "@/composer/agent-controls/layout-context";
-import {
-  AgentModeControl,
-  type AgentModeControlValue,
-} from "@/composer/agent-controls/mode-control";
+import { type AgentModeControlValue } from "@/composer/agent-controls/mode-control";
 import { toErrorMessage } from "@/utils/error-messages";
 import { ControlChip } from "./control-chip";
+import { OmpSettingsForm } from "@/omp-settings/omp-settings-form";
 import {
   applyOmpToolSelection,
   buildOmpSettingsGroups,
+  groupOmpToolsByServer,
+  isOmpMcpServerGroupRequired,
+  resolveOmpMcpServerGroupState,
+  resolveMcpServerName,
   resolveOmpLabelVisibility,
+  OMP_APPROVAL_MODE_OPTIONS,
+  OMP_APPROVAL_MODE_PATH,
+  resolveOmpApprovalModeId,
+  type OmpApprovalMode,
+  type OmpMcpServerGroup,
   type OmpMode,
 } from "./model";
+import {
+  useOmpModeSetter,
+  useOmpModes,
+  useOmpSettingSetter,
+  useOmpSettings,
+} from "./use-omp-rpc";
 export { OMP_VIBE_FEATURE_ID, resolveOmpEnabledTools } from "./model";
 
 export type OmpDeckSource = "live" | "draft";
@@ -57,6 +70,8 @@ export interface OmpToolControls {
 
 export interface OmpControlDeckProps {
   source: OmpDeckSource;
+  serverId?: string | null;
+  agentId?: string | null;
   modelSelector: ReactNode;
   thinkingOptions: readonly { id: string; label: string }[];
   selectedThinkingId?: string;
@@ -120,72 +135,208 @@ function renderOmpComboboxOption({ option, selected, active, onPress }: OmpCombo
   );
 }
 
-function OmpModeControl({ vibe }: { vibe: OmpVibeControls }) {
+interface OmpModeSegmentDescriptor {
+  id: OmpMode;
+  labelKey: string;
+  testID: string;
+}
+
+const OMP_MODE_SEGMENTS: readonly OmpModeSegmentDescriptor[] = [
+  { id: "build", labelKey: "agentControls.omp.build", testID: "omp-mode-build" },
+  { id: "plan", labelKey: "agentControls.omp.plan", testID: "omp-mode-plan" },
+  { id: "vibe", labelKey: "agentControls.omp.vibe", testID: "omp-mode-vibe" },
+  { id: "goal", labelKey: "agentControls.omp.goal", testID: "omp-mode-goal" },
+  { id: "loop", labelKey: "agentControls.omp.loop", testID: "omp-mode-loop" },
+];
+
+function resolveCommittedMode(input: {
+  planEnabled: boolean;
+  goalEnabled: boolean;
+  loopEnabled: boolean;
+  vibeEnabled: boolean;
+}): OmpMode {
+  if (input.planEnabled) return "plan";
+  if (input.goalEnabled) return "goal";
+  if (input.loopEnabled) return "loop";
+  if (input.vibeEnabled) return "vibe";
+  return "build";
+}
+
+function OmpModeSegmentChip({
+  segment,
+  label,
+  selected,
+  pending,
+  disabledReason,
+  onPress,
+}: {
+  segment: OmpModeSegmentDescriptor;
+  label: string;
+  selected: boolean;
+  pending: boolean;
+  disabledReason?: string;
+  onPress(): void;
+}) {
   const { t } = useTranslation();
+  const Icon = getModeIcon(segment.id === "vibe");
+  const baseAccessibilityLabel = t("agentControls.omp.selectMode", { value: label });
+  const accessibilityLabel = disabledReason
+    ? `${baseAccessibilityLabel}. ${disabledReason}`
+    : baseAccessibilityLabel;
+  const isDisabled = Boolean(disabledReason);
+  return (
+    <View style={styles.modeSegmentSlot}>
+      <ControlChip
+        icon={Icon}
+        label={label}
+        value={label}
+        accessibilityRole="radio"
+        accessibilityLabel={accessibilityLabel}
+        selected={selected}
+        accentSelected
+        disabled={isDisabled}
+        onPress={onPress}
+        testID={segment.testID}
+      />
+      {pending ? <ThemedLoadingSpinner /> : null}
+    </View>
+  );
+}
+
+function OmpModeControl({
+  vibe,
+  serverId,
+  agentId,
+}: {
+  vibe: OmpVibeControls;
+  serverId?: string | null;
+  agentId?: string | null;
+}) {
+  const { t } = useTranslation();
+  const modesQuery = useOmpModes(serverId ?? null, agentId ?? null);
+  const modeSetter = useOmpModeSetter(serverId ?? null, agentId ?? null);
+  const { modes, isLoading: modesLoading, error: modesError } = modesQuery;
   const [pendingMode, setPendingMode] = useState<OmpMode | null>(null);
   const [optimisticMode, setOptimisticMode] = useState<OmpMode | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const committedMode: OmpMode = vibe.enabled ? "vibe" : "build";
-  const visibleMode = optimisticMode ?? committedMode;
+  const [segmentError, setSegmentError] = useState<{ mode: OmpMode; message: string } | null>(
+    null,
+  );
+  const committedMode: OmpMode = optimisticMode
+    ? optimisticMode
+    : modes
+      ? resolveCommittedMode({
+          planEnabled: modes.planModeEnabled,
+          goalEnabled: modes.goalModeEnabled,
+          loopEnabled: modes.loopModeEnabled,
+          vibeEnabled: vibe.enabled,
+        })
+      : (vibe.enabled ? "vibe" : "build");
+  const canEnterAll = modes?.canEnter ?? true;
+  const globalBlockedReason = modes?.blockedReason;
   const transitionTo = useCallback(
     async (mode: OmpMode) => {
-      if (!vibe.canUse || mode === committedMode || pendingMode) return;
+      if (pendingMode) return;
+      if (mode === committedMode) return;
       setPendingMode(mode);
       setOptimisticMode(mode);
-      setError(null);
+      setSegmentError(null);
       try {
-        await vibe.setEnabled(mode === "vibe");
+        if (mode === "vibe") {
+          if (!vibe.canUse) {
+            throw new Error(t("agentControls.omp.modeUnavailable"));
+          }
+          await vibe.setEnabled(true);
+        } else if (mode === "build") {
+          // Build is the implicit "no plan/goal/loop/vibe" baseline. Disable
+          // any active plan/goal/loop and turn the vibe flag off. If only
+          // vibe is on, exit it through the existing path.
+          if (vibe.enabled) {
+            if (!vibe.canUse) {
+              throw new Error(t("agentControls.omp.modeUnavailable"));
+            }
+            await vibe.setEnabled(false);
+          }
+          if (modes?.planModeEnabled) {
+            await modeSetter.setMode({ mode: "plan" });
+          } else if (modes?.goalModeEnabled) {
+            await modeSetter.setMode({ mode: "goal" });
+          } else if (modes?.loopModeEnabled) {
+            await modeSetter.setMode({ mode: "loop" });
+          }
+        } else {
+          await modeSetter.setMode({ mode });
+          if (vibe.enabled) {
+            await vibe.setEnabled(false);
+          }
+        }
         setOptimisticMode(null);
       } catch (cause) {
         setOptimisticMode(null);
-        setError(toErrorMessage(cause));
+        setSegmentError({ mode, message: toErrorMessage(cause) });
       } finally {
         setPendingMode(null);
       }
     },
-    [committedMode, pendingMode, vibe],
+    [committedMode, modeSetter, modes, pendingMode, t, vibe],
   );
-  const buildLabel = t("agentControls.omp.build");
-  const vibeLabel = t("agentControls.omp.vibe");
-  const ModeIcon = getModeIcon(visibleMode === "vibe");
-  const selectBuild = useCallback(() => void transitionTo("build"), [transitionTo]);
-  const selectVibe = useCallback(() => void transitionTo("vibe"), [transitionTo]);
+  const segmentMeta = useMemo(() => {
+    return OMP_MODE_SEGMENTS.map((segment) => {
+      const label = t(segment.labelKey);
+      const isPlanOrGoalOrLoop =
+        segment.id === "plan" || segment.id === "goal" || segment.id === "loop";
+      const enabledFlag = isPlanOrGoalOrLoop
+        ? modes
+          ? segment.id === "plan"
+            ? modes.planModeEnabled
+            : segment.id === "goal"
+              ? modes.goalModeEnabled
+              : modes.loopModeEnabled
+          : false
+        : null;
+      const localBlocked =
+        canEnterAll === false
+          ? globalBlockedReason
+          : enabledFlag === false && isPlanOrGoalOrLoop && !modesLoading
+            ? t("agentControls.omp.modeDisabledForAgent")
+            : undefined;
+      const isPending = pendingMode === segment.id;
+      const isSelected = committedMode === segment.id;
+      const isBusy = Boolean(pendingMode);
+      const isDisabled = Boolean(localBlocked) || (isBusy && !isPending);
+      return { segment, label, isPending, isSelected, isDisabled, disabledReason: localBlocked };
+    });
+  }, [canEnterAll, committedMode, globalBlockedReason, modes, modesLoading, pendingMode, t]);
+  const visibleError = segmentError;
+  const headerAccessibilityLabel = t("agentControls.omp.selectMode", {
+    value: committedMode,
+  });
   return (
     <View style={styles.modeGroup}>
       <View
-        accessibilityLabel={t("agentControls.omp.selectMode", { value: visibleMode })}
+        accessibilityLabel={headerAccessibilityLabel}
         accessibilityRole="radiogroup"
         style={styles.modeSegments}
       >
-        <ControlChip
-          icon={ModeIcon}
-          label={buildLabel}
-          value={buildLabel}
-          accessibilityRole="radio"
-          accessibilityLabel={t("agentControls.omp.selectMode", { value: buildLabel })}
-          selected={visibleMode === "build"}
-          accentSelected
-          disabled={!vibe.canUse || (pendingMode !== null && pendingMode !== "build")}
-          onPress={selectBuild}
-          testID="omp-mode-build"
-        />
-        <ControlChip
-          icon={ModeIcon}
-          label={vibeLabel}
-          value={vibeLabel}
-          accessibilityRole="radio"
-          accessibilityLabel={t("agentControls.omp.selectMode", { value: vibeLabel })}
-          selected={visibleMode === "vibe"}
-          accentSelected
-          disabled={!vibe.canUse || (pendingMode !== null && pendingMode !== "vibe")}
-          onPress={selectVibe}
-          testID="omp-mode-vibe"
-        />
+        {segmentMeta.map((entry) => (
+          <OmpModeSegmentChip
+            key={entry.segment.id}
+            segment={entry.segment}
+            label={entry.label}
+            selected={entry.isSelected}
+            pending={entry.isPending}
+            disabledReason={entry.isDisabled ? entry.disabledReason : undefined}
+            onPress={() => void transitionTo(entry.segment.id)}
+          />
+        ))}
       </View>
-      {pendingMode ? <ThemedLoadingSpinner /> : null}
-      {error ? (
+      {visibleError ? (
         <Text accessibilityRole="alert" style={styles.inlineError}>
-          {error}
+          {visibleError.message}
+        </Text>
+      ) : null}
+      {modesError && !visibleError ? (
+        <Text accessibilityRole="alert" style={styles.inlineError}>
+          {toErrorMessage(modesError)}
         </Text>
       ) : null}
     </View>
@@ -380,15 +531,25 @@ function OmpSettingsSheet({
   onClose,
   features,
   onSetFeature,
+  serverId,
+  agentId,
 }: {
   visible: boolean;
   onClose(): void;
   features?: readonly AgentFeature[];
   onSetFeature?: (featureId: string, value: unknown) => void;
+  serverId?: string | null;
+  agentId?: string | null;
 }) {
   const { t } = useTranslation();
   const groups = useMemo(() => buildOmpSettingsGroups(features), [features]);
   const header = useMemo<SheetHeader>(() => ({ title: t("agentControls.omp.settings") }), [t]);
+  // When the host can address a specific agent, render the generated
+  // settings form backed by the OMP RPC (`get_settings` / `set_setting`).
+  // Otherwise (draft source / no agent id) fall back to the existing
+  // behavior / startup feature rows so this component still has something
+  // meaningful to display.
+  const useGeneratedForm = Boolean(serverId && agentId);
   return (
     <AdaptiveModalSheet
       header={header}
@@ -396,30 +557,36 @@ function OmpSettingsSheet({
       onClose={onClose}
       testID="omp-settings-sheet"
     >
-      <View style={styles.settingsSection}>
-        <Text style={styles.sectionTitle}>{t("agentControls.omp.behavior")}</Text>
-        {groups.behavior.map((feature) => (
-          <OmpFeatureRow
-            key={feature.id}
-            feature={feature}
-            onSetFeature={onSetFeature}
-            launchOnly={false}
-          />
-        ))}
-      </View>
-      {groups.startup.length > 0 ? (
-        <View style={styles.settingsSection}>
-          <Text style={styles.sectionTitle}>{t("agentControls.omp.startup")}</Text>
-          {groups.startup.map((feature) => (
-            <OmpFeatureRow
-              key={feature.id}
-              feature={feature}
-              onSetFeature={onSetFeature}
-              launchOnly
-            />
-          ))}
-        </View>
-      ) : null}
+      {useGeneratedForm ? (
+        <OmpSettingsForm serverId={serverId ?? null} agentId={agentId ?? null} />
+      ) : (
+        <>
+          <View style={styles.settingsSection}>
+            <Text style={styles.sectionTitle}>{t("agentControls.omp.behavior")}</Text>
+            {groups.behavior.map((feature) => (
+              <OmpFeatureRow
+                key={feature.id}
+                feature={feature}
+                onSetFeature={onSetFeature}
+                launchOnly={false}
+              />
+            ))}
+          </View>
+          {groups.startup.length > 0 ? (
+            <View style={styles.settingsSection}>
+              <Text style={styles.sectionTitle}>{t("agentControls.omp.startup")}</Text>
+              {groups.startup.map((feature) => (
+                <OmpFeatureRow
+                  key={feature.id}
+                  feature={feature}
+                  onSetFeature={onSetFeature}
+                  launchOnly
+                />
+              ))}
+            </View>
+          ) : null}
+        </>
+      )}
     </AdaptiveModalSheet>
   );
 }
@@ -496,6 +663,71 @@ function ToolRows({
   );
 }
 
+function OmpMcpServerGroupRow({
+  group,
+  pending,
+  onToggle,
+}: {
+  group: OmpMcpServerGroup;
+  pending: boolean;
+  onToggle(names: readonly string[], enabled: boolean): void;
+}) {
+  const { t } = useTranslation();
+  const groupEnabled = resolveOmpMcpServerGroupState(group);
+  const allRequired = isOmpMcpServerGroupRequired(group);
+  const locked = pending || allRequired;
+  const names = useMemo(() => group.rows.map((tool) => tool.name), [group.rows]);
+  const handlePress = useCallback(() => {
+    if (locked) return;
+    onToggle(names, !groupEnabled);
+  }, [groupEnabled, locked, names, onToggle]);
+  const accessibilityState = useMemo(
+    () => ({ checked: groupEnabled, disabled: locked }),
+    [groupEnabled, locked],
+  );
+  const style = useCallback(
+    ({ focused, hovered, pressed }: PressableStateCallbackType & { focused?: boolean }) => [
+      styles.mcpServerRow,
+      hovered && !locked && styles.toolRowHovered,
+      pressed && !locked && styles.toolRowPressed,
+      focused && styles.focusedRow,
+      locked && styles.disabled,
+    ],
+    [locked],
+  );
+  const accessibilityLabel = t("agentControls.omp.mcpServerAccessibleName", {
+    server: group.serverName,
+    count: group.rows.length,
+  });
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={accessibilityState}
+      aria-checked={groupEnabled}
+      aria-disabled={locked}
+      disabled={locked}
+      onPress={handlePress}
+      style={style}
+      testID={`omp-mcp-server-${group.serverName}`}
+    >
+      <View style={styles.toolText}>
+        <View style={styles.toolTitleRow}>
+          <Text style={styles.toolLabel}>{group.serverName}</Text>
+          <Text style={styles.sourceBadge}>
+            {t("agentControls.omp.mcpServerBadge", { count: group.rows.length })}
+          </Text>
+          {allRequired ? (
+            <Text style={styles.requiredBadge}>{t("agentControls.omp.required")}</Text>
+          ) : null}
+        </View>
+        <Text style={styles.toolDescription}>{t("agentControls.omp.mcpServerDescription")}</Text>
+      </View>
+      <Switch pointerEvents="none" value={groupEnabled} />
+    </Pressable>
+  );
+}
+
 function OmpToolsSheet({
   visible,
   onClose,
@@ -542,7 +774,7 @@ function OmpToolsSheet({
     if (visible) void loadTools();
   }, [loadTools, visible]);
   const handleToggle = useCallback(
-    async (name: string, enabled: boolean) => {
+    async (name: string | readonly string[], enabled: boolean) => {
       if (pending) return;
       setPending(true);
       setError(null);
@@ -553,18 +785,35 @@ function OmpToolsSheet({
     },
     [pending, rows, setTools],
   );
+  const handleToolToggle = useCallback(
+    (name: string, enabled: boolean) => {
+      void handleToggle(name, enabled);
+    },
+    [handleToggle],
+  );
+  const handleGroupToggle = useCallback(
+    (names: readonly string[], enabled: boolean) => {
+      void handleToggle(names, enabled);
+    },
+    [handleToggle],
+  );
   const filteredRows = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return rows;
-    return rows.filter((tool) =>
-      `${tool.label} ${tool.description} ${tool.source}`.toLowerCase().includes(normalized),
-    );
+    return rows.filter((tool) => {
+      const serverName = resolveMcpServerName(tool) ?? "";
+      return `${tool.label} ${tool.description} ${tool.source} ${serverName}`
+        .toLowerCase()
+        .includes(normalized);
+    });
   }, [query, rows]);
+  const grouping = useMemo(() => groupOmpToolsByServer(filteredRows), [filteredRows]);
   const enabledToolCount = rows.filter((tool) => tool.enabled).length;
   const toolCountLabel = t("agentControls.omp.toolCount", {
     enabled: enabledToolCount,
     total: rows.length,
   });
+  const isEmpty = grouping.nonMcp.length === 0 && grouping.mcp.length === 0;
   return (
     <AdaptiveModalSheet
       header={header}
@@ -583,14 +832,183 @@ function OmpToolsSheet({
           {error}
         </Text>
       ) : null}
-      {filteredRows.length === 0 ? (
+      {isEmpty ? (
         <Text style={styles.emptyTools}>{t("agentControls.omp.noTools")}</Text>
       ) : null}
-      <ToolRows rows={filteredRows} pending={pending} onToggle={handleToggle} />
+      <ToolRows rows={grouping.nonMcp} pending={pending} onToggle={handleToolToggle} />
+      {grouping.mcp.map((group) => (
+        <View key={group.serverName} testID={`omp-mcp-group-${group.serverName}`}>
+          <OmpMcpServerGroupRow
+            group={group}
+            pending={pending}
+            onToggle={handleGroupToggle}
+          />
+          <View style={styles.mcpGroupChildren}>
+            <ToolRows rows={group.rows} pending={pending} onToggle={handleToolToggle} />
+          </View>
+        </View>
+      ))}
       {tools.isLoading ? (
         <Text style={styles.emptyTools}>{t("agentControls.omp.loadingTools")}</Text>
       ) : null}
     </AdaptiveModalSheet>
+  );
+}
+
+function OmpAccessControl({
+  serverId,
+  agentId,
+  showLabel,
+  disabled,
+  onClose,
+}: {
+  serverId?: string | null;
+  agentId?: string | null;
+  showLabel: boolean;
+  disabled?: boolean;
+  onClose?: () => void;
+}) {
+  const { t } = useTranslation();
+  const { presentation } = useComposerControlLayout();
+  const settingsQuery = useOmpSettings(serverId ?? null, agentId ?? null);
+  const settingSetter = useOmpSettingSetter(serverId ?? null, agentId ?? null);
+  const anchorRef = useRef<View>(null);
+  const openRef = useRef(false);
+  const [open, setOpen] = useState(false);
+  const [pendingMode, setPendingMode] = useState<OmpApprovalMode | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const approvalEntry = useMemo(() => {
+    return settingsQuery.settings.find(
+      (entry) => entry.path === OMP_APPROVAL_MODE_PATH,
+    );
+  }, [settingsQuery.settings]);
+  const currentMode: OmpApprovalMode = approvalEntry
+    ? resolveOmpApprovalModeId(approvalEntry.value)
+    : "yolo";
+  const optionById = useMemo(() => {
+    const record: Partial<Record<OmpApprovalMode, (typeof OMP_APPROVAL_MODE_OPTIONS)[number]>> = {};
+    for (const option of OMP_APPROVAL_MODE_OPTIONS) {
+      record[option.id] = option;
+    }
+    return record;
+  }, []);
+  const options: ComboboxOption[] = useMemo(
+    () =>
+      OMP_APPROVAL_MODE_OPTIONS.map((option) => ({
+        id: option.id,
+        label: t(option.labelKey),
+      })),
+    [t],
+  );
+  const currentLabel = options.find((option) => option.id === currentMode)?.label
+    ?? t("agentControls.access.unknown");
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      const wasOpen = openRef.current;
+      openRef.current = nextOpen;
+      setOpen(nextOpen);
+      if (!nextOpen) {
+        if (wasOpen) onClose?.();
+      }
+    },
+    [onClose],
+  );
+  const handlePress = useCallback(() => handleOpenChange(!open), [handleOpenChange, open]);
+  const handleSelect = useCallback(
+    async (id: string) => {
+      if (id === currentMode) {
+        handleOpenChange(false);
+        return;
+      }
+      const option = optionById[id as OmpApprovalMode];
+      if (!option) {
+        handleOpenChange(false);
+        return;
+      }
+      setPendingMode(option.id);
+      setError(null);
+      try {
+        await settingSetter.setSetting({
+          path: OMP_APPROVAL_MODE_PATH,
+          value: option.id,
+        });
+        handleOpenChange(false);
+      } catch (cause) {
+        setError(toErrorMessage(cause));
+      } finally {
+        setPendingMode(null);
+      }
+    },
+    [currentMode, handleOpenChange, optionById, settingSetter],
+  );
+  const renderOption = useCallback(
+    (renderProps: {
+      option: ComboboxOption;
+      selected: boolean;
+      active: boolean;
+      onPress: () => void;
+    }) => (
+      <ComboboxItem
+        label={renderProps.option.label}
+        selected={renderProps.selected}
+        active={renderProps.active}
+        onPress={renderProps.onPress}
+      />
+    ),
+    [],
+  );
+  const sheetHeader = useMemo<SheetHeader>(
+    () => ({
+      title: t("agentControls.access.title"),
+      search: {
+        onChange: () => {},
+        placeholder: t("agentControls.access.searchPlaceholder"),
+        testID: "omp-access-search",
+      },
+    }),
+    [t],
+  );
+  const triggerLabel = showLabel ? t("agentControls.access.title") : currentLabel;
+  const triggerValue = currentLabel;
+  const isDisabled = Boolean(disabled || settingsQuery.isLoading);
+  const isPending = pendingMode !== null || settingSetter.isPending;
+  return (
+    <>
+      <ControlChip
+        ref={anchorRef}
+        icon={Shield}
+        label={triggerLabel}
+        value={triggerValue}
+        accessibilityLabel={t("agentControls.access.selectWithValue", {
+          value: currentLabel,
+        })}
+        onPress={handlePress}
+        showLabel={showLabel}
+        selected={open}
+        open={open}
+        showCaret={presentation.showCarets}
+        disabled={isDisabled}
+        testID="omp-access-control"
+      />
+      <Combobox
+        options={options}
+        value={currentMode}
+        onSelect={(id) => void handleSelect(id)}
+        open={open}
+        onOpenChange={handleOpenChange}
+        anchorRef={anchorRef}
+        desktopPlacement="top-start"
+        desktopMinWidth={240}
+        header={sheetHeader}
+        renderOption={renderOption}
+      />
+      {isPending ? <ThemedLoadingSpinner /> : null}
+      {error ? (
+        <Text accessibilityRole="alert" style={styles.inlineError}>
+          {error}
+        </Text>
+      ) : null}
+    </>
   );
 }
 
@@ -599,13 +1017,15 @@ export function OmpControlDeck({
   thinkingOptions,
   selectedThinkingId,
   onSelectThinking,
-  access,
+  access: _access,
   features,
   onSetFeature,
   vibe,
   tools,
   disabled = false,
   onDropdownClose,
+  serverId,
+  agentId,
 }: OmpControlDeckProps) {
   const { t } = useTranslation();
   const { presentation } = useComposerControlLayout();
@@ -650,7 +1070,7 @@ export function OmpControlDeck({
     : `${t("agentControls.omp.openTools")}. ${toolCountLabel}`;
   return (
     <View style={styles.deck} onLayout={onLayout} testID="omp-control-deck">
-      <OmpModeControl vibe={vibe} />
+      <OmpModeControl vibe={vibe} serverId={serverId} agentId={agentId} />
       <View style={styles.modelSlot}>{modelSelector}</View>
       <OmpThinkingControl
         options={thinkingOptions}
@@ -660,7 +1080,13 @@ export function OmpControlDeck({
         disabled={disabled}
       />
       <View style={styles.accessSlot}>
-        <AgentModeControl {...access} surface="toolbar" onClose={onDropdownClose} />
+        <OmpAccessControl
+          serverId={serverId}
+          agentId={agentId}
+          showLabel={visibility.access}
+          disabled={disabled}
+          onClose={onDropdownClose}
+        />
       </View>
       <ControlChip
         icon={Wrench}
@@ -692,6 +1118,8 @@ export function OmpControlDeck({
         onClose={closeSheet}
         features={features}
         onSetFeature={onSetFeature}
+        serverId={serverId ?? null}
+        agentId={agentId ?? null}
       />
       <OmpToolsSheet visible={activeSheet === "tools"} onClose={closeSheet} tools={tools} />
     </View>
@@ -714,9 +1142,16 @@ const styles = StyleSheet.create((theme) => ({
     flexShrink: 0,
   },
   modeSegments: {
-    width: 200,
+    width: 440,
     flexDirection: "row",
     gap: theme.spacing[1],
+  },
+  modeSegmentSlot: {
+    minWidth: 76,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[1],
+    flexShrink: 0,
   },
   modelSlot: {
     minWidth: 0,
@@ -831,6 +1266,20 @@ const styles = StyleSheet.create((theme) => ({
   requiredBadge: {
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.sm,
+  },
+  mcpServerRow: {
+    minHeight: 64,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[3],
+    paddingVertical: theme.spacing[2],
+    paddingHorizontal: theme.spacing[2],
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.surface2,
+  },
+  mcpGroupChildren: {
+    paddingLeft: theme.spacing[4],
+    gap: theme.spacing[1],
   },
   sheetError: {
     color: theme.colors.statusDanger,

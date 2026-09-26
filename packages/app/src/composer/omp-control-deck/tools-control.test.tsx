@@ -1,7 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
-import React from "react";
+import React, { type ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AgentToolDefinition } from "@ohmypcode/protocol/agent-types";
@@ -12,6 +13,7 @@ vi.mock("react-i18next", () => ({
     t: (key: string, params?: Record<string, unknown>) =>
       params && params.count !== undefined ? `${key}(${params.count})` : key,
   }),
+  initReactI18next: { type: "3rdParty", init: () => undefined } as never,
 }));
 vi.mock("@/components/adaptive-modal-sheet", () => ({
   AdaptiveModalSheet: ({
@@ -33,32 +35,98 @@ vi.mock("@/composer/agent-controls/mode-control", () => ({
 }));
 vi.mock("lucide-react-native", () => {
   const MockIcon = () => null;
-  return {
-    BookOpen: MockIcon,
-    Bot: MockIcon,
-    Brain: MockIcon,
-    ChevronDown: MockIcon,
-    Compass: MockIcon,
-    Expand: MockIcon,
-    Feather: MockIcon,
-    Footprints: MockIcon,
-    ListTodo: MockIcon,
-    Map: MockIcon,
-    Monitor: MockIcon,
-    Settings2: MockIcon,
-    Shield: MockIcon,
-    ShieldAlert: MockIcon,
-    ShieldCheck: MockIcon,
-    ShieldEllipsis: MockIcon,
-    ShieldOff: MockIcon,
-    ShieldPlus: MockIcon,
-    ShieldQuestionMark: MockIcon,
-    Sparkles: MockIcon,
-    Turtle: MockIcon,
-    UserCheck: MockIcon,
-    Wrench: MockIcon,
-    Zap: MockIcon,
-  };
+  const mock: Record<string, unknown> = {};
+  // Cover every icon name the deck (and any transitive icon import the
+  // sibling controls add in the future) consumes. The lucide-react-native
+  // package exports hundreds of icons, so we stub them all as the same
+  // no-op component.
+  for (const key of [
+    "Activity",
+    "AlertCircle",
+    "AlertTriangle",
+    "Archive",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowLeftToLine",
+    "ArrowUp",
+    "ArrowUpRight",
+    "BarChart3",
+    "Blocks",
+    "BookOpen",
+    "Bot",
+    "Brain",
+    "CalendarClock",
+    "Check",
+    "CheckCircle",
+    "CheckCircle2",
+    "ChevronDown",
+    "ChevronLeft",
+    "ChevronRight",
+    "ChevronUp",
+    "Circle",
+    "CircleAlert",
+    "CircleHelp",
+    "Clock3",
+    "Compass",
+    "Copy",
+    "CornerDownLeft",
+    "Eye",
+    "EyeOff",
+    "Expand",
+    "Feather",
+    "File",
+    "FilePlus",
+    "FileText",
+    "Folder",
+    "FolderPlus",
+    "Footprints",
+    "Gift",
+    "GitBranch",
+    "History",
+    "Info",
+    "Keyboard",
+    "Link2",
+    "ListTodo",
+    "Map",
+    "MessageSquarePlus",
+    "Mic",
+    "MicOff",
+    "Monitor",
+    "MoreHorizontal",
+    "MoreVertical",
+    "Network",
+    "PackagePlus",
+    "Pencil",
+    "Plus",
+    "RotateCw",
+    "Search",
+    "Settings",
+    "Settings2",
+    "Shield",
+    "ShieldAlert",
+    "ShieldCheck",
+    "ShieldEllipsis",
+    "ShieldOff",
+    "ShieldPlus",
+    "ShieldQuestionMark",
+    "Sparkles",
+    "Square",
+    "SquareTerminal",
+    "Terminal",
+    "Trash2",
+    "TriangleAlert",
+    "Turtle",
+    "Unlink",
+    "UserCheck",
+    "Users",
+    "Wrench",
+    "X",
+    "XCircle",
+    "Zap",
+  ]) {
+    mock[key] = MockIcon;
+  }
+  return mock;
 });
 vi.mock("@/utils/tool-call-icon", () => ({
   resolveToolCallIcon: () => () => null,
@@ -92,16 +160,22 @@ const VIBE_PROPS = {
 };
 
 function renderDeck(controls: OmpToolControls) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const wrap = (children: ReactNode) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
   return render(
-    <OmpControlDeck
-      source="draft"
-      modelSelector={MODEL_SELECTOR}
-      thinkingOptions={EMPTY_THINKING_OPTIONS}
-      onSelectThinking={NOOP_THINKING}
-      access={ACCESS_PROPS}
-      vibe={VIBE_PROPS}
-      tools={controls}
-    />,
+    wrap(
+      <OmpControlDeck
+        source="draft"
+        modelSelector={MODEL_SELECTOR}
+        thinkingOptions={EMPTY_THINKING_OPTIONS}
+        onSelectThinking={NOOP_THINKING}
+        access={ACCESS_PROPS}
+        vibe={VIBE_PROPS}
+        tools={controls}
+      />,
+    ),
   );
 }
 
@@ -173,5 +247,142 @@ describe("OMP control deck tools control", () => {
     fireEvent.click(toolsControl(container));
 
     expect(queryByTestId("omp-tools-sheet")).toBeNull();
+  });
+});
+
+describe("OMP control deck MCP server grouping", () => {
+  const nativeTool: AgentToolDefinition = {
+    name: "read",
+    label: "Read",
+    description: "Read files",
+    source: "native",
+    enabled: true,
+    required: false,
+  };
+  const fsRead: AgentToolDefinition = {
+    name: "mcp__fs_read",
+    label: "fs/read",
+    description: "Read via fs server",
+    source: "mcp",
+    enabled: true,
+    required: false,
+  };
+  const fsWrite: AgentToolDefinition = {
+    name: "mcp__fs_write",
+    label: "fs/write",
+    description: "Write via fs server",
+    source: "mcp",
+    enabled: false,
+    required: false,
+  };
+  const githubList: AgentToolDefinition = {
+    name: "mcp__github_list_prs",
+    label: "github/list_prs",
+    description: "List PRs via github",
+    source: "mcp",
+    enabled: true,
+    required: false,
+  };
+  const requiredMcpTool: AgentToolDefinition = {
+    name: "mcp__fs_required",
+    label: "fs/required",
+    description: "Required fs tool",
+    source: "mcp",
+    enabled: true,
+    required: true,
+  };
+
+  function openSheet(container: HTMLElement): HTMLElement {
+    fireEvent.click(toolsControl(container));
+    const sheet = container.querySelector<HTMLElement>('[data-testid="omp-tools-sheet"]');
+    if (!sheet) throw new Error("tools sheet did not open");
+    return sheet;
+  }
+
+  it("renders one grouped switch per MCP server while leaving native tools flat", () => {
+    const rows: AgentToolDefinition[] = [nativeTool, fsRead, fsWrite, githubList];
+    const { container } = renderDeck({
+      rows,
+      canUse: true,
+      list: async () => rows,
+      set: async () => rows,
+    });
+
+    const sheet = openSheet(container);
+    expect(sheet.querySelector('[data-testid="omp-mcp-server-fs"]')).not.toBeNull();
+    expect(sheet.querySelector('[data-testid="omp-mcp-server-github"]')).not.toBeNull();
+    expect(sheet.querySelector('[data-testid="omp-mcp-group-fs"]')).not.toBeNull();
+    expect(sheet.querySelector('[data-testid="omp-mcp-group-github"]')).not.toBeNull();
+    // Native row still renders without an MCP wrapper.
+    expect(container.textContent).toContain("Read");
+  });
+
+  it("toggles every tool in the server group via a single authoritative commit", async () => {
+    const initialRows: AgentToolDefinition[] = [fsRead, fsWrite];
+    const setCalls: string[][] = [];
+    const { container } = renderDeck({
+      rows: initialRows,
+      canUse: true,
+      list: async () => initialRows,
+      set: async (next) => {
+        setCalls.push(next);
+        return initialRows.map((tool) => ({
+          ...tool,
+          enabled: next.includes(tool.name),
+        }));
+      },
+    });
+
+    const sheet = openSheet(container);
+    const serverRow = sheet.querySelector<HTMLElement>(
+      '[data-testid="omp-mcp-server-fs"]',
+    );
+    if (!serverRow) throw new Error("fs server row missing");
+
+    fireEvent.click(serverRow);
+
+    const { promise, resolve } = Promise.withResolvers<void>();
+    setImmediate(resolve);
+    await promise;
+    expect(setCalls).toHaveLength(1);
+    // The single commit must include every tool from the group.
+    expect(setCalls[0]?.sort()).toEqual(["mcp__fs_read", "mcp__fs_write"]);
+  });
+
+  it("disables the grouped switch when every tool in the server is required", () => {
+    const rows: AgentToolDefinition[] = [requiredMcpTool];
+    const { container } = renderDeck({
+      rows,
+      canUse: true,
+      list: async () => rows,
+      set: async () => rows,
+    });
+
+    const sheet = openSheet(container);
+    const serverRow = sheet.querySelector<HTMLElement>(
+      '[data-testid="omp-mcp-server-fs"]',
+    );
+    if (!serverRow) throw new Error("fs server row missing");
+    expect(serverRow.getAttribute("aria-disabled")).toBe("true");
+    // The required tool's individual row is also locked, so the existing
+    // required-entry behavior is preserved.
+    expect(sheet.textContent).toContain("agentControls.omp.required");
+  });
+
+  it("leaves the grouped switch interactive when only some tools in the server are required", () => {
+    const rows: AgentToolDefinition[] = [fsRead, requiredMcpTool];
+    const { container } = renderDeck({
+      rows,
+      canUse: true,
+      list: async () => rows,
+      set: async () => rows,
+    });
+
+    const sheet = openSheet(container);
+    const serverRow = sheet.querySelector<HTMLElement>(
+      '[data-testid="omp-mcp-server-fs"]',
+    );
+    if (!serverRow) throw new Error("fs server row missing");
+    expect(serverRow.getAttribute("aria-disabled")).not.toBe("true");
   });
 });
