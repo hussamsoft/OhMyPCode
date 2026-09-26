@@ -28,7 +28,7 @@ import { useRetainedPanelActive } from "@/components/retained-panel";
 import { RetainedChatContent } from "./retained-chat-content";
 import { OmpHookWidget } from "@/omp-ui/hook-widget/hook-widget";
 import { useOmpHook } from "@/omp-ui/hook-widget/use-omp-hook";
-import { OmpStatusBar } from "@/omp-ui/status-bar/omp-status-bar";
+import { OmpStatusBar, type OmpStatusBarData } from "@/omp-ui/status-bar/omp-status-bar";
 import { OmpTodoRail } from "@/omp-ui/todo-rail";
 import { Composer } from "@/composer";
 import { useWorkspaceHasDiffStat } from "@/composer/workspace-diff-stat";
@@ -1292,25 +1292,36 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   // sit above the composer, full width. Wrapping the existing composer
   // section keeps ComposerDock's `[content, composer, overlay]` shape
   // intact (the dock renders the slot, not arbitrary children).
-  const statusBarData = showPersistentChrome
-    ? {
-        preset: "compact" as const,
-        modelLabel: agentModel,
-        path: cwd || null,
-        currentBranch: currentBranchName,
-        pullRequestNumber,
-        lastUsage: agentLastUsage ?? null,
-        sessionName: agentTitle,
-        subagentCount: subagentRows.length,
-        modeLabel: agentCurrentModeId,
-      }
-    : null;
+  const statusBarData = useMemo(
+    () =>
+      showPersistentChrome
+        ? {
+            preset: "compact" as const,
+            modelLabel: agentModel,
+            path: cwd || null,
+            currentBranch: currentBranchName,
+            pullRequestNumber,
+            lastUsage: agentLastUsage ?? null,
+            sessionName: agentTitle,
+            subagentCount: subagentRows.length,
+            modeLabel: agentCurrentModeId,
+          }
+        : null,
+    [
+      showPersistentChrome,
+      agentModel,
+      cwd,
+      currentBranchName,
+      pullRequestNumber,
+      agentLastUsage,
+      agentTitle,
+      subagentRows.length,
+      agentCurrentModeId,
+    ],
+  );
   const composerChromeOverlay =
     showPersistentChrome && statusBarData ? (
-      <View style={styles.composerChromeOverlay} testID="agent-composer-chrome">
-        <OmpStatusBar data={statusBarData} />
-        <OmpHookWidget agentId={agentId} placement="aboveEditor" />
-      </View>
+      <AgentComposerChromeOverlay agentId={agentId} statusBarData={statusBarData} />
     ) : null;
   const belowEditorHook = showPersistentChrome ? (
     <OmpHookWidget agentId={agentId} placement="belowEditor" />
@@ -1318,33 +1329,21 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   const streamContent = (
     <View style={animatedStaticStyles.content}>
       <RenderProfile id={`AgentStreamSection:${agentId}`}>
-        <View style={styles.streamRow}>
-          <View style={styles.streamRowMain}>
-            <AgentStreamSection
-              streamViewRef={streamViewRef}
-              serverId={serverId}
-              workspaceId={workspaceId}
-              agentId={agentId}
-              agent={effectiveAgent}
-              routeBottomAnchorRequest={routeBottomAnchorRequest}
-              hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
-              hasActiveComposer={hasActiveComposer}
-              hasVisibleAgentTracks={hasVisibleAgentTracks}
-              toast={toastApi}
-              onOpenWorkspaceFile={onOpenWorkspaceFile}
-            />
-          </View>
-          {showPersistentChrome && tasks && tasks.length > 0 ? (
-            <View style={styles.streamRowTodo}>
-              <OmpTodoRail
-                items={tasks.map((task) => ({
-                  text: task.text,
-                  status: task.status ?? (task.completed ? "completed" : "pending"),
-                }))}
-              />
-            </View>
-          ) : null}
-        </View>
+        <AgentStreamRow
+          streamViewRef={streamViewRef}
+          serverId={serverId}
+          workspaceId={workspaceId}
+          agentId={agentId}
+          agent={effectiveAgent}
+          routeBottomAnchorRequest={routeBottomAnchorRequest}
+          hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
+          hasActiveComposer={hasActiveComposer}
+          hasVisibleAgentTracks={hasVisibleAgentTracks}
+          toast={toastApi}
+          onOpenWorkspaceFile={onOpenWorkspaceFile}
+          showTodoRail={showPersistentChrome}
+          tasks={tasks}
+        />
       </RenderProfile>
       {hasActiveComposer ? (
         <AgentTracks
@@ -1415,6 +1414,21 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   );
 });
 
+function AgentComposerChromeOverlay({
+  agentId,
+  statusBarData,
+}: {
+  agentId: string;
+  statusBarData: OmpStatusBarData;
+}) {
+  return (
+    <View style={styles.composerChromeOverlay} testID="agent-composer-chrome">
+      <OmpStatusBar data={statusBarData} />
+      <OmpHookWidget agentId={agentId} placement="aboveEditor" />
+    </View>
+  );
+}
+
 function ChatSurface({
   children,
   disabled,
@@ -1442,6 +1456,66 @@ function ChatSurface({
         {overlay}
       </ComposerDock>
     </FileDropZone>
+  );
+}
+
+function AgentStreamRow({
+  streamViewRef,
+  serverId,
+  workspaceId,
+  agentId,
+  agent,
+  routeBottomAnchorRequest,
+  hasAppliedAuthoritativeHistory,
+  hasActiveComposer,
+  hasVisibleAgentTracks,
+  toast,
+  onOpenWorkspaceFile,
+  showTodoRail,
+  tasks,
+}: {
+  streamViewRef: React.RefObject<AgentStreamViewHandle | null>;
+  serverId: string;
+  workspaceId: string;
+  agentId?: string;
+  agent: AgentScreenAgent;
+  routeBottomAnchorRequest: RouteBottomAnchorRequest;
+  hasAppliedAuthoritativeHistory: boolean;
+  hasActiveComposer: boolean;
+  hasVisibleAgentTracks: boolean;
+  toast: ReturnType<typeof useToastHost>["api"];
+  onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
+  showTodoRail: boolean;
+  tasks: TodoEntry[] | undefined;
+}) {
+  return (
+    <View style={styles.streamRow}>
+      <View style={styles.streamRowMain}>
+        <AgentStreamSection
+          streamViewRef={streamViewRef}
+          serverId={serverId}
+          workspaceId={workspaceId}
+          agentId={agentId}
+          agent={agent}
+          routeBottomAnchorRequest={routeBottomAnchorRequest}
+          hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
+          hasActiveComposer={hasActiveComposer}
+          hasVisibleAgentTracks={hasVisibleAgentTracks}
+          toast={toast}
+          onOpenWorkspaceFile={onOpenWorkspaceFile}
+        />
+      </View>
+      {showTodoRail && tasks && tasks.length > 0 ? (
+        <View style={styles.streamRowTodo}>
+          <OmpTodoRail
+            items={tasks.map((task) => ({
+              text: task.text,
+              status: task.status ?? (task.completed ? "completed" : "pending"),
+            }))}
+          />
+        </View>
+      ) : null}
+    </View>
   );
 }
 
