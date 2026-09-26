@@ -42,6 +42,7 @@ export default defineConfig({
             screenshotDirectory: ".vitest-screenshots",
           },
           globalSetup: path.resolve(__dirname, "src/runtime/websocket-test-global-setup.ts"),
+          setupFiles: [path.resolve(__dirname, "vitest.browser.setup.ts")],
         },
       },
     ],

@@ -136,6 +136,12 @@ function SegmentItem<T extends string>({
   const handleKeyDown = useCallback(
     (event: { nativeEvent: { key: string }; preventDefault(): void; stopPropagation(): void }) => {
       if (option.disabled) return;
+      if (event.nativeEvent.key === "Enter" || event.nativeEvent.key === " ") {
+        event.preventDefault();
+        event.stopPropagation();
+        handlePress();
+        return;
+      }
       let nextIndex: number | null = null;
       if (event.nativeEvent.key === "ArrowRight" || event.nativeEvent.key === "ArrowDown") {
         nextIndex = (optionIndex + 1) % options.length;
@@ -148,7 +154,7 @@ function SegmentItem<T extends string>({
       const next = options[nextIndex];
       if (next && !next.disabled) onValueChange(next.value);
     },
-    [onValueChange, option.disabled, optionIndex, options],
+    [handlePress, onValueChange, option.disabled, optionIndex, options],
   );
   const pressableStyle = useCallback(
     ({
@@ -170,10 +176,15 @@ function SegmentItem<T extends string>({
     () => ({ checked: isSelected, disabled: option.disabled }),
     [isSelected, option.disabled],
   );
-  // `aria-checked` and `onKeyDown` exist only in react-native-web. Passing them
-  // unconditionally does not typecheck against RN's Pressable, and a native build
-  // has no DOM to deliver them, so they are spread in on web alone.
-  const webOnlyProps = isWeb ? { "aria-checked": isSelected, onKeyDown: handleKeyDown } : undefined;
+  // `aria-checked`, `onKeyDown`, and the roving `tabIndex` exist only in
+  // react-native-web. Passing them unconditionally does not typecheck against
+  // RN's Pressable, and a native build has no DOM to deliver them, so they are
+  // spread in on web alone. Roving tabindex: only the checked segment is a Tab
+  // stop; arrow keys (handleKeyDown above) move selection within the group.
+  const rovingTabIndex: -1 | 0 = isSelected ? 0 : -1;
+  const webOnlyProps = isWeb
+    ? { "aria-checked": isSelected, onKeyDown: handleKeyDown, tabIndex: rovingTabIndex }
+    : undefined;
   return (
     <Pressable
       accessibilityLabel={option.label}
