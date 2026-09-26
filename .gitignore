@@ -4,6 +4,8 @@ node_modules/
 # Build outputs
 build/
 dist/
+packages/desktop/release/
+.vitest-attachments/
 .next/
 out/
 result

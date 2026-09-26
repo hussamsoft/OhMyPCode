@@ -20,9 +20,15 @@ const ompLogoColorMapping = (theme: Theme) => ({
   surface0: theme.colors.surface0,
 });
 
+// The mark's natural proportions (a wide "IDE window" glyph) are 4:3, but
+// every call site treats `size` as a square footprint -- matching the
+// PaseoLogo API it replaced. `preserveAspectRatio` centers and scales the
+// 120x90 shape to fit inside a size x size viewport without distortion,
+// so a mask/container built around `{ width: size, height: size }` always
+// fully covers the rendered mark (no bottom-quarter gap).
 function ThemedOmpLogo({ size = 64, foreground, accent, surface0 }: ThemedOmpLogoProps) {
   return (
-    <Svg width={size} height={size * 0.75} viewBox="0 0 120 90">
+    <Svg width={size} height={size} viewBox="0 0 120 90" preserveAspectRatio="xMidYMid meet">
       <Rect x="10" y="8" width="100" height="12" rx="2" fill={foreground} />
       <Rect x="25" y="20" width="12" height="62" rx="2" fill={foreground} />
       <Rect x="75" y="20" width="12" height="45" rx="2" fill={foreground} />
@@ -45,7 +51,7 @@ const ThemedOmpLogoIcon = withUnistyles(ThemedOmpLogo);
 export function OmpLogo({ size = 64, color }: OmpLogoProps) {
   if (color !== undefined)
     return (
-      <Svg width={size} height={size * 0.75} viewBox="0 0 120 90">
+      <Svg width={size} height={size} viewBox="0 0 120 90" preserveAspectRatio="xMidYMid meet">
         <Rect x="10" y="8" width="100" height="12" rx="2" fill={color} />
         <Rect x="25" y="20" width="12" height="62" rx="2" fill={color} />
         <Rect x="75" y="20" width="12" height="45" rx="2" fill={color} />

@@ -1928,7 +1928,7 @@ export const en = {
   serviceUrl: {
     title: "Open service URL",
     message: "Open {{url}}?",
-    inPaseo: "In OhMyPCode",
+    inApp: "In OhMyPCode",
     externalBrowser: "External browser",
     dontAskAgain: "Don't ask again",
   },

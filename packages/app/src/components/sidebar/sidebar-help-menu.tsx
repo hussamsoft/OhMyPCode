@@ -25,7 +25,7 @@ import { formatVersionWithPrefix } from "@/desktop/updates/desktop-updates";
 import { resolveAppVersion } from "@/utils/app-version";
 import { openChangelog } from "@/changelog";
 import { openExternalUrl } from "@/utils/open-external-url";
-import { PRODUCT_ISSUE_URL, PRODUCT_REPO_URL } from "@/constants/product";
+import { PRODUCT_ISSUE_URL, PRODUCT_NAME, PRODUCT_REPO_URL } from "@/constants/product";
 
 const GITHUB_REPO_URL = PRODUCT_REPO_URL;
 const GITHUB_ISSUE_URL = `${PRODUCT_ISSUE_URL}/new`;
@@ -165,7 +165,7 @@ export function SidebarHelpMenu() {
             trailing={version}
             testID="sidebar-help-version"
           >
-            {t("sidebar.help.appName")}
+            {PRODUCT_NAME}
           </DropdownMenuHint>
           {hosts.map((host) => (
             <HostVersionHint key={host.serverId} host={host} />

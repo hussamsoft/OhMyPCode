@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { execCommand } from "@getpaseo/server/process";
-import { isOmpRuntimeAvailable, resolveOmpCommand } from "@getpaseo/server/omp-command";
+import { isOmpRuntimeAvailable } from "@getpaseo/server/omp-command";
 import { resolveBundledOmpPath } from "./runtime-paths.js";
 
 export interface OmpRuntimeStatus {
@@ -34,7 +34,7 @@ interface OmpRuntimeManifest {
   sourceCommit: string;
 }
 
-function parseManifest(manifestPath: string): OmpRuntimeManifest | null {
+export function parseManifest(manifestPath: string): OmpRuntimeManifest | null {
   if (!existsSync(manifestPath)) return null;
   try {
     const raw = JSON.parse(readFileSync(manifestPath, "utf-8")) as Record<string, unknown>;
@@ -47,7 +47,7 @@ function parseManifest(manifestPath: string): OmpRuntimeManifest | null {
 
 /** `omp --version` prints `omp/<version>`; strip the prefix for comparison
  * against manifest.json's bare `ompVersion` field. */
-function parseProbedVersion(stdout: string): string | null {
+export function parseProbedVersion(stdout: string): string | null {
   const trimmed = stdout.trim();
   if (!trimmed) return null;
   const match = /^omp\/(.+)$/.exec(trimmed);
@@ -87,7 +87,13 @@ export async function resolveOmpRuntimeStatus(): Promise<OmpRuntimeStatus> {
     return UNAVAILABLE_STATUS;
   }
 
-  const liveProbedVersion = await probeOmpVersion(resolveOmpCommand());
+  // No bundled runtime, so this is deliberately not resolveOmpCommand():
+  // OMP_COMMAND is only ever set on the spawned daemon's child env, never
+  // on this (Electron main) process's own process.env, and there is no
+  // bundled path here for it to plausibly override anyway. Probe whatever
+  // "omp" resolves to on PATH, which is exactly what isOmpRuntimeAvailable()
+  // above just confirmed exists.
+  const liveProbedVersion = await probeOmpVersion("omp");
   return {
     kind: "system",
     ompVersion: liveProbedVersion,
