@@ -1,10 +1,10 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_DESKTOP_SETTINGS } from "../settings/desktop-settings";
-import { createDaemonCommandHandlers } from "./daemon-manager";
+import { createDaemonCommandHandlers, seedDaemonConfigFromPackagedDefault } from "./daemon-manager";
 
 const mocks = vi.hoisted(() => ({
   paseoHome: "",
@@ -27,13 +27,16 @@ const mocks = vi.hoisted(() => ({
   logError: vi.fn(),
   appLogPath: "",
   getElectronLogFile: vi.fn(),
+  isPackaged: true,
 }));
 
 vi.mock("electron", () => ({
   app: {
     getPath: vi.fn(() => mocks.paseoHome),
     getVersion: vi.fn(() => "1.2.3"),
-    isPackaged: true,
+    get isPackaged() {
+      return mocks.isPackaged;
+    },
   },
   ipcMain: { handle: vi.fn() },
   powerMonitor: { getSystemIdleTime: vi.fn(() => 0) },
@@ -51,10 +54,17 @@ vi.mock("electron-log/main", () => ({
   },
 }));
 
-vi.mock("@getpaseo/server/daemon-control", () => ({
-  resolvePaseoHome: vi.fn(() => mocks.paseoHome),
-  spawnProcess: mocks.spawnProcess,
-}));
+vi.mock("@getpaseo/server/daemon-control", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@getpaseo/server/daemon-control")>();
+  return {
+    resolvePaseoHome: vi.fn(() => mocks.paseoHome),
+    spawnProcess: mocks.spawnProcess,
+    // Real: this is the function under test in the "seeds a fresh home"
+    // case below, and it needs the real schema validation + atomic
+    // private-file write, not a stub.
+    seedPersistedConfigIfAbsent: actual.seedPersistedConfigIfAbsent,
+  };
+});
 
 vi.mock("../settings/desktop-settings-electron.js", () => ({
   getDesktopSettingsStore: () => ({
@@ -94,6 +104,7 @@ describe("daemon-manager commands", () => {
     mocks.logError.mockReset();
     mocks.getElectronLogFile.mockReset();
     mocks.getElectronLogFile.mockReturnValue({ path: mocks.appLogPath });
+    mocks.isPackaged = true;
   });
 
   afterEach(() => {
@@ -122,5 +133,28 @@ describe("daemon-manager commands", () => {
       platform: process.platform,
       currentVersion: "1.2.3",
     });
+  });
+
+  it("seeds a fresh home from the real packaged default config, enabling omp", () => {
+    // isPackaged: false exercises the dev-relative path resolution branch
+    // (the one this test runs under); resolveDefaultConfigPath's packaged
+    // branch (process.resourcesPath) isn't reachable outside a built app
+    // and is covered by its symmetry with resolveBundledOmpPath, which
+    // runtime-paths.test.ts already verifies for both branches.
+    mocks.isPackaged = false;
+    seedDaemonConfigFromPackagedDefault(mocks.paseoHome);
+
+    const seeded = JSON.parse(readFileSync(path.join(mocks.paseoHome, "config.json"), "utf-8"));
+    expect(seeded.agents.providers.omp).toMatchObject({ enabled: true });
+  });
+
+  it("never overwrites an existing config.json when seeding", () => {
+    mocks.isPackaged = false;
+    seedDaemonConfigFromPackagedDefault(mocks.paseoHome);
+    const firstWrite = readFileSync(path.join(mocks.paseoHome, "config.json"), "utf-8");
+
+    seedDaemonConfigFromPackagedDefault(mocks.paseoHome);
+    const secondRead = readFileSync(path.join(mocks.paseoHome, "config.json"), "utf-8");
+    expect(secondRead).toBe(firstWrite);
   });
 });

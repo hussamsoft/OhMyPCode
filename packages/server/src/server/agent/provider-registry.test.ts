@@ -979,6 +979,9 @@ test("enabled: false keeps provider metadata in registry", () => {
       claude: {
         enabled: false,
       },
+      codex: {
+        enabled: true,
+      },
     },
   });
 
@@ -992,7 +995,7 @@ test("enabled: false keeps provider metadata in registry", () => {
   expect(registry.claude.modes).toEqual(
     AGENT_PROVIDER_DEFINITIONS.find((definition) => definition.id === "claude")?.modes,
   );
-  expect(registry.codex.enabled).toBe(false);
+  expect(registry.codex.enabled).toBe(true);
 });
 
 test("enabled: false still produces a client (enabled gate is enforced elsewhere)", () => {

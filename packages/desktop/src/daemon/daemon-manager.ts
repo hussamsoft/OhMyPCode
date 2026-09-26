@@ -1,9 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { app, ipcMain, powerMonitor } from "electron";
 import log from "electron-log/main";
 import {
   resolvePaseoHome,
+  seedPersistedConfigIfAbsent,
   startDaemonInstance,
   DaemonInstanceError,
   stopDaemonInstance,
@@ -277,12 +278,11 @@ function assertBuiltInDaemonManagementEnabled(settings: DesktopSettings): void {
  * The packaged desktop build's opt-in defaults (currently: enable the `omp`
  * provider -- every built-in provider defaults to disabled in
  * provider-manifest.ts, and this is the only place that turns it on for a
- * fresh install). Copied into `<home>/config.json` the first time the daemon
- * starts for this home; an existing config.json is never touched. The
- * daemon's own loader (persisted-config.ts's loadPersistedConfig) validates
- * whatever lands here on read, so this only needs to get the bytes there
- * before it runs -- the "config.json is absent" branch it would otherwise
- * take writes a seed with no provider opinion at all.
+ * fresh install). Read from the packaged/dev copy of
+ * ohmypcode/default-config.json and handed to seedPersistedConfigIfAbsent,
+ * which does the actual validation and 0600 atomic write -- the same
+ * private-file machinery loadPersistedConfig itself uses, single-sourced in
+ * the server package rather than duplicated here.
  */
 function resolveDefaultConfigPath(): string {
   return app.isPackaged
@@ -290,15 +290,11 @@ function resolveDefaultConfigPath(): string {
     : path.resolve(__dirname, "../../../..", "ohmypcode", "default-config.json");
 }
 
-function seedDaemonConfigFromPackagedDefault(home: string): void {
-  const configPath = path.join(home, "config.json");
-  if (existsSync(configPath)) return;
-
+export function seedDaemonConfigFromPackagedDefault(home: string): void {
   const defaultConfigPath = resolveDefaultConfigPath();
-  let contents: string;
+  let defaults: unknown;
   try {
-    contents = readFileSync(defaultConfigPath, "utf-8");
-    JSON.parse(contents);
+    defaults = JSON.parse(readFileSync(defaultConfigPath, "utf-8"));
   } catch (error) {
     logDesktopDaemonLifecycle("skipping default config seed: unreadable or invalid", {
       defaultConfigPath,
@@ -308,12 +304,10 @@ function seedDaemonConfigFromPackagedDefault(home: string): void {
   }
 
   try {
-    mkdirSync(home, { recursive: true });
-    writeFileSync(configPath, contents, { mode: 0o600 });
-    logDesktopDaemonLifecycle("seeded daemon config from packaged default", { configPath });
+    seedPersistedConfigIfAbsent(home, defaults);
   } catch (error) {
     logDesktopDaemonLifecycle("failed to seed daemon config", {
-      configPath,
+      home,
       error: error instanceof Error ? error.message : String(error),
     });
   }

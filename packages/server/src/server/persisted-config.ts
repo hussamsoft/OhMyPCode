@@ -459,6 +459,43 @@ export function loadPersistedConfig(paseoHome: string, logger?: LoggerLike): Per
   return result.data as PersistedConfig;
 }
 
+/**
+ * Writes `defaults` to `<paseoHome>/config.json` only if that file does not
+ * already exist -- an existing config is never touched. Mirrors
+ * `loadPersistedConfig`'s own seed-on-first-run write (same schema
+ * validation, same atomic 0600 write) so callers that need a *different*
+ * seed than `DEFAULT_PERSISTED_CONFIG` -- the desktop build shipping its own
+ * opt-in defaults, for instance -- don't have to reimplement the private-file
+ * write themselves. Call this before `loadPersistedConfig`/`createPaseoDaemon`
+ * so the daemon's own "config.json is absent" branch never runs.
+ */
+export function seedPersistedConfigIfAbsent(
+  paseoHome: string,
+  defaults: unknown,
+  logger?: LoggerLike,
+): void {
+  const log = getLogger(logger);
+  const configPath = getConfigPath(paseoHome);
+  if (existsSync(configPath)) return;
+
+  const parsed = PersistedConfigSchema.safeParse(defaults);
+  if (!parsed.success) {
+    const issues = parsed.error.issues
+      .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+      .join("\n");
+    log?.info(`[Config] Ignoring invalid seed defaults for ${configPath}:\n${issues}`);
+    return;
+  }
+
+  try {
+    writePrivateFileAtomicSync(configPath, JSON.stringify(parsed.data, null, 2) + "\n");
+    log?.info(`Seeded config file at ${configPath}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`[Config] Failed to seed ${configPath}: ${message}`, { cause: err });
+  }
+}
+
 /** Observe the file without initializing a home, identity, or default configuration. */
 export function readPersistedConfig(
   paseoHome: string,
