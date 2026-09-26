@@ -58,15 +58,18 @@ describe("editor target runtime", () => {
     ]);
   });
 
-  it("strips internal process-control env vars, including OHMYPCODE_DESKTOP_MANAGED, before spawning", async () => {
+  it("strips internal process-control env vars, both legacy and canonical names, before spawning", async () => {
     const records: SpawnRecord[] = [];
     const runtime = createEditorTargetRuntime({
       platform: "darwin",
       env: {
         PATH: "/usr/bin",
         PASEO_NODE_ENV: "production",
+        OMPCODE_NODE_ENV: "production",
         OHMYPCODE_DESKTOP_MANAGED: "1",
+        PASEO_DESKTOP_MANAGED: "1",
         PASEO_SUPERVISED: "1",
+        OMPCODE_SUPERVISED: "1",
         ELECTRON_RUN_AS_NODE: "1",
         ELECTRON_NO_ATTACH_CONSOLE: "1",
       },

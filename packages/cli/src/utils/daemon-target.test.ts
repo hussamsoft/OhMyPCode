@@ -30,7 +30,13 @@ test("OMPCODE_HOST is canonical; PASEO_HOST is a COMPAT(paseoEnv) fallback", () 
   ).toEqual({ kind: "endpoint", host: "canonical:12345" });
   expect(() =>
     selectDaemonTarget({}, { OHMYPCODE_HOME: "/tmp/a", OMPCODE_HOST: "unused:12345" }),
-  ).toThrow();
+  ).toThrow(/OHMYPCODE_HOME and OMPCODE_HOST are both set/);
+  expect(() =>
+    selectDaemonTarget({}, { PASEO_HOME: "/tmp/a", PASEO_HOST: "unused:12345" }),
+  ).toThrow(/PASEO_HOME and PASEO_HOST are both set/);
+  expect(() =>
+    selectDaemonTarget({}, { OHMYPCODE_HOME: "/tmp/a", PASEO_HOST: "unused:12345" }),
+  ).toThrow(/OHMYPCODE_HOME and PASEO_HOST are both set/);
 });
 
 test("local operations ignore routing environment but reject an explicit endpoint", () => {

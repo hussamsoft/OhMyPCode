@@ -5,8 +5,10 @@ export type DaemonTarget = { kind: "instance"; home: string } | { kind: "endpoin
 let warnedStalePaseoHost = false;
 
 // COMPAT(paseoEnv): remove after 2027-01-01.
-function resolveDaemonHostEnv(env: NodeJS.ProcessEnv): string | undefined {
-  if (env.OMPCODE_HOST !== undefined) return env.OMPCODE_HOST;
+function resolveDaemonHostEnv(
+  env: NodeJS.ProcessEnv,
+): { value: string; key: "OMPCODE_HOST" | "PASEO_HOST" } | undefined {
+  if (env.OMPCODE_HOST !== undefined) return { value: env.OMPCODE_HOST, key: "OMPCODE_HOST" };
   if (env.PASEO_HOST === undefined) return undefined;
   if (!warnedStalePaseoHost) {
     warnedStalePaseoHost = true;
@@ -16,7 +18,13 @@ function resolveDaemonHostEnv(env: NodeJS.ProcessEnv): string | undefined {
         "release.",
     );
   }
-  return env.PASEO_HOST;
+  return { value: env.PASEO_HOST, key: "PASEO_HOST" };
+}
+
+function resolveHomeEnvKey(env: NodeJS.ProcessEnv): "OHMYPCODE_HOME" | "PASEO_HOME" | undefined {
+  if (env.OHMYPCODE_HOME !== undefined) return "OHMYPCODE_HOME";
+  if (env.PASEO_HOME !== undefined) return "PASEO_HOME";
+  return undefined;
 }
 
 export function selectDaemonTarget(
@@ -48,12 +56,13 @@ export function selectDaemonTarget(
     return { kind: "instance", home: resolvePaseoHome({ OHMYPCODE_HOME: options.home }) };
   if (options.host !== undefined) return { kind: "endpoint", host: options.host };
   const hostEnv = resolveDaemonHostEnv(env);
-  if ((env.OHMYPCODE_HOME || env.PASEO_HOME) && hostEnv)
+  const homeEnvKey = resolveHomeEnvKey(env);
+  if (homeEnvKey && hostEnv)
     throw {
       code: "TARGET_AMBIGUOUS",
-      message: "OHMYPCODE_HOME and OMPCODE_HOST are both set. Choose --home or --host explicitly.",
+      message: `${homeEnvKey} and ${hostEnv.key} are both set. Choose --home or --host explicitly.`,
     };
-  if (hostEnv) return { kind: "endpoint", host: hostEnv };
+  if (hostEnv) return { kind: "endpoint", host: hostEnv.value };
   return {
     kind: "instance",
     home: resolvePaseoHome({ OHMYPCODE_HOME: env.OHMYPCODE_HOME, PASEO_HOME: env.PASEO_HOME }),
