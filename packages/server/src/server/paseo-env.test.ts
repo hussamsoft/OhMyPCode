@@ -129,5 +129,8 @@ describe("paseo env contract", () => {
     expect(
       resolvePaseoNodeEnv({ OMPCODE_NODE_ENV: "production", PASEO_NODE_ENV: "development" }),
     ).toBe("production");
+    expect(resolvePaseoNodeEnv({ OMPCODE_NODE_ENV: "", PASEO_NODE_ENV: "development" })).toBe(
+      "development",
+    );
   });
 });

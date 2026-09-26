@@ -155,6 +155,13 @@ console.log("=== CLI IPC Target Helpers ===\n");
       "legacy-secret",
       "PASEO_PASSWORD should still work as a COMPAT(paseoEnv) fallback",
     );
+
+    process.env.OMPCODE_PASSWORD = "";
+    assert.strictEqual(
+      resolveDaemonPassword("localhost:6767"),
+      "legacy-secret",
+      "Blank OMPCODE_PASSWORD should fall back to legacy PASEO_PASSWORD, not shadow it",
+    );
   } finally {
     if (previousPaseoEnv === undefined) {
       delete process.env.PASEO_PASSWORD;

@@ -82,9 +82,9 @@ export function buildSelfNodeCommand(
 let warnedStalePaseoNodeEnv = false;
 
 export function resolvePaseoNodeEnv(env: NodeJS.ProcessEnv): PaseoNodeEnv | undefined {
-  let value = env[OMPCODE_NODE_ENV];
+  let value = env[OMPCODE_NODE_ENV]?.trim() ? env[OMPCODE_NODE_ENV] : undefined;
   // COMPAT(paseoEnv): remove after 2027-01-01.
-  if (value === undefined && env[PASEO_NODE_ENV] !== undefined) {
+  if (value === undefined && env[PASEO_NODE_ENV]?.trim()) {
     value = env[PASEO_NODE_ENV];
     if (!warnedStalePaseoNodeEnv) {
       warnedStalePaseoNodeEnv = true;

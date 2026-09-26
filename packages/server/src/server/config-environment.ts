@@ -81,10 +81,10 @@ export function configurationEnvironment(env: NodeJS.ProcessEnv): NodeJS.Process
     [...DAEMON_SETTING_ENV_KEYS, ...CONFIG_CONTEXT_ENV_KEYS].map((key) => [key, env[key]]),
   );
   for (const key of Object.keys(resolved)) {
-    if (resolved[key] !== undefined) continue;
+    if (resolved[key] !== undefined && resolved[key].trim()) continue;
     const legacyKey = legacyDaemonEnvKey(key);
     const legacyValue = legacyKey === undefined ? undefined : env[legacyKey];
-    if (legacyKey === undefined || legacyValue === undefined) continue;
+    if (legacyKey === undefined || legacyValue === undefined || !legacyValue.trim()) continue;
     resolved[key] = legacyValue;
     if (!warnedStaleDaemonEnvKeys.has(legacyKey)) {
       warnedStaleDaemonEnvKeys.add(legacyKey);

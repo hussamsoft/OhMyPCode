@@ -163,9 +163,9 @@ export function resolveDaemonPassword(host: string): string | undefined {
     const fromUri = parseConnectionUri(trimmed).password;
     if (fromUri) return fromUri;
   }
-  let fromEnv = process.env.OMPCODE_PASSWORD;
+  let fromEnv = process.env.OMPCODE_PASSWORD?.trim() ? process.env.OMPCODE_PASSWORD : undefined;
   // COMPAT(paseoEnv): remove after 2027-01-01.
-  if (fromEnv === undefined && process.env.PASEO_PASSWORD !== undefined) {
+  if (fromEnv === undefined && process.env.PASEO_PASSWORD?.trim()) {
     fromEnv = process.env.PASEO_PASSWORD;
     if (!warnedStalePaseoPassword) {
       warnedStalePaseoPassword = true;

@@ -21,6 +21,11 @@ describe("configurationEnvironment", () => {
     expect(env.OMPCODE_LISTEN).toBe("127.0.0.1:7000");
   });
 
+  test("blank canonical value falls back to legacy PASEO_* name, not shadows it", () => {
+    const env = configurationEnvironment({ OMPCODE_LISTEN: "", PASEO_LISTEN: "127.0.0.1:7000" });
+    expect(env.OMPCODE_LISTEN).toBe("127.0.0.1:7000");
+  });
+
   test("does not fabricate a value when neither name is set", () => {
     const env = configurationEnvironment({});
     expect(env.OMPCODE_LISTEN).toBeUndefined();
