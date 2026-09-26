@@ -730,111 +730,126 @@ describe("agent MCP end-to-end (offline)", () => {
     }
   }, 30_000);
 
-  test("create_agent with worktree is async and boots terminals only after setup success", async () => {
-    const paseoHome = await mkdtemp(path.join(os.tmpdir(), "paseo-home-"));
-    const staticDir = await mkdtemp(path.join(os.tmpdir(), "paseo-static-"));
-    const repoRoot = await mkdtemp(path.join(os.tmpdir(), "paseo-worktree-repo-"));
-    const port = await getAvailablePort();
+  // The fixture worktree-setup script and terminal command below are POSIX
+  // shell (`while [ ! -f ]; do ... done`, `tail -f /dev/null`); they need a
+  // real POSIX shell to execute, which isn't available by default on
+  // Windows. Same runIf/skipIf convention already used for platform-gated
+  // tests elsewhere (e.g. opencode-server-manager.test.ts).
+  test.skipIf(process.platform === "win32")(
+    "create_agent with worktree is async and boots terminals only after setup success",
+    async () => {
+      const paseoHome = await mkdtemp(path.join(os.tmpdir(), "paseo-home-"));
+      const staticDir = await mkdtemp(path.join(os.tmpdir(), "paseo-static-"));
+      const repoRoot = await mkdtemp(path.join(os.tmpdir(), "paseo-worktree-repo-"));
+      const port = await getAvailablePort();
 
-    const daemonConfig: PaseoDaemonConfig = {
-      listen: `127.0.0.1:${port}`,
-      paseoHome,
-      corsAllowedOrigins: [],
-      hostnames: true,
-      mcpEnabled: true,
-      staticDir,
-      mcpDebug: false,
-      agentClients: createTestAgentClients(),
-      agentStoragePath: path.join(paseoHome, "agents"),
-      providerOverrides: { claude: { enabled: true }, codex: { enabled: true } },
-    };
+      const daemonConfig: PaseoDaemonConfig = {
+        listen: `127.0.0.1:${port}`,
+        paseoHome,
+        corsAllowedOrigins: [],
+        hostnames: true,
+        mcpEnabled: true,
+        staticDir,
+        mcpDebug: false,
+        agentClients: createTestAgentClients(),
+        agentStoragePath: path.join(paseoHome, "agents"),
+        providerOverrides: { claude: { enabled: true }, codex: { enabled: true } },
+      };
 
-    const daemon = await createPaseoDaemon(daemonConfig, pino({ level: "silent" }));
-    await daemon.start();
+      const daemon = await createPaseoDaemon(daemonConfig, pino({ level: "silent" }));
+      await daemon.start();
 
-    const client = await createMcpClient(`http://127.0.0.1:${port}/mcp/agents`);
+      const client = await createMcpClient(`http://127.0.0.1:${port}/mcp/agents`);
 
-    let agentId: string | null = null;
-    try {
-      const { execSync, execFileSync } = await import("node:child_process");
-      execSync("git init -b main", { cwd: repoRoot, stdio: "pipe" });
-      execSync("git config user.email 'test@test.com'", { cwd: repoRoot, stdio: "pipe" });
-      execSync("git config user.name 'Test'", { cwd: repoRoot, stdio: "pipe" });
-      await writeFile(path.join(repoRoot, "file.txt"), "hello\n", "utf8");
-      execSync("git add .", { cwd: repoRoot, stdio: "pipe" });
-      execSync("git -c commit.gpgsign=false commit -m 'initial'", { cwd: repoRoot, stdio: "pipe" });
+      let agentId: string | null = null;
+      try {
+        const { execFileSync } = await import("node:child_process");
+        execFileSync("git", ["init", "-b", "main"], { cwd: repoRoot, stdio: "pipe" });
+        execFileSync("git", ["config", "user.email", "test@test.com"], {
+          cwd: repoRoot,
+          stdio: "pipe",
+        });
+        execFileSync("git", ["config", "user.name", "Test"], { cwd: repoRoot, stdio: "pipe" });
+        await writeFile(path.join(repoRoot, "file.txt"), "hello\n", "utf8");
+        execFileSync("git", ["add", "."], { cwd: repoRoot, stdio: "pipe" });
+        execFileSync("git", ["-c", "commit.gpgsign=false", "commit", "-m", "initial"], {
+          cwd: repoRoot,
+          stdio: "pipe",
+        });
 
-      const setupCommand =
-        'while [ ! -f "$PASEO_WORKTREE_PATH/allow-setup" ]; do sleep 0.05; done; echo "done" > "$PASEO_WORKTREE_PATH/setup-done.txt"';
-      await writeFile(
-        path.join(repoRoot, "paseo.json"),
-        JSON.stringify({
-          worktree: {
-            setup: [setupCommand],
-            terminals: [
-              {
-                name: "Dev Server",
-                command: 'echo "dev-server" > dev-terminal.txt; tail -f /dev/null',
-              },
-            ],
-          },
-        }),
-        "utf8",
-      );
-      execSync("git add paseo.json", { cwd: repoRoot, stdio: "pipe" });
-      // execSync runs through cmd.exe on Windows, where single quotes are
-      // not a quoting mechanism -- a message with spaces gets tokenized
-      // into multiple positional args instead of one -m value.
-      execFileSync("git", ["-c", "commit.gpgsign=false", "commit", "-m", "add worktree config"], {
-        cwd: repoRoot,
-        stdio: "pipe",
-      });
+        const setupCommand =
+          'while [ ! -f "$PASEO_WORKTREE_PATH/allow-setup" ]; do sleep 0.05; done; echo "done" > "$PASEO_WORKTREE_PATH/setup-done.txt"';
+        await writeFile(
+          path.join(repoRoot, "paseo.json"),
+          JSON.stringify({
+            worktree: {
+              setup: [setupCommand],
+              terminals: [
+                {
+                  name: "Dev Server",
+                  command: 'echo "dev-server" > dev-terminal.txt; tail -f /dev/null',
+                },
+              ],
+            },
+          }),
+          "utf8",
+        );
+        execFileSync("git", ["add", "paseo.json"], { cwd: repoRoot, stdio: "pipe" });
+        // execSync runs through cmd.exe on Windows, where single quotes are
+        // not a quoting mechanism -- a message with spaces gets tokenized
+        // into multiple positional args instead of one -m value.
+        execFileSync("git", ["-c", "commit.gpgsign=false", "commit", "-m", "add worktree config"], {
+          cwd: repoRoot,
+          stdio: "pipe",
+        });
 
-      const result = await withTimeout({
-        promise: client.callTool({
-          name: "create_agent",
-          args: {
-            cwd: repoRoot,
-            title: "MCP worktree setup terminals",
-            provider: "claude/claude-test-model",
-            mode: "bypassPermissions",
-            initialPrompt: "say done and stop",
-            worktreeName: "mcp-worktree-setup-test",
-            baseBranch: "main",
-            background: true,
-          },
-        }),
-        timeoutMs: 2500,
-        label: "create_agent should not block on setup",
-      });
+        const result = await withTimeout({
+          promise: client.callTool({
+            name: "create_agent",
+            args: {
+              cwd: repoRoot,
+              title: "MCP worktree setup terminals",
+              provider: "claude/claude-test-model",
+              mode: "bypassPermissions",
+              initialPrompt: "say done and stop",
+              worktreeName: "mcp-worktree-setup-test",
+              baseBranch: "main",
+              background: true,
+            },
+          }),
+          timeoutMs: 2500,
+          label: "create_agent should not block on setup",
+        });
 
-      const payload = getStructuredContent(result);
-      agentId = typeof payload?.agentId === "string" ? payload.agentId : null;
-      expect(agentId).toBeTruthy();
-      const worktreePath = typeof payload?.cwd === "string" ? payload.cwd : "";
-      expect(worktreePath).toContain(`${path.sep}worktrees${path.sep}`);
-      expect(existsSync(path.join(worktreePath, "setup-done.txt"))).toBe(false);
-      expect(existsSync(path.join(worktreePath, "dev-terminal.txt"))).toBe(false);
+        const payload = getStructuredContent(result);
+        agentId = typeof payload?.agentId === "string" ? payload.agentId : null;
+        expect(agentId).toBeTruthy();
+        const worktreePath = typeof payload?.cwd === "string" ? payload.cwd : "";
+        expect(worktreePath).toContain(`${path.sep}worktrees${path.sep}`);
+        expect(existsSync(path.join(worktreePath, "setup-done.txt"))).toBe(false);
+        expect(existsSync(path.join(worktreePath, "dev-terminal.txt"))).toBe(false);
 
-      await writeFile(path.join(worktreePath, "allow-setup"), "ok\n", "utf8");
+        await writeFile(path.join(worktreePath, "allow-setup"), "ok\n", "utf8");
 
-      await waitForPathExists({
-        targetPath: path.join(worktreePath, "setup-done.txt"),
-        timeoutMs: 15000,
-      });
-      await waitForPathExists({
-        targetPath: path.join(worktreePath, "dev-terminal.txt"),
-        timeoutMs: 30000,
-      });
-    } finally {
-      if (agentId) {
-        await client.callTool({ name: "kill_agent", args: { agentId } });
+        await waitForPathExists({
+          targetPath: path.join(worktreePath, "setup-done.txt"),
+          timeoutMs: 15000,
+        });
+        await waitForPathExists({
+          targetPath: path.join(worktreePath, "dev-terminal.txt"),
+          timeoutMs: 30000,
+        });
+      } finally {
+        if (agentId) {
+          await client.callTool({ name: "kill_agent", args: { agentId } });
+        }
+        await client.close();
+        await daemon.stop();
+        await rm(paseoHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+        await rm(staticDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+        await rm(repoRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       }
-      await client.close();
-      await daemon.stop();
-      await rm(paseoHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-      await rm(staticDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-      await rm(repoRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    }
-  }, 60_000);
+    },
+    60_000,
+  );
 });

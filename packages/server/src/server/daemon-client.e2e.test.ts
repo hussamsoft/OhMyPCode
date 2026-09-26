@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, afterAll } from "vitest";
-import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { tmpdir, homedir } from "node:os";
 import path from "node:path";
@@ -1959,9 +1959,10 @@ test("supports git and file operations", async () => {
   const checkoutStatus = await ctx.client.getCheckoutStatus(cwd);
   expect(checkoutStatus.error).toBeNull();
   expect(checkoutStatus.isGit).toBe(true);
-  // git always emits forward-slash paths (even on Windows); cwd is a
-  // native Windows path here, so compare both in the same convention.
-  expect(checkoutStatus.repoRoot).toContain(cwd.replace(/\\/g, "/"));
+  // git always emits forward-slash paths (even on Windows); realpathSync
+  // normalizes both sides to the native convention, matching the existing
+  // comparison pattern in daemon-e2e/checkout-ship.e2e.test.ts.
+  expect(realpathSync(checkoutStatus.repoRoot)).toBe(realpathSync(cwd));
 
   const diffResult = await ctx.client.getCheckoutDiff(cwd, { mode: "uncommitted" });
   expect(diffResult.error).toBeNull();
