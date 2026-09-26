@@ -22,6 +22,14 @@ import {
   type WSOutboundMessage,
 } from "./messages.js";
 
+/** A long-lived, idle process for tests that need a terminal to stay open
+ * while being observed. `/bin/cat` is POSIX-only and doesn't exist on
+ * Windows; spawning the current Node binary with an idle script works on
+ * every platform, matching the pattern already used by
+ * terminal-byte-headless-parity.e2e.test.ts and worker-terminal-manager.test.ts. */
+const IDLE_TERMINAL_COMMAND = process.execPath;
+const IDLE_TERMINAL_ARGS = ["-e", "process.stdin.resume()"];
+
 class SubscriptionPeer {
   readonly frames: WSOutboundMessage[] = [];
   readonly binaryFrames: Uint8Array[] = [];
@@ -706,7 +714,8 @@ test("same-workspace terminal directory observers do not share a teardown slot",
     peer.frames.length = 0;
     const result = await admin.createTerminal(daemon.staticDir, "Observed terminal", undefined, {
       workspaceId: workspace.id,
-      command: "/bin/cat",
+      command: IDLE_TERMINAL_COMMAND,
+      args: IDLE_TERMINAL_ARGS,
     });
     expect(result.error).toBe(null);
     await expect
@@ -758,7 +767,8 @@ test("terminal output has separate server IDs and binary slots, including in a s
     ).workspace!;
     const result = await admin.createTerminal(daemon.staticDir, "Output ownership", undefined, {
       workspaceId: workspace.id,
-      command: "/bin/cat",
+      command: IDLE_TERMINAL_COMMAND,
+      args: IDLE_TERMINAL_ARGS,
     });
     expect(result.error).toBe(null);
     const idle = await SubscriptionPeer.connect(daemon.port, "terminal-output-session");
