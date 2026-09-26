@@ -580,6 +580,9 @@ test("malformed configuration cannot turn a readiness timeout into launch cancel
     await f.ok(["status", "--home", home]);
     await writeFile(configPath, "{");
     await exited;
+    // errors accumulates raw stderr; --json mode emits one pretty-printed
+    // JSON document (not NDJSON), so parse the whole buffer rather than
+    // per-line.
     const parsedError = JSON.parse(errors) as { error: { code: string; message: string } };
     expect(parsedError.error.code).toBe("DAEMON_NOT_READY");
     expect(parsedError.error.message).toContain(path.join(home, "daemon.log"));

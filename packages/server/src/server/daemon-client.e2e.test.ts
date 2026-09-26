@@ -1567,30 +1567,37 @@ test("handles permission flow", async () => {
     title: "Permission Test",
   });
 
+  // agent_permission_request/agent_permission_resolved are session-scoped
+  // outbound messages (notifySubscribers), not connection-wide broadcasts
+  // like agent_update -- ctx.client.on(...) never receives them without an
+  // explicit event subscription. Matches the working pattern in
+  // owned-subscriptions.e2e.test.ts.
+  const permissionEvents = ctx.client.observeEvents([
+    "agent_permission_request",
+    "agent_permission_resolved",
+  ]);
+  await permissionEvents.ready;
+
   const permissionRequestPromise = waitForSignal(60000, (resolve) => {
-    const unsubscribe = ctx.client.on("agent_permission_request", (message) => {
-      if (message.type !== "agent_permission_request") {
-        return;
-      }
-      if (message.payload.agentId !== agent.id) {
-        return;
-      }
-      resolve(message);
+    return permissionEvents.subscribe({
+      snapshot: () => {},
+      update: (message) => {
+        if (message.type !== "agent_permission_request") return;
+        if (message.payload.agentId !== agent.id) return;
+        resolve(message);
+      },
     });
-    return unsubscribe;
   });
 
   const permissionResolvedPromise = waitForSignal(60000, (resolve) => {
-    const unsubscribe = ctx.client.on("agent_permission_resolved", (message) => {
-      if (message.type !== "agent_permission_resolved") {
-        return;
-      }
-      if (message.payload.agentId !== agent.id) {
-        return;
-      }
-      resolve(message);
+    return permissionEvents.subscribe({
+      snapshot: () => {},
+      update: (message) => {
+        if (message.type !== "agent_permission_resolved") return;
+        if (message.payload.agentId !== agent.id) return;
+        resolve(message);
+      },
     });
-    return unsubscribe;
   });
 
   try {
@@ -1626,6 +1633,7 @@ test("handles permission flow", async () => {
     // Prevent unhandled rejections if the test fails before promises resolve.
     await permissionRequestPromise.catch(() => {});
     await permissionResolvedPromise.catch(() => {});
+    await permissionEvents.release();
     await ctx.client.deleteAgent(agent.id);
     rmSync(cwd, { recursive: true, force: true });
   }
