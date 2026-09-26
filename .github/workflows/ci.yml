@@ -195,6 +195,8 @@ jobs:
       contents: read
     steps: &desktop_test_steps
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - uses: actions/setup-node@v4
         with:
@@ -240,6 +242,10 @@ jobs:
       - name: Run desktop lifecycle E2E (Windows)
         if: ${{ runner.os == 'Windows' }}
         run: npm run test:e2e:lifecycle --workspace=@ohmypcode/desktop
+
+      - name: Verify Electron packaging pipeline (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: npm run build:desktop -- --dir
 
       - name: Run desktop renderer E2E
         if: ${{ runner.os == 'Linux' }}
