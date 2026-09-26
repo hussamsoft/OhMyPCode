@@ -10,6 +10,7 @@ export interface WorkspaceTabMenuLabels {
   copyAgentId: string;
   copyTerminalId: string;
   copyFilePath: string;
+  openOmpTui: string;
   rename: string;
   closeAbove: string;
   closeBelow: string;
@@ -26,6 +27,7 @@ export const DEFAULT_WORKSPACE_TAB_MENU_LABELS: WorkspaceTabMenuLabels = {
   copyAgentId: i18n.t("workspace.tabs.menu.copyAgentId"),
   copyTerminalId: i18n.t("workspace.tabs.menu.copyTerminalId"),
   copyFilePath: i18n.t("workspace.tabs.menu.copyFilePath"),
+  openOmpTui: i18n.t("workspace.tabs.menu.openOmpTui"),
   rename: i18n.t("workspace.tabs.menu.rename"),
   closeAbove: i18n.t("workspace.tabs.menu.closeAbove"),
   closeBelow: i18n.t("workspace.tabs.menu.closeBelow"),
@@ -49,6 +51,7 @@ export type WorkspaceTabMenuEntry =
         | "arrow-right-to-line"
         | "copy-x"
         | "pencil"
+        | "terminal"
         | "x";
       hint?: string;
       tooltip?: string;
@@ -72,6 +75,7 @@ interface BuildWorkspaceTabMenuEntriesInput {
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
+  onOpenOmpTui: () => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTab: (tabId: string) => Promise<void> | void;
@@ -89,6 +93,7 @@ interface BuildWorkspaceDesktopTabActionsInput {
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
+  onOpenOmpTui: () => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTab: (tabId: string) => Promise<void> | void;
@@ -179,6 +184,7 @@ export function buildWorkspaceTabMenuEntries(
     onCopyAgentId,
     onCopyTerminalId,
     onCopyFilePath,
+    onOpenOmpTui,
     onReloadAgent,
     onRenameTab,
     onCloseTab,
@@ -228,6 +234,16 @@ export function buildWorkspaceTabMenuEntries(
       testID: `${menuTestIDBase}-copy-terminal-id`,
       onSelect: () => {
         void onCopyTerminalId(terminalId);
+      },
+    });
+    entries.push({
+      kind: "item",
+      key: "open-omp-tui",
+      label: labels.openOmpTui,
+      icon: "terminal",
+      testID: `${menuTestIDBase}-open-omp-tui`,
+      onSelect: () => {
+        void onOpenOmpTui();
       },
     });
   }
@@ -340,6 +356,7 @@ export function buildWorkspaceDesktopTabActions(
       onCopyAgentId: input.onCopyAgentId,
       onCopyTerminalId: input.onCopyTerminalId,
       onCopyFilePath: input.onCopyFilePath,
+      onOpenOmpTui: input.onOpenOmpTui,
       onReloadAgent: input.onReloadAgent,
       onRenameTab: input.onRenameTab,
       onCloseTab: input.onCloseTab,

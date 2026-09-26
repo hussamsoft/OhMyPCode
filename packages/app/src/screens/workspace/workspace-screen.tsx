@@ -192,6 +192,7 @@ import {
 import { findAdjacentPane } from "@/utils/split-navigation";
 import { supportsDesktopPaneSplits, useIsCompactFormFactor } from "@/constants/layout";
 import { getIsElectron, isNative, isWeb } from "@/constants/platform";
+import { getOmpRuntimePath } from "@/desktop/updates/omp-runtime-status";
 import type { SurfaceBackdrop } from "@/styles/surface-backdrop";
 import { buildHostRootRoute, buildSettingsHostRoute } from "@/utils/host-routes";
 import { useWorkspaceTerminals } from "@/screens/workspace/terminals/use-workspace-terminals";
@@ -421,6 +422,7 @@ interface MobileWorkspaceTabSwitcherProps {
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
+  onOpenOmpTui: () => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTab: (tabId: string) => Promise<void> | void;
@@ -528,6 +530,7 @@ function MobileWorkspaceTabOption({
   onCopyAgentId,
   onCopyTerminalId,
   onCopyFilePath,
+  onOpenOmpTui,
   onReloadAgent,
   onRenameTab,
   onCloseTab,
@@ -547,6 +550,7 @@ function MobileWorkspaceTabOption({
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
+  onOpenOmpTui: () => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTab: (tabId: string) => Promise<void> | void;
@@ -561,6 +565,7 @@ function MobileWorkspaceTabOption({
       copyAgentId: t("workspace.tabs.menu.copyAgentId"),
       copyTerminalId: t("workspace.tabs.menu.copyTerminalId"),
       copyFilePath: t("workspace.tabs.menu.copyFilePath"),
+      openOmpTui: t("workspace.tabs.menu.openOmpTui"),
       rename: t("workspace.tabs.menu.rename"),
       closeAbove: t("workspace.tabs.menu.closeAbove"),
       closeBelow: t("workspace.tabs.menu.closeBelow"),
@@ -584,6 +589,7 @@ function MobileWorkspaceTabOption({
     onCopyAgentId,
     onCopyTerminalId,
     onCopyFilePath,
+    onOpenOmpTui,
     onReloadAgent,
     onRenameTab,
     onCloseTab,
@@ -657,6 +663,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
   onCopyAgentId,
   onCopyTerminalId,
   onCopyFilePath,
+  onOpenOmpTui,
   onReloadAgent,
   onRenameTab,
   onCloseTab,
@@ -714,6 +721,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
           onCopyAgentId={onCopyAgentId}
           onCopyTerminalId={onCopyTerminalId}
           onCopyFilePath={onCopyFilePath}
+          onOpenOmpTui={onOpenOmpTui}
           onReloadAgent={onReloadAgent}
           onRenameTab={onRenameTab}
           onCloseTab={onCloseTab}
@@ -733,6 +741,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
       onCopyAgentId,
       onCopyTerminalId,
       onCopyFilePath,
+      onOpenOmpTui,
       onReloadAgent,
       onRenameTab,
       onCloseTab,
@@ -2255,6 +2264,30 @@ function WorkspaceScreenContent({
     },
     [createTerminal],
   );
+
+  // Escape hatch: launch the bundled OMP runtime binary (`<omp>` or
+  // `<omp.exe>`, resolved by the host) inside a workspace terminal, so the
+  // user always has a real OMP TUI to drop into for any control the GUI does
+  // not yet cover. Resolves the binary path over the desktop IPC bridge; on
+  // web or when the runtime is missing, surfaces a toast instead of silently
+  // doing nothing.
+  const handleOpenOmpTui = useCallback(async () => {
+    let ompPath: string | null = null;
+    try {
+      ompPath = await getOmpRuntimePath();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : String(error));
+      return;
+    }
+    if (!ompPath) {
+      toast.error(t("workspace.header.toasts.ompTuiUnavailable"));
+      return;
+    }
+    createTerminal({
+      profile: { id: "omp-tui", name: "OMP TUI", command: ompPath, args: [] },
+      destination: { kind: "open" },
+    });
+  }, [createTerminal, t, toast]);
 
   const handleCreateBrowserTab = useCallback(
     (input?: { paneId?: string }) => {
@@ -3830,6 +3863,7 @@ function WorkspaceScreenContent({
         onCopyAgentId={handleCopyAgentId}
         onCopyTerminalId={handleCopyTerminalId}
         onCopyFilePath={handleCopyFilePath}
+        onOpenOmpTui={handleOpenOmpTui}
         onReloadAgent={handleReloadAgent}
         onRenameTab={handleRenameTab}
         onCloseTabsToLeft={handleCloseTabsToLeftInPane}
@@ -3866,6 +3900,7 @@ function WorkspaceScreenContent({
     handleCopyAgentId,
     handleCopyTerminalId,
     handleCopyFilePath,
+    handleOpenOmpTui,
     handleReloadAgent,
     handleRenameTab,
     handleCloseTabsToLeftInPane,
@@ -3899,6 +3934,7 @@ function WorkspaceScreenContent({
         onCopyAgentId={handleCopyAgentId}
         onCopyTerminalId={handleCopyTerminalId}
         onCopyFilePath={handleCopyFilePath}
+        onOpenOmpTui={handleOpenOmpTui}
         onReloadAgent={handleReloadAgent}
         onRenameTab={handleRenameTab}
         onCloseTab={handleCloseTabById}
@@ -3918,6 +3954,7 @@ function WorkspaceScreenContent({
       handleCopyFilePath,
       handleCopyResumeCommand,
       handleCopyTerminalId,
+      handleOpenOmpTui,
       handleReloadAgent,
       handleRenameTab,
       handleSelectSwitcherTab,
@@ -3946,6 +3983,7 @@ function WorkspaceScreenContent({
             onCopyAgentId={handleCopyAgentId}
             onCopyTerminalId={handleCopyTerminalId}
             onCopyFilePath={handleCopyFilePath}
+            onOpenOmpTui={handleOpenOmpTui}
             onReloadAgent={handleReloadAgent}
             onRenameTab={handleRenameTab}
             onCloseTabsToLeft={handleCloseTabsToLeft}
@@ -3971,6 +4009,7 @@ function WorkspaceScreenContent({
       handleCopyResumeCommand,
       handleCopyTerminalId,
       handleCreateNewTab,
+      handleOpenOmpTui,
       handleReloadAgent,
       handleRenameTab,
       handleReorderTabsInFocusedPane,

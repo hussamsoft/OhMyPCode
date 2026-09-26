@@ -36,6 +36,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCopyAgentId,
       onCopyTerminalId: vi.fn(),
       onCopyFilePath,
+      onOpenOmpTui: vi.fn(),
       onReloadAgent,
       onRenameTab,
       onCloseTab,
@@ -67,6 +68,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCopyAgentId: vi.fn(),
       onCopyTerminalId: vi.fn(),
       onCopyFilePath: vi.fn(),
+      onOpenOmpTui: vi.fn(),
       onReloadAgent: vi.fn(),
       onRenameTab: vi.fn(),
       onCloseTab: vi.fn(),
@@ -103,6 +105,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCopyAgentId: vi.fn(),
       onCopyTerminalId: vi.fn(),
       onCopyFilePath: vi.fn(),
+      onOpenOmpTui: vi.fn(),
       onReloadAgent: vi.fn(),
       onRenameTab: vi.fn(),
       onCloseTab: vi.fn(),
@@ -132,6 +135,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCopyAgentId: vi.fn(),
       onCopyTerminalId: vi.fn(),
       onCopyFilePath: vi.fn(),
+      onOpenOmpTui: vi.fn(),
       onReloadAgent: vi.fn(),
       onRenameTab: vi.fn(),
       onCloseTab: vi.fn(),
@@ -162,6 +166,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCopyAgentId: vi.fn(),
       onCopyTerminalId: vi.fn(),
       onCopyFilePath: vi.fn(),
+      onOpenOmpTui: vi.fn(),
       onReloadAgent: vi.fn(),
       onRenameTab,
       onCloseTab: vi.fn(),
@@ -198,6 +203,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCopyAgentId: vi.fn(),
       onCopyTerminalId,
       onCopyFilePath: vi.fn(),
+      onOpenOmpTui: vi.fn(),
       onReloadAgent: vi.fn(),
       onRenameTab,
       onCloseTab: vi.fn(),
@@ -208,7 +214,8 @@ describe("buildWorkspaceTabMenuEntries", () => {
 
     const labels = entries.filter((entry) => entry.kind === "item").map((entry) => entry.label);
     expect(labels[0]).toBe("Copy terminal id");
-    expect(labels[1]).toBe("Rename");
+    expect(labels[1]).toBe("Open OMP TUI");
+    expect(labels[2]).toBe("Rename");
     expect(labels).not.toContain("Copy resume command");
     expect(labels).not.toContain("Copy agent id");
     expect(labels).not.toContain("Copy file path");
@@ -223,12 +230,90 @@ describe("buildWorkspaceTabMenuEntries", () => {
     copyTerminalIdEntry.onSelect();
     expect(onCopyTerminalId).toHaveBeenCalledWith("terminal-abc");
 
+    const openOmpTuiEntry = entries.find(
+      (entry) => entry.kind === "item" && entry.key === "open-omp-tui",
+    );
+    if (!openOmpTuiEntry || openOmpTuiEntry.kind !== "item") {
+      throw new Error("Open OMP TUI entry missing");
+    }
+    openOmpTuiEntry.onSelect();
+
     const renameEntry = entries.find((entry) => entry.kind === "item" && entry.label === "Rename");
     if (!renameEntry || renameEntry.kind !== "item") {
       throw new Error("Rename entry missing");
     }
     renameEntry.onSelect();
     expect(onRenameTab).toHaveBeenCalledWith(terminalTab);
+  });
+
+  it("wires the Open OMP TUI entry to onOpenOmpTui with the terminal icon and a stable testID", () => {
+    const onOpenOmpTui = vi.fn();
+    const terminalTab: WorkspaceTabDescriptor = {
+      key: "terminal_def",
+      tabId: "terminal_def",
+      kind: "terminal",
+      target: { kind: "terminal", terminalId: "terminal-def" },
+    };
+    const entries = buildWorkspaceTabMenuEntries({
+      surface: "desktop",
+      tab: terminalTab,
+      index: 0,
+      tabCount: 1,
+      menuTestIDBase: "workspace-tab-context-terminal_def",
+      onCopyResumeCommand: vi.fn(),
+      onCopyAgentId: vi.fn(),
+      onCopyTerminalId: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onOpenOmpTui,
+      onReloadAgent: vi.fn(),
+      onRenameTab: vi.fn(),
+      onCloseTab: vi.fn(),
+      onCloseTabsBefore: vi.fn(),
+      onCloseTabsAfter: vi.fn(),
+      onCloseOtherTabs: vi.fn(),
+    });
+
+    const openOmpTuiEntry = entries.find(
+      (entry) => entry.kind === "item" && entry.key === "open-omp-tui",
+    );
+    expect(openOmpTuiEntry).toEqual(
+      expect.objectContaining({
+        kind: "item",
+        key: "open-omp-tui",
+        label: "Open OMP TUI",
+        icon: "terminal",
+        testID: "workspace-tab-context-terminal_def-open-omp-tui",
+      }),
+    );
+    if (!openOmpTuiEntry || openOmpTuiEntry.kind !== "item") {
+      throw new Error("Open OMP TUI entry missing");
+    }
+    openOmpTuiEntry.onSelect();
+    expect(onOpenOmpTui).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not include the Open OMP TUI entry for non-terminal tab kinds", () => {
+    const entries = buildWorkspaceTabMenuEntries({
+      surface: "desktop",
+      tab: createAgentTab(),
+      index: 0,
+      tabCount: 1,
+      menuTestIDBase: "workspace-tab-context-agent_123",
+      onCopyResumeCommand: vi.fn(),
+      onCopyAgentId: vi.fn(),
+      onCopyTerminalId: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onOpenOmpTui: vi.fn(),
+      onReloadAgent: vi.fn(),
+      onRenameTab: vi.fn(),
+      onCloseTab: vi.fn(),
+      onCloseTabsBefore: vi.fn(),
+      onCloseTabsAfter: vi.fn(),
+      onCloseOtherTabs: vi.fn(),
+    });
+    expect(entries.some((entry) => entry.kind === "item" && entry.key === "open-omp-tui")).toBe(
+      false,
+    );
   });
 
   it("includes copy file path for file tabs", () => {
@@ -249,6 +334,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCopyAgentId: vi.fn(),
       onCopyTerminalId: vi.fn(),
       onCopyFilePath,
+      onOpenOmpTui: vi.fn(),
       onReloadAgent: vi.fn(),
       onRenameTab: vi.fn(),
       onCloseTab: vi.fn(),
@@ -292,6 +378,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCopyAgentId: vi.fn(),
       onCopyTerminalId: vi.fn(),
       onCopyFilePath: vi.fn(),
+      onOpenOmpTui: vi.fn(),
       onReloadAgent: vi.fn(),
       onRenameTab: vi.fn(),
       onCloseTab: vi.fn(),
@@ -323,6 +410,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCopyAgentId: vi.fn(),
       onCopyTerminalId: vi.fn(),
       onCopyFilePath: vi.fn(),
+      onOpenOmpTui: vi.fn(),
       onReloadAgent: vi.fn(),
       onRenameTab: vi.fn(),
       onCloseTab: vi.fn(),

@@ -37,6 +37,7 @@ vi.mock("lucide-react-native", () => {
     Ellipsis: StubIcon,
     Pencil: StubIcon,
     RotateCw: StubIcon,
+    SquareTerminal: StubIcon,
     X: StubIcon,
   };
 });
@@ -144,6 +145,7 @@ function renderAccessory(
     onCopyAgentId: vi.fn(),
     onCopyTerminalId: vi.fn(),
     onCopyFilePath: vi.fn(),
+    onOpenOmpTui: vi.fn(),
     onReloadAgent: vi.fn(),
     onRenameTab,
     onCloseTab: vi.fn(),
@@ -228,5 +230,23 @@ describe("MobileTabTrailingAccessory", () => {
     fireEvent.click(renameButton as HTMLElement);
 
     expect(onRenameTab).toHaveBeenCalledWith(terminalTab());
+  });
+
+  it("exposes an Open OMP TUI entry that fires its callback for terminal sessions", () => {
+    const renderResult = renderAccessory(terminalTab(), () => undefined);
+    current = renderResult;
+    const openOmpTuiButton = document.querySelector(
+      `[data-testid="${renderResult.base}-open-omp-tui"]`,
+    );
+    expect(openOmpTuiButton).not.toBeNull();
+  });
+
+  it("does not expose the Open OMP TUI entry on agent sessions", () => {
+    const renderResult = renderAccessory(agentTab(), () => undefined);
+    current = renderResult;
+    const openOmpTuiButton = document.querySelector(
+      `[data-testid="${renderResult.base}-open-omp-tui"]`,
+    );
+    expect(openOmpTuiButton).toBeNull();
   });
 });

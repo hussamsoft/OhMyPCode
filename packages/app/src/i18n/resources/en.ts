@@ -742,6 +742,7 @@ export const en = {
         copyAgentId: "Copy agent id",
         copyTerminalId: "Copy terminal id",
         copyFilePath: "Copy file path",
+        openOmpTui: "Open OMP TUI",
         rename: "Rename",
         closeAbove: "Close tabs above",
         closeBelow: "Close tabs below",
@@ -843,6 +844,8 @@ export const en = {
         terminalQueued: "Preparing workspace, opening terminal when ready...",
         workspacePathCopiedLabel: "Workspace path",
         branchNameCopiedLabel: "Branch name",
+        ompTuiUnavailable:
+          "OMP runtime binary is unavailable. Run `npm run build:omp-runtime` to install it.",
       },
     },
     scripts: {
