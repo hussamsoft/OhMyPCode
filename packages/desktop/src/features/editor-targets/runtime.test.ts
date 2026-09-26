@@ -57,4 +57,40 @@ describe("editor target runtime", () => {
       },
     ]);
   });
+
+  it("strips internal process-control env vars, including OHMYPCODE_DESKTOP_MANAGED, before spawning", async () => {
+    const records: SpawnRecord[] = [];
+    const runtime = createEditorTargetRuntime({
+      platform: "darwin",
+      env: {
+        PATH: "/usr/bin",
+        PASEO_NODE_ENV: "production",
+        OHMYPCODE_DESKTOP_MANAGED: "1",
+        PASEO_SUPERVISED: "1",
+        ELECTRON_RUN_AS_NODE: "1",
+        ELECTRON_NO_ATTACH_CONSOLE: "1",
+      },
+      pathExists: (targetPath) => targetPath === "/usr/bin/code",
+      spawn: (command, args, options) => {
+        const record = { command, args, options, unrefed: false };
+        records.push(record);
+        const child = {
+          once(event: "error" | "spawn", handler: (error?: Error) => void) {
+            if (event === "spawn") queueMicrotask(() => handler());
+            return child;
+          },
+          unref() {
+            record.unrefed = true;
+          },
+        };
+        return child;
+      },
+    });
+
+    const command = runtime.resolveCommand(["code"]);
+    if (!command) throw new Error("Expected the editor command to resolve");
+    await runtime.spawnDetached({ command, args: ["/repo"] });
+
+    expect(records[0]?.options.env).toEqual({ PATH: "/usr/bin" });
+  });
 });

@@ -24,11 +24,11 @@ function createFakeMacBundle(options: { includeHelper: boolean }): {
   root: string;
   shimPath: string;
 } {
-  const root = mkdtempSync(join(tmpdir(), "paseo-cli-shim-test-"));
+  const root = mkdtempSync(join(tmpdir(), "ompc-cli-shim-test-"));
   const appPath = join(root, "OhMyPCode.app");
   const contentsPath = join(appPath, "Contents");
   const resourcesPath = join(contentsPath, "Resources");
-  const shimPath = join(resourcesPath, "bin", "paseo");
+  const shimPath = join(resourcesPath, "bin", "ompc");
   const mainPath = join(contentsPath, "MacOS", "OhMyPCode");
   const helperPath = join(
     contentsPath,
@@ -41,7 +41,7 @@ function createFakeMacBundle(options: { includeHelper: boolean }): {
 
   mkdirSync(dirname(shimPath), { recursive: true });
   mkdirSync(dirname(mainPath), { recursive: true });
-  copyFileSync(join(packageRoot, "bin", "paseo"), shimPath);
+  copyFileSync(join(packageRoot, "bin", "ompc"), shimPath);
   chmodSync(shimPath, 0o755);
 
   writeExecutable(mainPath, "#!/bin/sh\necho main-executable\n");
@@ -52,7 +52,7 @@ function createFakeMacBundle(options: { includeHelper: boolean }): {
       helperPath,
       [
         "#!/bin/sh",
-        'printf "helper env=%s/%s cli=%s\\n" "$ELECTRON_RUN_AS_NODE" "$PASEO_NODE_ENV" "$PASEO_CLI"',
+        'printf "helper env=%s/%s/%s cli=%s\\n" "$ELECTRON_RUN_AS_NODE" "$PASEO_NODE_ENV" "$OHMYPCODE_DESKTOP_MANAGED" "$PASEO_CLI"',
         'printf "args=%s\\n" "$*"',
         "",
       ].join("\n"),
@@ -127,7 +127,7 @@ describe("desktop packaging", () => {
   });
 
   // electron-builder packs production dependencies declared in package.json into
-  // app.asar. Runtime code in runtime-paths.ts and bin/paseo dynamically resolves
+  // app.asar. Runtime code in runtime-paths.ts and bin/ompc dynamically resolves
   // these workspace packages by string, so static analysis (TypeScript, Knip) cannot
   // see the link. If a runtime-required workspace dep is dropped from
   // dependencies, the build still succeeds but ships a broken bundle. This
@@ -151,7 +151,7 @@ describe("desktop packaging", () => {
       const result = spawnSync(bundle.shimPath, ["--version"], { encoding: "utf8" });
 
       expect(result.status).toBe(0);
-      expect(result.stdout).toContain(`helper env=1/production cli=${bundle.shimPath}`);
+      expect(result.stdout).toContain(`helper env=1/production/1 cli=${bundle.shimPath}`);
       expect(result.stdout).toContain("node-entrypoint-runner.js");
       expect(result.stdout).toContain("node-script");
       expect(result.stdout).toContain("@getpaseo/cli/dist/index.js");
