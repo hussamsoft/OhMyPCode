@@ -26,9 +26,6 @@ import type { Theme } from "@/styles/theme";
 import invariant from "tiny-invariant";
 import { SidebarMenuToggle } from "@/components/headers/menu-header";
 import { ScreenHeader } from "@/components/headers/screen-header";
-import { ScreenTitle } from "@/components/headers/screen-title";
-import { HostBadge } from "@/hosts/host-badge";
-import { useHostBadges } from "@/hosts/use-host-badges";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import type { ShortcutKey } from "@/utils/format-shortcut";
 import {
@@ -40,6 +37,12 @@ import { RetainedPanel } from "@/components/retained-panel";
 import { WorkspaceActions } from "@/git/workspace-actions";
 import { WorkspaceOpenInEditorButton } from "@/workspace/open-in-editor/button";
 import { WorkspaceScriptsButton } from "@/screens/workspace/workspace-scripts-button";
+import {
+  WorkspaceFrame,
+  WorkspaceFrameHeader,
+  type WorkspaceFrameHeaderProps,
+} from "@/screens/workspace/workspace-frame";
+import { OmpModeBadge } from "@/omp-ui/mode-badge";
 import { ImportSessionSheet } from "@/components/import-session-sheet";
 import { useNavigateToImportedAgent } from "@/hooks/use-import-session";
 import { useToast } from "@/contexts/toast-context";
@@ -193,10 +196,6 @@ import type { SurfaceBackdrop } from "@/styles/surface-backdrop";
 import { buildHostRootRoute, buildSettingsHostRoute } from "@/utils/host-routes";
 import { useWorkspaceTerminals } from "@/screens/workspace/terminals/use-workspace-terminals";
 import type { TerminalProfile } from "@ohmypcode/protocol/messages";
-import {
-  WorkspaceHeaderMenuDesktop,
-  WorkspaceHeaderMenuMobile,
-} from "@/screens/workspace/workspace-header-menu";
 import { PluginHeaderButtons } from "@/plugins";
 import {
   createWorkspaceFileTabTarget,
@@ -911,169 +910,6 @@ function useCloseTabs(): UseCloseTabsResult {
   return { closingTabIds, closeTab };
 }
 
-/**
- * Which project the workspace belongs to, and which machine it runs on.
- *
- * Compact gets both, on their own line under the workspace name: this header is the only thing on
- * screen that says where the workspace lives, because the sidebar that normally carries the host
- * badge is closed. It still follows the host's own badge setting, so a purely local setup stays
- * quiet. A project name that only repeats the workspace name is dropped on wide, where the two sit
- * side by side, and kept on compact, where the line exists for the host anyway.
- */
-function WorkspaceHeaderProjectRow({
-  subtitle,
-  isSubtitleDistinct,
-  serverId,
-}: {
-  subtitle: string;
-  isSubtitleDistinct: boolean;
-  serverId: string;
-}) {
-  const isCompact = useIsCompactFormFactor();
-  const hostBadge = useHostBadges({ enabled: isCompact }).get(serverId) ?? null;
-  const showProject = isSubtitleDistinct || isCompact;
-  if (!showProject && !hostBadge) {
-    return null;
-  }
-  return (
-    <View style={styles.headerProjectRow}>
-      {showProject ? (
-        <Text
-          testID="workspace-header-subtitle"
-          style={styles.headerProjectTitle}
-          numberOfLines={1}
-        >
-          {subtitle}
-        </Text>
-      ) : null}
-      {showProject && hostBadge ? <Text style={styles.headerProjectSeparator}>·</Text> : null}
-      {hostBadge ? <HostBadge badge={hostBadge} /> : null}
-    </View>
-  );
-}
-
-interface WorkspaceHeaderTitleBarProps {
-  isLoading: boolean;
-  title: string;
-  subtitle: string;
-  isSubtitleDistinct: boolean;
-  currentBranchName: string | null;
-  normalizedServerId: string;
-  normalizedWorkspaceId: string;
-  workspaceScripts: WorkspaceDescriptor["scripts"];
-  liveTerminalIds: string[];
-  showWorkspaceSetup: boolean;
-  showCreateBrowserTab: boolean;
-  isMobile: boolean;
-  createTerminalDisabled: boolean;
-  importAgentDisabled: boolean;
-  copyPathDisabled: boolean;
-  onCreateDraftTab: () => void;
-  onCreateTerminal: () => void;
-  onCreateTerminalWithProfile: (profile: TerminalProfile) => void;
-  onCreateBrowser: () => void;
-  onOpenImportSheet: () => void;
-  onCopyWorkspacePath: () => void;
-  onCopyBranchName: () => void;
-  onOpenSetupTab: () => void;
-  onScriptTerminalStarted: (terminalId: string) => void;
-  onViewScriptTerminal: (terminalId: string) => void;
-  onOpenUrlInBrowserTab: (url: string) => void;
-}
-
-function WorkspaceHeaderTitleBar({
-  isLoading,
-  title,
-  subtitle,
-  isSubtitleDistinct,
-  currentBranchName,
-  normalizedServerId,
-  normalizedWorkspaceId,
-  workspaceScripts,
-  liveTerminalIds,
-  showWorkspaceSetup,
-  showCreateBrowserTab,
-  isMobile,
-  createTerminalDisabled,
-  importAgentDisabled,
-  copyPathDisabled,
-  onCreateDraftTab,
-  onCreateTerminal,
-  onCreateTerminalWithProfile,
-  onCreateBrowser,
-  onOpenImportSheet,
-  onCopyWorkspacePath,
-  onCopyBranchName,
-  onOpenSetupTab,
-  onScriptTerminalStarted,
-  onViewScriptTerminal,
-  onOpenUrlInBrowserTab,
-}: WorkspaceHeaderTitleBarProps) {
-  return (
-    <View style={styles.headerTitleContainer}>
-      {isLoading ? (
-        <View style={styles.headerTitleTextGroup}>
-          <View style={styles.headerTitleSkeleton} />
-        </View>
-      ) : (
-        <View style={styles.headerTitleTextGroup}>
-          <ScreenTitle testID="workspace-header-title">{title}</ScreenTitle>
-          <WorkspaceHeaderProjectRow
-            subtitle={subtitle}
-            isSubtitleDistinct={isSubtitleDistinct}
-            serverId={normalizedServerId}
-          />
-        </View>
-      )}
-      <View style={styles.compactHeaderMenuCluster}>
-        {isMobile ? (
-          <WorkspaceHeaderMenuMobile
-            normalizedServerId={normalizedServerId}
-            currentBranchName={currentBranchName}
-            showWorkspaceSetup={showWorkspaceSetup}
-            showCreateBrowserTab={showCreateBrowserTab}
-            createTerminalDisabled={createTerminalDisabled}
-            importAgentDisabled={importAgentDisabled}
-            copyPathDisabled={copyPathDisabled}
-            onCreateDraftTab={onCreateDraftTab}
-            onCreateTerminal={onCreateTerminal}
-            onCreateTerminalWithProfile={onCreateTerminalWithProfile}
-            onCreateBrowser={onCreateBrowser}
-            onOpenImportSheet={onOpenImportSheet}
-            onCopyWorkspacePath={onCopyWorkspacePath}
-            onCopyBranchName={onCopyBranchName}
-            onOpenSetupTab={onOpenSetupTab}
-          />
-        ) : (
-          <WorkspaceHeaderMenuDesktop
-            currentBranchName={currentBranchName}
-            showWorkspaceSetup={showWorkspaceSetup}
-            importAgentDisabled={importAgentDisabled}
-            copyPathDisabled={copyPathDisabled}
-            onOpenImportSheet={onOpenImportSheet}
-            onCopyWorkspacePath={onCopyWorkspacePath}
-            onCopyBranchName={onCopyBranchName}
-            onOpenSetupTab={onOpenSetupTab}
-          />
-        )}
-        {isMobile && workspaceScripts.length > 0 ? (
-          <WorkspaceScriptsButton
-            serverId={normalizedServerId}
-            workspaceId={normalizedWorkspaceId}
-            scripts={workspaceScripts}
-            liveTerminalIds={liveTerminalIds}
-            onScriptTerminalStarted={onScriptTerminalStarted}
-            onViewTerminal={onViewScriptTerminal}
-            onOpenUrlInBrowserTab={onOpenUrlInBrowserTab}
-            hideLabels
-            presentation="ghost"
-          />
-        ) : null}
-      </View>
-    </View>
-  );
-}
-
 type PaneDirection = "left" | "right" | "up" | "down";
 
 function parsePaneDirection(actionId: string): PaneDirection | null {
@@ -1322,20 +1158,6 @@ function WorkspaceContentProviders({
   );
 }
 
-function WorkspacePanelContent({
-  launcher,
-  content,
-}: {
-  launcher: NewTabLauncher;
-  content: ReactNode;
-}) {
-  return (
-    <NewTabLauncherProvider value={launcher}>
-      <View style={styles.content}>{content}</View>
-    </NewTabLauncherProvider>
-  );
-}
-
 function renderWorkspaceScreenGateShell(input: {
   gate: ReactNode;
   workspaceKey: string | null;
@@ -1537,6 +1359,31 @@ function useLastMainPane(input: {
     lastMainPaneRef.current.paneId = focusedPaneId;
   }
   return lastMainPaneRef;
+}
+
+/**
+ * Project the focused agent's current mode into the workspace title
+ * strip's right cluster. Lives inside the workspace frame's header so
+ * the badge tracks whichever pane currently has focus rather than a
+ * fixed agent. Returns null when the focused pane isn't an agent (so
+ * the header stays clean for terminal / file / browser tabs).
+ */
+function ActiveAgentModeBadge({ serverId, agentId }: { serverId: string; agentId: string | null }) {
+  const currentModeId = useSessionStore((state) => {
+    if (!agentId) {
+      return null;
+    }
+    const session = state.sessions[serverId];
+    if (!session) {
+      return null;
+    }
+    const agent = session.agents.get(agentId) ?? session.agentDetails.get(agentId) ?? null;
+    return agent?.currentModeId ?? null;
+  });
+  if (!agentId || currentModeId === null) {
+    return null;
+  }
+  return <OmpModeBadge persistedMode={currentModeId} />;
 }
 
 function WorkspaceScreenContent({
@@ -3768,6 +3615,7 @@ function WorkspaceScreenContent({
   const headerRight = useMemo(
     () => (
       <View style={styles.headerRight}>
+        <ActiveAgentModeBadge serverId={normalizedServerId} agentId={focusedPaneAgentId} />
         <PluginHeaderButtons serverId={normalizedServerId} workspaceId={normalizedWorkspaceId} />
         {!isMobile && workspaceDescriptor && workspaceDescriptor.scripts.length > 0 ? (
           <WorkspaceScriptsButton
@@ -3830,6 +3678,7 @@ function WorkspaceScreenContent({
       explorerSidebarToggleLabel,
       explorerSidebarToggleAccessibilityState,
       explorerToggleOwner,
+      focusedPaneAgentId,
       t,
     ],
   );
@@ -3888,46 +3737,39 @@ function WorkspaceScreenContent({
       `${WORKSPACE_FLOATING_PANEL_PORTAL_HOST_PREFIX}:${normalizedServerId}:${normalizedWorkspaceId}`,
     [normalizedServerId, normalizedWorkspaceId],
   );
-  const renderWorkspaceScreenHeader = useCallback(
+  const workspaceHeaderProps = useMemo<WorkspaceFrameHeaderProps | null>(
     () =>
-      showScreenHeader ? (
-        <ScreenHeader
-          left={
-            <>
-              <SidebarMenuToggle />
-              <WorkspaceHeaderTitleBar
-                isLoading={isWorkspaceHeaderLoading}
-                title={workspaceHeaderTitle}
-                subtitle={workspaceHeaderSubtitle}
-                isSubtitleDistinct={isWorkspaceHeaderSubtitleDistinct}
-                currentBranchName={currentBranchName}
-                normalizedServerId={normalizedServerId}
-                normalizedWorkspaceId={normalizedWorkspaceId}
-                workspaceScripts={workspaceScripts}
-                liveTerminalIds={liveTerminalIds}
-                showWorkspaceSetup={showWorkspaceSetup}
-                showCreateBrowserTab={showCreateBrowserTab}
-                isMobile={isMobile}
-                createTerminalDisabled={createTerminalDisabled}
-                importAgentDisabled={!canOpenImportSheet}
-                copyPathDisabled={!workspaceDirectory}
-                onCreateDraftTab={handleCreateDraftTab}
-                onCreateTerminal={handleCreateTerminal}
-                onCreateTerminalWithProfile={handleCreateTerminalWithProfile}
-                onCreateBrowser={handleCreateBrowserTab}
-                onOpenImportSheet={openImportSheet}
-                onCopyWorkspacePath={handleCopyWorkspacePath}
-                onCopyBranchName={handleCopyBranchName}
-                onOpenSetupTab={handleOpenSetupTab}
-                onScriptTerminalStarted={handleScriptTerminalStarted}
-                onViewScriptTerminal={handleViewScriptTerminal}
-                onOpenUrlInBrowserTab={handleOpenUrlInBrowserTab}
-              />
-            </>
+      showScreenHeader
+        ? {
+            isLoading: isWorkspaceHeaderLoading,
+            title: workspaceHeaderTitle,
+            subtitle: workspaceHeaderSubtitle,
+            isSubtitleDistinct: isWorkspaceHeaderSubtitleDistinct,
+            currentBranchName,
+            normalizedServerId,
+            normalizedWorkspaceId,
+            workspaceScripts,
+            liveTerminalIds,
+            showWorkspaceSetup,
+            showCreateBrowserTab,
+            isMobile,
+            createTerminalDisabled,
+            importAgentDisabled: !canOpenImportSheet,
+            copyPathDisabled: !workspaceDirectory,
+            onCreateDraftTab: handleCreateDraftTab,
+            onCreateTerminal: handleCreateTerminal,
+            onCreateTerminalWithProfile: handleCreateTerminalWithProfile,
+            onCreateBrowser: handleCreateBrowserTab,
+            onOpenImportSheet: openImportSheet,
+            onCopyWorkspacePath: handleCopyWorkspacePath,
+            onCopyBranchName: handleCopyBranchName,
+            onOpenSetupTab: handleOpenSetupTab,
+            onScriptTerminalStarted: handleScriptTerminalStarted,
+            onViewScriptTerminal: handleViewScriptTerminal,
+            onOpenUrlInBrowserTab: handleOpenUrlInBrowserTab,
+            right: headerRight,
           }
-          right={headerRight}
-        />
-      ) : null,
+        : null,
     [
       canOpenImportSheet,
       createTerminalDisabled,
@@ -3959,6 +3801,10 @@ function WorkspaceScreenContent({
       workspaceScripts,
     ],
   );
+  const renderSplitContainerMainHeader = useCallback(
+    () => (workspaceHeaderProps ? <WorkspaceFrameHeader {...workspaceHeaderProps} /> : null),
+    [workspaceHeaderProps],
+  );
   const desktopSplitContent = useMemo(() => {
     if (!canRenderDesktopPaneSplits || !workspaceLayout || !persistenceKey) {
       return null;
@@ -3966,7 +3812,7 @@ function WorkspaceScreenContent({
     return (
       <SplitContainer
         layout={workspaceLayout}
-        renderMainHeader={renderWorkspaceScreenHeader}
+        renderMainHeader={renderSplitContainerMainHeader}
         renderExplorerSidebarHeaderAction={renderExplorerSidebarHeaderAction}
         focusModeEnabled={desktopFocusModeEnabled}
         onExitFocusMode={toggleFocusMode}
@@ -4003,7 +3849,7 @@ function WorkspaceScreenContent({
   }, [
     canRenderDesktopPaneSplits,
     workspaceLayout,
-    renderWorkspaceScreenHeader,
+    renderSplitContainerMainHeader,
     renderExplorerSidebarHeaderAction,
     persistenceKey,
     desktopFocusModeEnabled,
@@ -4038,41 +3884,54 @@ function WorkspaceScreenContent({
   const desktopContent = desktopSplitContent ?? content;
   const rendersDesktopSplitContent = !isMobile && desktopSplitContent !== null;
 
-  const workspacePanelContent = (
-    <WorkspacePanelContent
-      launcher={newTabLauncher}
-      content={isMobile ? content : desktopContent}
-    />
+  const renderMobileTabs = useCallback(
+    () => (
+      <MobileWorkspaceTabSwitcher
+        tabs={tabs}
+        activeTabKey={activeTabKey}
+        activeTab={activeTabDescriptor}
+        tabSwitcherOptions={tabSwitcherOptions}
+        tabByKey={tabByKey}
+        normalizedServerId={normalizedServerId}
+        normalizedWorkspaceId={normalizedWorkspaceId}
+        onSelectSwitcherTab={handleSelectSwitcherTab}
+        onCopyResumeCommand={handleCopyResumeCommand}
+        onCopyAgentId={handleCopyAgentId}
+        onCopyTerminalId={handleCopyTerminalId}
+        onCopyFilePath={handleCopyFilePath}
+        onReloadAgent={handleReloadAgent}
+        onRenameTab={handleRenameTab}
+        onCloseTab={handleCloseTabById}
+        onCloseTabsAbove={handleCloseTabsToLeft}
+        onCloseTabsBelow={handleCloseTabsToRight}
+        onCloseOtherTabs={handleCloseOtherTabs}
+      />
+    ),
+    [
+      activeTabDescriptor,
+      activeTabKey,
+      handleCloseTabById,
+      handleCloseOtherTabs,
+      handleCloseTabsToLeft,
+      handleCloseTabsToRight,
+      handleCopyAgentId,
+      handleCopyFilePath,
+      handleCopyResumeCommand,
+      handleCopyTerminalId,
+      handleReloadAgent,
+      handleRenameTab,
+      handleSelectSwitcherTab,
+      normalizedServerId,
+      normalizedWorkspaceId,
+      tabByKey,
+      tabSwitcherOptions,
+      tabs,
+    ],
   );
 
-  const workspaceCenterColumn = (
-    <View style={styles.centerColumn}>
-      {rendersDesktopSplitContent ? null : renderWorkspaceScreenHeader()}
-
-      {isMobile ? (
-        <MobileWorkspaceTabSwitcher
-          tabs={tabs}
-          activeTabKey={activeTabKey}
-          activeTab={activeTabDescriptor}
-          tabSwitcherOptions={tabSwitcherOptions}
-          tabByKey={tabByKey}
-          normalizedServerId={normalizedServerId}
-          normalizedWorkspaceId={normalizedWorkspaceId}
-          onSelectSwitcherTab={handleSelectSwitcherTab}
-          onCopyResumeCommand={handleCopyResumeCommand}
-          onCopyAgentId={handleCopyAgentId}
-          onCopyTerminalId={handleCopyTerminalId}
-          onCopyFilePath={handleCopyFilePath}
-          onReloadAgent={handleReloadAgent}
-          onRenameTab={handleRenameTab}
-          onCloseTab={handleCloseTabById}
-          onCloseTabsAbove={handleCloseTabsToLeft}
-          onCloseTabsBelow={handleCloseTabsToRight}
-          onCloseOtherTabs={handleCloseOtherTabs}
-        />
-      ) : null}
-
-      {shouldRenderDesktopPaneFallback ? (
+  const renderFallbackTabs = useCallback(
+    () =>
+      shouldRenderDesktopPaneFallback ? (
         <NewTabLauncherProvider value={newTabLauncher}>
           <WorkspaceDesktopTabsRow
             paneId={focusedPaneIdOrUndefined}
@@ -4098,10 +3957,46 @@ function WorkspaceScreenContent({
             onExitFocusMode={toggleFocusMode}
           />
         </NewTabLauncherProvider>
-      ) : null}
+      ) : null,
+    [
+      desktopFocusModeEnabled,
+      desktopTabRowItems,
+      focusedPaneIdOrUndefined,
+      handleCloseOtherTabs,
+      handleCloseTabById,
+      handleCloseTabsToLeft,
+      handleCloseTabsToRight,
+      handleCopyAgentId,
+      handleCopyFilePath,
+      handleCopyResumeCommand,
+      handleCopyTerminalId,
+      handleCreateNewTab,
+      handleReloadAgent,
+      handleRenameTab,
+      handleReorderTabsInFocusedPane,
+      isRouteFocused,
+      navigateToTabId,
+      newTabLauncher,
+      normalizedServerId,
+      normalizedWorkspaceId,
+      setHoveredCloseTabKey,
+      shouldRenderDesktopPaneFallback,
+      toggleFocusMode,
+    ],
+  );
 
-      <View style={styles.centerContent}>{workspacePanelContent}</View>
-    </View>
+  const workspaceCenterColumn = (
+    <WorkspaceFrame
+      isMobile={isMobile}
+      hasDesktopSplit={rendersDesktopSplitContent}
+      showHeader={showScreenHeader}
+      header={rendersDesktopSplitContent ? null : workspaceHeaderProps}
+      launcher={newTabLauncher}
+      mobileContent={content}
+      desktopContent={desktopContent}
+      renderMobileTabs={renderMobileTabs}
+      renderFallbackTabs={renderFallbackTabs}
+    />
   );
 
   const renderedWorkspaceScreen = (
@@ -4166,72 +4061,6 @@ const styles = StyleSheet.create((theme) => ({
     flex: 1,
     minHeight: 0,
   },
-  headerTitleContainer: {
-    flex: 1,
-    flexShrink: 1,
-    minWidth: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: {
-      xs: theme.spacing[1],
-      md: theme.spacing[2],
-    },
-    overflow: "hidden",
-  },
-  headerTitleTextGroup: {
-    minWidth: 0,
-    overflow: "hidden",
-    flexShrink: 1,
-    flexGrow: {
-      xs: 1,
-      md: 0,
-    },
-    flexDirection: {
-      xs: "column",
-      md: "row",
-    },
-    alignItems: {
-      xs: "stretch",
-      md: "center",
-    },
-    justifyContent: "flex-start",
-    gap: {
-      xs: 0,
-      md: theme.spacing[2],
-    },
-  },
-  // No width cap. A percentage cap resolves against the title group, whose own width comes from
-  // this row's content, so it clips the project name while there is still room beside it.
-  // `flexShrink` on both this row and the title already gives up space only when there is none.
-  headerProjectRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing[1.5],
-    minWidth: 0,
-    flexShrink: 1,
-  },
-  headerProjectTitle: {
-    color: theme.colors.foregroundMuted,
-    fontSize: {
-      xs: theme.fontSize.sm,
-      md: theme.fontSize.base,
-    },
-    flexShrink: 1,
-    minWidth: 0,
-  },
-  headerProjectSeparator: {
-    color: theme.colors.foregroundExtraMuted,
-    fontSize: theme.fontSize.sm,
-    flexShrink: 0,
-  },
-  headerTitleSkeleton: {
-    width: 220,
-    maxWidth: "100%",
-    height: 22,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.surface3,
-    opacity: 0.25,
-  },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
@@ -4244,14 +4073,6 @@ const styles = StyleSheet.create((theme) => ({
     marginRight: {
       xs: 0,
       md: -theme.spacing[2],
-    },
-  },
-  compactHeaderMenuCluster: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: {
-      xs: 0,
-      md: theme.spacing[2],
     },
   },
   newTabActions: {

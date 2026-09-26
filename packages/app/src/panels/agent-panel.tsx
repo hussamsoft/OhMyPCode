@@ -26,6 +26,10 @@ import { ComposerDock } from "@/composer/dock";
 import { FileDropZone } from "@/components/file-drop/file-drop-zone";
 import { useRetainedPanelActive } from "@/components/retained-panel";
 import { RetainedChatContent } from "./retained-chat-content";
+import { OmpHookWidget } from "@/omp-ui/hook-widget/hook-widget";
+import { useOmpHook } from "@/omp-ui/hook-widget/use-omp-hook";
+import { OmpStatusBar } from "@/omp-ui/status-bar/omp-status-bar";
+import { OmpTodoRail } from "@/omp-ui/todo-rail";
 import { Composer } from "@/composer";
 import { useWorkspaceHasDiffStat } from "@/composer/workspace-diff-stat";
 import {
@@ -1157,10 +1161,56 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
 }) {
   const { t } = useTranslation();
+  // Hydrate the per-agent OMP hook store from the agent's runtimeInfo.extra
+  // snapshot. The hook-widget and status-bar subscribe to this store via
+  // their own selectors; without this call, the snapshot never reaches
+  // them on first mount.
+  useOmpHook(serverId, agentId);
   const subagentRows = useSubagentsForParent({ serverId, parentAgentId: agentId });
   const tasks = useSessionStore((state): TodoEntry[] | undefined =>
     state.sessions[serverId]?.agentTasks.get(agentId),
   );
+  // Workspace-level data for the persistent status chrome (branch / PR).
+  // Read directly from the session-store workspace descriptor so we don't
+  // have to thread the value through every panel parent.
+  const workspaceDescriptor = useSessionStore(
+    (state) => state.sessions[serverId]?.workspaces.get(workspaceId) ?? null,
+  );
+  const currentBranchName = workspaceDescriptor?.gitRuntime?.currentBranch ?? null;
+  const pullRequestNumber = workspaceDescriptor?.githubRuntime?.pullRequest?.number ?? null;
+  // Status-bar / todo-rail / hook-widget chrome only renders on the wide
+  // desktop layout -- mobile-class layouts keep their existing scroll
+  // surface intact (matches the Phase 8 plan framing).
+  const isCompact = useIsCompactFormFactor();
+  const showPersistentChrome = !isCompact;
+  // Status-bar inputs that aren't carried by the ChatAgentSelectedState
+  // projection. Reading individual primitives keeps re-renders scoped to
+  // actual chrome-relevant changes rather than any mutation on the
+  // full agent record.
+  const agentModel = useSessionStore((state) => {
+    const session = state.sessions[serverId];
+    if (!session) return null;
+    const record = session.agents.get(agentId) ?? session.agentDetails.get(agentId) ?? null;
+    return record?.model ?? null;
+  });
+  const agentTitle = useSessionStore((state) => {
+    const session = state.sessions[serverId];
+    if (!session) return null;
+    const record = session.agents.get(agentId) ?? session.agentDetails.get(agentId) ?? null;
+    return record?.title ?? null;
+  });
+  const agentLastUsage = useSessionStore((state) => {
+    const session = state.sessions[serverId];
+    if (!session) return undefined;
+    const record = session.agents.get(agentId) ?? session.agentDetails.get(agentId) ?? null;
+    return record?.lastUsage;
+  });
+  const agentCurrentModeId = useSessionStore((state) => {
+    const session = state.sessions[serverId];
+    if (!session) return null;
+    const record = session.agents.get(agentId) ?? session.agentDetails.get(agentId) ?? null;
+    return record?.currentModeId ?? null;
+  });
   const archiveFinishedSubagents = useArchiveFinishedSubagents({
     serverId,
     parentAgentId: agentId,
@@ -1238,22 +1288,63 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       />
     </RenderProfile>
   );
+  // Phase 8 persistent chrome -- status bar + aboveEditor hook widget
+  // sit above the composer, full width. Wrapping the existing composer
+  // section keeps ComposerDock's `[content, composer, overlay]` shape
+  // intact (the dock renders the slot, not arbitrary children).
+  const statusBarData = showPersistentChrome
+    ? {
+        preset: "compact" as const,
+        modelLabel: agentModel,
+        path: cwd || null,
+        currentBranch: currentBranchName,
+        pullRequestNumber,
+        lastUsage: agentLastUsage ?? null,
+        sessionName: agentTitle,
+        subagentCount: subagentRows.length,
+        modeLabel: agentCurrentModeId,
+      }
+    : null;
+  const composerChromeOverlay =
+    showPersistentChrome && statusBarData ? (
+      <View style={styles.composerChromeOverlay} testID="agent-composer-chrome">
+        <OmpStatusBar data={statusBarData} />
+        <OmpHookWidget agentId={agentId} placement="aboveEditor" />
+      </View>
+    ) : null;
+  const belowEditorHook = showPersistentChrome ? (
+    <OmpHookWidget agentId={agentId} placement="belowEditor" />
+  ) : null;
   const streamContent = (
     <View style={animatedStaticStyles.content}>
       <RenderProfile id={`AgentStreamSection:${agentId}`}>
-        <AgentStreamSection
-          streamViewRef={streamViewRef}
-          serverId={serverId}
-          workspaceId={workspaceId}
-          agentId={agentId}
-          agent={effectiveAgent}
-          routeBottomAnchorRequest={routeBottomAnchorRequest}
-          hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
-          hasActiveComposer={hasActiveComposer}
-          hasVisibleAgentTracks={hasVisibleAgentTracks}
-          toast={toastApi}
-          onOpenWorkspaceFile={onOpenWorkspaceFile}
-        />
+        <View style={styles.streamRow}>
+          <View style={styles.streamRowMain}>
+            <AgentStreamSection
+              streamViewRef={streamViewRef}
+              serverId={serverId}
+              workspaceId={workspaceId}
+              agentId={agentId}
+              agent={effectiveAgent}
+              routeBottomAnchorRequest={routeBottomAnchorRequest}
+              hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
+              hasActiveComposer={hasActiveComposer}
+              hasVisibleAgentTracks={hasVisibleAgentTracks}
+              toast={toastApi}
+              onOpenWorkspaceFile={onOpenWorkspaceFile}
+            />
+          </View>
+          {showPersistentChrome && tasks && tasks.length > 0 ? (
+            <View style={styles.streamRowTodo}>
+              <OmpTodoRail
+                items={tasks.map((task) => ({
+                  text: task.text,
+                  status: task.status ?? (task.completed ? "completed" : "pending"),
+                }))}
+              />
+            </View>
+          ) : null}
+        </View>
       </RenderProfile>
       {hasActiveComposer ? (
         <AgentTracks
@@ -1296,7 +1387,9 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   const dock = (
     <ChatSurface disabled={isArchivingCurrentAgent}>
       {dockContent}
+      {composerChromeOverlay}
       {composerSection}
+      {belowEditorHook}
       {dockOverlay}
     </ChatSurface>
   );
@@ -1326,12 +1419,28 @@ function ChatSurface({
   children,
   disabled,
 }: {
-  children: [ReactNode, ReactNode, ReactNode];
+  /**
+   * `[content, composerChrome, composer, belowEditorHook, overlay]` --
+   * the slot tuple maps directly onto ComposerDock's `[content, composer,
+   * overlay]` with the persistent chrome and belowEditor hook wedged in
+   * between content and overlay. Both extra slots may be `null` when the
+   * chrome is disabled (mobile / no agent).
+   */
+  children: [ReactNode, ReactNode, ReactNode, ReactNode, ReactNode];
   disabled: boolean;
 }) {
+  const [content, composerChrome, composer, belowEditorHook, overlay] = children;
   return (
     <FileDropZone style={styles.container} disabled={disabled}>
-      <ComposerDock>{children}</ComposerDock>
+      <ComposerDock>
+        {content}
+        <View>
+          {composerChrome}
+          {composer}
+          {belowEditorHook}
+        </View>
+        {overlay}
+      </ComposerDock>
     </FileDropZone>
   );
 }
@@ -1741,6 +1850,39 @@ const styles = StyleSheet.create((theme) => ({
     flex: 1,
     overflow: "hidden",
     ...(isWeb ? { userSelect: "none" as const } : {}),
+  },
+  /**
+   * Persistent chrome wrapper that sits between the dock's composer slot
+   * and the existing composer section. Full width, vertical layout, no
+   * background -- the status bar brings its own surface2 background and
+   * the aboveEditor hook widget stays bare.
+   */
+  composerChromeOverlay: {
+    width: "100%",
+    flexShrink: 0,
+  },
+  /**
+   * Horizontal row that docks the todo rail to the right of the stream
+   * on wide layouts. `streamRowMain` keeps its existing flex layout
+   * unchanged; the todo rail gets a fixed-width column to the right.
+   */
+  streamRow: {
+    flex: 1,
+    flexDirection: "row",
+    minHeight: 0,
+  },
+  streamRowMain: {
+    flex: 1,
+    minWidth: 0,
+  },
+  streamRowTodo: {
+    width: 260,
+    flexShrink: 0,
+    borderLeftWidth: theme.borderWidth[1],
+    borderLeftColor: theme.colors.border,
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical: theme.spacing[2],
+    overflow: "hidden",
   },
   timelineSyncCalloutRail: {
     width: "100%",
