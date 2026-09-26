@@ -3,6 +3,7 @@
   "version": "0.9.2",
   "description": "Paseo CLI - control your AI coding agents from the command line",
   "bin": {
+    "ompc": "bin/paseo",
     "paseo": "bin/paseo"
   },
   "files": [

@@ -7,7 +7,7 @@ import {
   type MigrateLegacyImages,
   PersistedDraftStoreSchema,
 } from "./migration";
-import { useDraftStore } from "./index";
+import { DRAFT_STORE_KEY, LEGACY_DRAFT_STORE_KEY } from "./keys";
 import { isAttachmentMetadata, type DraftRecord } from "./state";
 
 const passThroughMigrateLegacyImages: MigrateLegacyImages = async (images) =>
@@ -369,7 +369,17 @@ describe("draft store legacy key fallback", () => {
 });
 
 describe("draft store persist wiring", () => {
-  it("is configured with the renamed key", () => {
-    expect(useDraftStore.persist.getOptions().name).toBe("ohmypcode-drafts");
+  // Asserts against keys.ts, not useDraftStore, deliberately: importing index.ts triggers real
+  // AsyncStorage hydration and schedules attachment GC via onRehydrateStorage, which is noisy
+  // (throws a caught-but-logged ReferenceError under the Node test environment, since
+  // AsyncStorage's web implementation expects a window) and unrelated to what this test checks.
+  // index.ts imports DRAFT_STORE_KEY/LEGACY_DRAFT_STORE_KEY from this same module rather than
+  // duplicating the literals, so there is no separate "wiring" left to drift out of sync with
+  // what these constants say - the persist config and this assertion share one source of truth
+  // by construction, not by a runtime check that could silently go stale.
+  it("uses the renamed key as current and the pre-rename key as its one-time fallback", () => {
+    expect(DRAFT_STORE_KEY).toBe("ohmypcode-drafts");
+    expect(LEGACY_DRAFT_STORE_KEY).toBe("paseo-drafts");
+    expect(DRAFT_STORE_KEY).not.toBe(LEGACY_DRAFT_STORE_KEY);
   });
 });

@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { removeStaleLegacyCli } from "./install";
+import { pathIsRunnable, removeStaleLegacyCli } from "./install";
 
 let tmpDir: string;
 
@@ -25,6 +25,31 @@ describe("removeStaleLegacyCli (POSIX)", () => {
     const legacyPath = path.join(tmpDir, "local-bin", "paseo");
     await fs.mkdir(path.dirname(legacyPath), { recursive: true });
     await fs.symlink(oldShim, legacyPath);
+
+    await removeStaleLegacyCli({
+      legacyPath,
+      installSourcePath: newShim,
+      shimPath: newShim,
+      platform: "linux",
+    });
+
+    await expect(fs.lstat(legacyPath)).rejects.toThrow();
+  });
+
+  it("removes a dangling symlink whose target no longer exists (the real upgrade case)", async () => {
+    // The pre-rename shim (e.g. .../resources/bin/paseo) was deleted by the rename itself, so
+    // the legacy symlink genuinely dangles on a real upgrade - this is the case realpath cannot
+    // handle, which readlink-based resolution exists to cover.
+    const resourcesDir = path.join(tmpDir, "resources", "bin");
+    await fs.mkdir(resourcesDir, { recursive: true });
+    const oldShim = path.join(resourcesDir, "paseo");
+    const newShim = path.join(resourcesDir, "ompc");
+    await fs.writeFile(newShim, "#!/bin/sh\necho new\n");
+    const legacyPath = path.join(tmpDir, "local-bin", "paseo");
+    await fs.mkdir(path.dirname(legacyPath), { recursive: true });
+    await fs.symlink(oldShim, legacyPath);
+
+    await expect(fs.readFile(oldShim)).rejects.toThrow();
 
     await removeStaleLegacyCli({
       legacyPath,
@@ -144,5 +169,34 @@ describe("removeStaleLegacyCli (win32)", () => {
     });
 
     await expect(fs.lstat(legacyPath)).resolves.toBeDefined();
+  });
+});
+
+describe("pathIsRunnable", () => {
+  it("returns true for a regular file", async () => {
+    const p = path.join(tmpDir, "real-file");
+    await fs.writeFile(p, "content");
+
+    await expect(pathIsRunnable(p)).resolves.toBe(true);
+  });
+
+  it("returns true for a symlink whose target exists", async () => {
+    const target = path.join(tmpDir, "target");
+    await fs.writeFile(target, "content");
+    const link = path.join(tmpDir, "link");
+    await fs.symlink(target, link);
+
+    await expect(pathIsRunnable(link)).resolves.toBe(true);
+  });
+
+  it("returns false for a dangling symlink, unlike a plain existence check", async () => {
+    const link = path.join(tmpDir, "dangling-link");
+    await fs.symlink(path.join(tmpDir, "does-not-exist"), link);
+
+    await expect(pathIsRunnable(link)).resolves.toBe(false);
+  });
+
+  it("returns false when nothing exists at the path", async () => {
+    await expect(pathIsRunnable(path.join(tmpDir, "nothing-here"))).resolves.toBe(false);
   });
 });

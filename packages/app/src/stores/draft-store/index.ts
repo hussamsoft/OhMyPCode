@@ -36,6 +36,7 @@ import {
 } from "./migration";
 import { createDraftPersistStorage } from "./persistence";
 import { createValidatedPersistStorage } from "@/storage/validated-persist-storage";
+import { DRAFT_STORE_KEY, LEGACY_DRAFT_STORE_KEY } from "./keys";
 
 export type { DraftInput, DraftLifecycleState } from "./state";
 
@@ -68,7 +69,7 @@ let gcScheduled = false;
 // COMPAT(2026-09): read legacy paseo-drafts once; remove after a migration window. Drafts hold
 // unsent user-typed text, so this key needs the same fallback treatment as the @paseo: keys.
 const draftPersistStorage = createDraftPersistStorage(
-  createValidatedPersistStorage(AsyncStorage, PersistedDraftStoreSchema, "paseo-drafts"),
+  createValidatedPersistStorage(AsyncStorage, PersistedDraftStoreSchema, LEGACY_DRAFT_STORE_KEY),
 );
 
 export function flushDraftPersistStorage(): Promise<void> {
@@ -428,7 +429,7 @@ export const useDraftStore = create<DraftStore>()(
       },
     }),
     {
-      name: "ohmypcode-drafts",
+      name: DRAFT_STORE_KEY,
       version: DRAFT_STORE_VERSION,
       storage: draftPersistStorage,
       partialize: ({ drafts, createModalDraft }) => ({ drafts, createModalDraft }),

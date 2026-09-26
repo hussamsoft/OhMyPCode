@@ -15,6 +15,8 @@ interface InstallStatus {
   installed: boolean;
 }
 
+// Detects any filesystem entry at p, including a dangling symlink. Used before
+// unlink-and-replace, where a dangling symlink still needs to be removed first.
 async function pathOrSymlinkExists(p: string): Promise<boolean> {
   try {
     await fs.lstat(p);
@@ -24,15 +26,48 @@ async function pathOrSymlinkExists(p: string): Promise<boolean> {
   }
 }
 
+// Detects a usable entry at p: follows symlinks and requires the target to actually
+// exist, unlike pathOrSymlinkExists. Used for status reporting, where a dangling
+// symlink must NOT read as "installed" - the user would see a command that can't run.
+export async function pathIsRunnable(p: string): Promise<boolean> {
+  try {
+    await fs.stat(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Reads a symlink's raw target without requiring it to exist. fs.realpath rejects with
+// ENOENT on a dangling symlink, which is exactly the state a pre-rename legacy symlink
+// is in once the app it pointed into no longer ships a file under the old name - so
+// realpath cannot be used here, unlike everywhere else in this file that needs an
+// existence check. Resolves a relative target against the link's own directory, matching
+// realpath's behavior for the (here, not expected but not excluded) relative-symlink case.
+async function readSymlinkTargetDir(legacyPath: string): Promise<string | null> {
+  let rawTarget: string;
+  try {
+    rawTarget = await fs.readlink(legacyPath);
+  } catch {
+    return null;
+  }
+  const resolved = path.isAbsolute(rawTarget)
+    ? rawTarget
+    : path.resolve(path.dirname(legacyPath), rawTarget);
+  return path.dirname(resolved);
+}
+
 // COMPAT(2026-09): removes a pre-rename ~/.local/bin/paseo(.cmd) leftover from an older install
 // of this same app, so a stale binary doesn't linger next to the renamed ~/.local/bin/ompc one.
 // Deliberately conservative about what counts as "ours":
 // - POSIX: only a symlink (never a regular file, which is more likely something the user placed
-//   there themselves) whose resolved target sits in the same directory as the install source
-//   this run just used - i.e. created by a previous install of this exact app, not an unrelated
-//   "paseo" binary elsewhere on the machine. Compared by directory, not full path, because the
-//   old symlink resolves to the old "paseo"-named shim while installSourcePath now resolves to
-//   the renamed "ompc" one.
+//   there themselves) whose target directory matches the install source this run just used - i.e.
+//   created by a previous install of this exact app, not an unrelated "paseo" binary elsewhere on
+//   the machine. Compared by directory, not full path, because the old symlink's target is the
+//   old "paseo"-named shim while installSourcePath now resolves to the renamed "ompc" one. The
+//   target directory is read via readlink, not realpath: the real-world case this function exists
+//   for is exactly a dangling symlink (its target, the pre-rename shim, no longer exists once this
+//   app version only packages the renamed one), and realpath throws on a dangling target.
 // - win32: installCli() writes a plain-text trampoline file rather than a symlink, so the same
 //   symlink check would silently never fire there. Instead requires the legacy file's own
 //   content to contain a BUNDLED_CLI= line pointing into the same resources directory as the
@@ -71,13 +106,8 @@ export async function removeStaleLegacyCli(input: {
     if (!stat.isSymbolicLink()) {
       return;
     }
-    let resolvedTarget: string;
-    try {
-      resolvedTarget = await fs.realpath(legacyPath);
-    } catch {
-      return;
-    }
-    if (path.dirname(resolvedTarget) !== path.dirname(installSourcePath)) {
+    const targetDir = await readSymlinkTargetDir(legacyPath);
+    if (targetDir === null || targetDir !== path.dirname(installSourcePath)) {
       return;
     }
   }
@@ -146,5 +176,5 @@ export async function installCli(): Promise<InstallStatus> {
 
 export async function getCliInstallStatus(): Promise<InstallStatus> {
   const targetPath = getCliTargetPath();
-  return { installed: await pathOrSymlinkExists(targetPath) };
+  return { installed: await pathIsRunnable(targetPath) };
 }
