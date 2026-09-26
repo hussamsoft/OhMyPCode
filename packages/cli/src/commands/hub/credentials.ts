@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { chmodSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
-import { resolvePaseoHome } from "@getpaseo/server/daemon-control";
+import { resolvePaseoHome } from "@ohmypcode/server/daemon-control";
 import { HubCommandError } from "./error.js";
 import { normalizeHubOrigin } from "./origin.js";
 

@@ -1,5 +1,5 @@
-import type { ListTerminalsResponse } from "@getpaseo/protocol/messages";
-import { deriveTerminalActivityStatusBucket } from "@getpaseo/protocol/terminal-activity";
+import type { ListTerminalsResponse } from "@ohmypcode/protocol/messages";
+import { deriveTerminalActivityStatusBucket } from "@ohmypcode/protocol/terminal-activity";
 import { Terminal } from "lucide-react-native";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";

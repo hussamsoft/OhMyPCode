@@ -1,6 +1,6 @@
 import { tmpdir } from "node:os";
 import type pino from "pino";
-import type { OmpProviderLoginEvent } from "@getpaseo/protocol/messages";
+import type { OmpProviderLoginEvent } from "@ohmypcode/protocol/messages";
 import { execCommand } from "../../utils/spawn.js";
 import type { OmpRuntimeEvent } from "../../server/agent/providers/omp/rpc-types.js";
 import { OmpCliRuntime } from "../../server/agent/providers/omp/cli-runtime.js";
@@ -16,7 +16,7 @@ export interface OmpLoginProviderSummary {
   available: boolean;
 }
 
-export type { OmpProviderLoginEvent } from "@getpaseo/protocol/messages";
+export type { OmpProviderLoginEvent } from "@ohmypcode/protocol/messages";
 
 export interface OmpProviderLoginHandle {
   respond(
@@ -189,7 +189,9 @@ export function createOmpProvidersService({
       const session = await startRuntimeSession(runtime);
       let closed = false;
       let terminal = false;
-      const emitTerminal = (event: Extract<OmpProviderLoginEvent, { kind: "completed" | "failed" }>) => {
+      const emitTerminal = (
+        event: Extract<OmpProviderLoginEvent, { kind: "completed" | "failed" }>,
+      ) => {
         if (terminal) return;
         terminal = true;
         onEvent(event);

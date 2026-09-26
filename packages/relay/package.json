@@ -1,5 +1,5 @@
 {
-  "name": "@getpaseo/relay",
+  "name": "@ohmypcode/relay",
   "version": "0.9.3",
   "description": "Paseo relay for bridging daemon and client connections",
   "files": [

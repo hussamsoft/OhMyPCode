@@ -1,5 +1,5 @@
 {
-  "name": "@getpaseo/client",
+  "name": "@ohmypcode/client",
   "version": "0.9.3",
   "description": "Paseo client SDK package",
   "files": [
@@ -31,7 +31,7 @@
   },
   "scripts": {
     "clean": "node ../../scripts/clean-package-dist.mjs",
-    "build": "npm run build --workspace=@getpaseo/protocol && tsc -p tsconfig.json --incremental false",
+    "build": "npm run build --workspace=@ohmypcode/protocol && tsc -p tsconfig.json --incremental false",
     "build:clean": "npm run clean && npm run build",
     "prepack": "npm run build:clean",
     "typecheck": "tsgo --noEmit",
@@ -39,8 +39,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@getpaseo/protocol": "0.9.3",
-    "@getpaseo/relay": "0.9.3",
+    "@ohmypcode/protocol": "0.9.3",
+    "@ohmypcode/relay": "0.9.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {

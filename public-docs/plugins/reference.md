@@ -101,7 +101,7 @@ old `index.ts` fails to load and points at the [migration guide](/docs/plugins/m
 Plugin, surface, sidebar-item, workspace-panel, Command Center item, attachment-source, and
 slash-command IDs start with a lowercase letter and contain lowercase letters, numbers, or hyphens.
 
-The generated `package.json` installs `@getpaseo/plugin` and the other host modules as development
+The generated `package.json` installs `@ohmypcode/plugin` and the other host modules as development
 dependencies for local typechecking and tests. Paseo supplies their runtime instances. Consumers do
 not install them when adding the plugin.
 
@@ -121,7 +121,7 @@ from `server/` into the app bundle, or of a Node module anywhere in the app bund
 error. Server imports of React, React Native, or client SDK entries also fail. Shared code imports
 only shared code: no Node, React, runtime-specific SDK entries, or runtime-specific types.
 
-The SDK root (`@getpaseo/plugin`) contains shared data, schemas, and runtime-neutral helpers only.
+The SDK root (`@ohmypcode/plugin`) contains shared data, schemas, and runtime-neutral helpers only.
 Import client contexts and hooks from `/client`, server contexts and lifecycle contracts from
 `/server`, and UI from `/client/react-native` or `/client/ui`. These rules include type imports and transitive
 dependencies. `/client/host` is private to the app host; plugins cannot import it.
@@ -130,17 +130,17 @@ dependencies. `/client/host` is private to the app host; plugins cannot import i
 
 Paseo provides these modules to client code:
 
-| Module                                 | Use it for                                                                                        |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `@getpaseo/plugin`                     | Shared data, `defineRpc`, `defineSettings`, `defineAttachmentSource`, `RpcInput`, and `RpcOutput` |
-| `@getpaseo/plugin/client/ui`           | Named, composable settings components                                                             |
-| `@getpaseo/plugin/client/react-native` | Paseo UI components and UI hooks                                                                  |
-| `@getpaseo/plugin/client`              | Client contribution contexts, `usePaseo`, `useRpc`, `useSettings`, and data hooks                 |
-| `@tanstack/react-query`                | Request state and caching                                                                         |
-| `react`                                | Components and hooks                                                                              |
-| `react/jsx-runtime`                    | Compiled JSX                                                                                      |
-| `react-native`                         | Cross-platform UI                                                                                 |
-| `zod`                                  | Shared schemas                                                                                    |
+| Module                                  | Use it for                                                                                        |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `@ohmypcode/plugin`                     | Shared data, `defineRpc`, `defineSettings`, `defineAttachmentSource`, `RpcInput`, and `RpcOutput` |
+| `@ohmypcode/plugin/client/ui`           | Named, composable settings components                                                             |
+| `@ohmypcode/plugin/client/react-native` | Paseo UI components and UI hooks                                                                  |
+| `@ohmypcode/plugin/client`              | Client contribution contexts, `usePaseo`, `useRpc`, `useSettings`, and data hooks                 |
+| `@tanstack/react-query`                 | Request state and caching                                                                         |
+| `react`                                 | Components and hooks                                                                              |
+| `react/jsx-runtime`                     | Compiled JSX                                                                                      |
+| `react-native`                          | Cross-platform UI                                                                                 |
+| `zod`                                   | Shared schemas                                                                                    |
 
 The host owns its paired React and renderer versions. The SDK's React peer range permits patch
 versions for tooling and Node consumers; it does not change the app's pinned React version or
@@ -171,7 +171,7 @@ components; do not add `/// <reference lib="dom" />` or `"DOM"` to `lib`.
 Use `ExternalLink` to open documentation outside Paseo:
 
 ```tsx
-import { ExternalLink } from "@getpaseo/plugin/client/ui";
+import { ExternalLink } from "@ohmypcode/plugin/client/ui";
 
 export function DocumentationLink() {
   return <ExternalLink href="https://paseo.sh/docs">Open documentation</ExternalLink>;
@@ -182,7 +182,7 @@ The component has accessible link semantics and uses the same opener as
 `openExternalUrl(url: string): Promise<void>`:
 
 ```ts
-import { openExternalUrl } from "@getpaseo/plugin/client";
+import { openExternalUrl } from "@ohmypcode/plugin/client";
 
 export async function openDocumentation() {
   await openExternalUrl("https://paseo.sh/docs");
@@ -213,8 +213,8 @@ Use `navigation.openBrowser` from a surface or panel. Check availability before 
 the action. This workspace panel chooses an external link on other platforms:
 
 ```tsx
-import type { PluginWorkspacePanelProps } from "@getpaseo/plugin/client";
-import { ExternalLink } from "@getpaseo/plugin/client/ui";
+import type { PluginWorkspacePanelProps } from "@ohmypcode/plugin/client";
+import { ExternalLink } from "@ohmypcode/plugin/client/ui";
 import { Pressable, Text } from "react-native";
 
 export function DocumentationPanel({ navigation, workspaceId, theme }: PluginWorkspacePanelProps) {
@@ -267,8 +267,8 @@ Use `openSettings`, `openSurface`, and `openPanel` for your own registered contr
 
 ### Server runtime
 
-Paseo provides `@getpaseo/plugin`, `@getpaseo/plugin/server`,
-`@getpaseo/plugin/server/provider`, `@getpaseo/plugin/server/acp`, and `zod` to server code. Backend
+Paseo provides `@ohmypcode/plugin`, `@ohmypcode/plugin/server`,
+`@ohmypcode/plugin/server/provider`, `@ohmypcode/plugin/server/acp`, and `zod` to server code. Backend
 contributions run in a daemon subprocess with Node access to the host machine. Keep filesystem,
 process, credential, and other machine-local work under `server/`. A plugin without
 `index.server.ts` starts no subprocess.
@@ -279,7 +279,7 @@ Follow [Build a provider plugin](/docs/plugins/providers) for direct and ACP imp
 session lifecycle, composer settings, timeline renderers, testing, and distribution.
 
 Call `server.registerProvider()` with a `ProviderRegistration` from
-`@getpaseo/plugin/server/provider`. Its connection accepts inputs with `send()` and emits complete state
+`@ohmypcode/plugin/server/provider`. Its connection accepts inputs with `send()` and emits complete state
 snapshots through `onEvent()`. `send()` reports acceptance only; prompt disposition, turns,
 configuration, persistence, permissions, and failures are events.
 
@@ -294,7 +294,7 @@ session config.
 Paseo refreshes an agent by closing its current provider session and opening it with current
 configuration and persistence. Providers re-read external state during `session.open`.
 
-Use `runAcpProvider()` from `@getpaseo/plugin/server/acp` to adapt a command-backed ACP. Add transformer
+Use `runAcpProvider()` from `@ohmypcode/plugin/server/acp` to adapt a command-backed ACP. Add transformer
 hooks only for a vendor's discovery, configuration, notification, or tool-call differences.
 
 `ProviderRegistration.icon` is a file path relative to the plugin directory, such as `icon.svg`.
@@ -311,7 +311,7 @@ receive `PluginClientContext`; server entries receive `PluginServerContext`. Cli
 which return `{ update, remove }` handles. The entry cleanup runs before Paseo removes remaining registrations.
 
 ```ts
-import type { PluginClientContext } from "@getpaseo/plugin/client";
+import type { PluginClientContext } from "@ohmypcode/plugin/client";
 import { Main } from "./client/main";
 
 export default function contribute(client: PluginClientContext) {
@@ -327,7 +327,7 @@ Cleanup can be async. Release timers, watchers, sockets, and other resources cre
 In `index.server.ts`:
 
 ```ts
-import type { PluginServerContext } from "@getpaseo/plugin/server";
+import type { PluginServerContext } from "@ohmypcode/plugin/server";
 
 export default function contribute(server: PluginServerContext) {
   server.on("agent.turn_ended", (event) => {
@@ -428,12 +428,12 @@ and directory lookup/import operations are unaffected.
 ### Send a follow-up when a turn ends
 
 Copy [server/inspect.ts](https://github.com/getpaseo/paseo/blob/main/plugin-examples/lifecycle-actions/server/inspect.ts)
-into your plugin. The helper imports types from `@getpaseo/protocol/agent-types`; add
-`@getpaseo/protocol` at the same version as your plugin SDK to your development dependencies
+into your plugin. The helper imports types from `@ohmypcode/protocol/agent-types`; add
+`@ohmypcode/protocol` at the same version as your plugin SDK to your development dependencies
 and install them before loading the plugin. `latestOutputText` joins text chunks after the latest user message.
 
 ```ts
-import type { PluginServerContext } from "@getpaseo/plugin/server";
+import type { PluginServerContext } from "@ohmypcode/plugin/server";
 import { latestOutputText } from "./server/inspect";
 
 export default function contribute(server: PluginServerContext) {
@@ -466,7 +466,7 @@ add limits or delays in your plugin when needed. Attachments and tool effects ar
 Using `shellCommand` from the same [helper file](https://github.com/getpaseo/paseo/blob/main/plugin-examples/lifecycle-actions/server/inspect.ts):
 
 ```ts
-import type { PluginServerContext } from "@getpaseo/plugin/server";
+import type { PluginServerContext } from "@ohmypcode/plugin/server";
 import { shellCommand } from "./server/inspect";
 
 export default function contribute(server: PluginServerContext) {
@@ -523,7 +523,7 @@ plans, and mode changes; requesting permission does not end the turn.
 Agent events exclude internal utility agents. Archive events can precede runtime/worktree cleanup;
 `workspace.created` is not a setup barrier before agent startup.
 
-**Shared payload shapes** (`@getpaseo/plugin/server`):
+**Shared payload shapes** (`@ohmypcode/plugin/server`):
 
 ```ts
 interface PluginHookAgent {
@@ -652,7 +652,7 @@ Register a component, then point a sidebar item at its surface ID:
 `client/main.tsx`:
 
 ```tsx
-import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
+import type { PluginSurfaceProps } from "@ohmypcode/plugin/client";
 import { useMemo } from "react";
 import { Text, View } from "react-native";
 
@@ -681,7 +681,7 @@ export function Main({ theme, host, layout }: PluginSurfaceProps) {
 `index.client.tsx`:
 
 ```ts
-import type { PluginClientContext } from "@getpaseo/plugin/client";
+import type { PluginClientContext } from "@ohmypcode/plugin/client";
 import { Main } from "./client/main";
 
 export default function contribute(client: PluginClientContext) {
@@ -709,12 +709,12 @@ Paseo owns the route, header, close action, host picker, error boundary, and que
 
 ## Host UI
 
-Import Paseo-owned UI from `@getpaseo/plugin/client/react-native` in client code. This example
+Import Paseo-owned UI from `@ohmypcode/plugin/client/react-native` in client code. This example
 opens a controlled modal, renders a host icon, and confirms the action with a toast:
 
 ```tsx
-import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
-import { Icon, Modal, useToast } from "@getpaseo/plugin/client/react-native";
+import type { PluginSurfaceProps } from "@ohmypcode/plugin/client";
+import { Icon, Modal, useToast } from "@ohmypcode/plugin/client/react-native";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
@@ -793,7 +793,7 @@ Modal children keep the plugin runtime context. `usePaseo`, `useRpc`, `useWorksp
 
 ### Scrolling
 
-Import `ScrollView` and `FlatList` from `@getpaseo/plugin/client/react-native` when content can appear in a
+Import `ScrollView` and `FlatList` from `@ohmypcode/plugin/client/react-native` when content can appear in a
 Paseo modal. They accept React Native props and refs and integrate with the sheet's gestures. Outside
 a sheet they use ordinary React Native scrolling. Do not import bottom-sheet libraries directly.
 
@@ -807,7 +807,7 @@ container without changing these gestures. Expand the sheet before using list me
 `scrollToEnd`; the sheet locks list offsets below its largest height.
 
 ```tsx
-import { FlatList, Modal } from "@getpaseo/plugin/client/react-native";
+import { FlatList, Modal } from "@ohmypcode/plugin/client/react-native";
 import { Text } from "react-native";
 
 // Inside your controlled Modal:
@@ -837,7 +837,7 @@ user action and await it before reporting success. It rejects if the platform de
 clipboard is unavailable; browser permissions and secure-context requirements still apply.
 
 ```tsx
-import { copyText, useToast } from "@getpaseo/plugin/client/react-native";
+import { copyText, useToast } from "@ohmypcode/plugin/client/react-native";
 
 // Inside your component:
 const toast = useToast();
@@ -852,7 +852,7 @@ async function copyResult() {
 ```
 
 Programmatic copying and native text selection are separate interactions. Use `<Text selectable>`
-for long-press selection and OS Copy. Import `TextInput` from `@getpaseo/plugin/client/react-native` for modal forms. It accepts React Native
+for long-press selection and OS Copy. Import `TextInput` from `@ohmypcode/plugin/client/react-native` for modal forms. It accepts React Native
 input props and refs, supports OS Paste, and registers focus with the native sheet so the keyboard
 can raise the form. Outside a sheet it uses the ordinary input. A plain React Native input supports
 Paste too, but does not register focus with the sheet; the keyboard can cover it. No clipboard read
@@ -898,7 +898,7 @@ registrations are client contributions. Paseo applies the transformer while buil
 model, including every live streaming update.
 
 ```tsx
-import type { PluginClientContext, PluginTimelineItemProps } from "@getpaseo/plugin/client";
+import type { PluginClientContext, PluginTimelineItemProps } from "@ohmypcode/plugin/client";
 import { Text } from "react-native";
 import { z } from "zod";
 
@@ -959,7 +959,7 @@ assistant rows.
 A server handler can add a plugin-owned row to canonical history:
 
 ```ts
-import type { PluginHandlerContext } from "@getpaseo/plugin/server";
+import type { PluginHandlerContext } from "@ohmypcode/plugin/server";
 
 async function publishReview(agentId: string, { paseo }: PluginHandlerContext) {
   await paseo.agents.ref(agentId).timeline.append({
@@ -1018,7 +1018,7 @@ Workspace and agent panels receive the same `theme`, `layout`, and optional `nav
 `name`. A theme is data, so it needs no component file:
 
 ```ts
-import type { PluginClientContext } from "@getpaseo/plugin/client";
+import type { PluginClientContext } from "@ohmypcode/plugin/client";
 
 export default function contribute(client: PluginClientContext) {
   client.addTheme({
@@ -1083,12 +1083,12 @@ A disabled or removed plugin leaves an unavailable screen with working Back navi
 
 ### Named UI components
 
-Import settings components from `@getpaseo/plugin/client/ui`. They work with your own state and RPCs;
+Import settings components from `@ohmypcode/plugin/client/ui`. They work with your own state and RPCs;
 no form wrapper or storage binding is required.
 
 ```tsx
 import { useState } from "react";
-import { SettingsCard, SettingsSection, SettingsSwitch } from "@getpaseo/plugin/client/ui";
+import { SettingsCard, SettingsSection, SettingsSwitch } from "@ohmypcode/plugin/client/ui";
 
 export function DisplaySettings() {
   const [visible, setVisible] = useState(true);
@@ -1122,7 +1122,7 @@ can sit beside or inside these components.
 Define a settings document in `shared/`:
 
 ```ts
-import { defineSettings } from "@getpaseo/plugin";
+import { defineSettings } from "@ohmypcode/plugin";
 import { z } from "zod";
 
 export const preferences = defineSettings({
@@ -1213,7 +1213,7 @@ Register one panel for workspace or agent context:
 `client/review.tsx`:
 
 ```tsx
-import { type PluginAgentPanelProps, useAgent, useWorkspace } from "@getpaseo/plugin/client";
+import { type PluginAgentPanelProps, useAgent, useWorkspace } from "@ohmypcode/plugin/client";
 import { useMemo } from "react";
 import { Text, View } from "react-native";
 
@@ -1244,7 +1244,7 @@ export function ReviewPanel({ theme, layout, workspaceId, agentId }: PluginAgent
 `index.client.tsx`:
 
 ```ts
-import type { PluginClientContext } from "@getpaseo/plugin/client";
+import type { PluginClientContext } from "@ohmypcode/plugin/client";
 import { ReviewPanel } from "./client/review";
 
 export default function contribute(client: PluginClientContext) {
@@ -1325,7 +1325,7 @@ Open the Command Center with **⌘K** on macOS or **Ctrl+K** on Windows and Linu
 Register an action and open a panel from the callback:
 
 ```tsx
-import { defineRpc } from "@getpaseo/plugin";
+import { defineRpc } from "@ohmypcode/plugin";
 import { z } from "zod";
 
 const refreshReview = defineRpc({
@@ -1478,7 +1478,7 @@ replaces registrations on each snapshot and aborts the observation during entry 
 
 ## Button descriptor
 
-These contracts are exported from `@getpaseo/plugin/client`.
+These contracts are exported from `@ohmypcode/plugin/client`.
 
 | Field      | Required | Meaning                                                                 |
 | ---------- | -------- | ----------------------------------------------------------------------- |
@@ -1579,7 +1579,7 @@ your subscriptions, timers, and other resources.
 Use `usePaseo()` for ordinary Paseo operations from a surface. It borrows the selected host's existing connection; do not create another client.
 
 ```tsx
-import { type PluginSurfaceProps, usePaseo } from "@getpaseo/plugin/client";
+import { type PluginSurfaceProps, usePaseo } from "@ohmypcode/plugin/client";
 import { Pressable, Text } from "react-native";
 
 function PullRequestAction({ theme }: PluginSurfaceProps) {
@@ -1617,7 +1617,7 @@ Use `useHosts()` to display configured hosts and `getPaseoClient(serverId)` in a
 to run SDK operations on one of them:
 
 ```tsx
-import { getPaseoClient, useHosts, type PluginSurfaceProps } from "@getpaseo/plugin/client";
+import { getPaseoClient, useHosts, type PluginSurfaceProps } from "@ohmypcode/plugin/client";
 import { useMemo, useState, type ReactElement } from "react";
 import { Pressable, Text, View } from "react-native";
 
@@ -1696,7 +1696,7 @@ Define one contract with Zod, handle it in the subprocess, and call it from the 
 `shared/greeting.ts`:
 
 ```ts
-import { defineRpc } from "@getpaseo/plugin";
+import { defineRpc } from "@ohmypcode/plugin";
 import { z } from "zod";
 
 export const greeting = defineRpc({
@@ -1709,7 +1709,7 @@ export const greeting = defineRpc({
 `client/greeting.tsx`:
 
 ```tsx
-import { useRpc } from "@getpaseo/plugin/client";
+import { useRpc } from "@ohmypcode/plugin/client";
 import { greeting } from "../shared/greeting";
 
 export function GreetingButton() {
@@ -1722,7 +1722,7 @@ export function GreetingButton() {
 `server/greeting.ts`:
 
 ```ts
-import type { RpcInput } from "@getpaseo/plugin";
+import type { RpcInput } from "@ohmypcode/plugin";
 import { greeting } from "../shared/greeting";
 
 export function createGreeting({ name }: RpcInput<typeof greeting>) {
@@ -1733,7 +1733,7 @@ export function createGreeting({ name }: RpcInput<typeof greeting>) {
 `index.client.tsx`:
 
 ```ts
-import type { PluginClientContext } from "@getpaseo/plugin/client";
+import type { PluginClientContext } from "@ohmypcode/plugin/client";
 import { GreetingButton } from "./client/greeting";
 
 export default function contribute(client: PluginClientContext) {
@@ -1745,7 +1745,7 @@ export default function contribute(client: PluginClientContext) {
 `index.server.ts`:
 
 ```ts
-import type { PluginServerContext } from "@getpaseo/plugin/server";
+import type { PluginServerContext } from "@ohmypcode/plugin/server";
 import { createGreeting } from "./server/greeting";
 import { greeting } from "./shared/greeting";
 
@@ -1803,7 +1803,7 @@ An attachment source searches external resources and returns a stable text snaps
 `shared/issues.ts`:
 
 ```ts
-import { defineAttachmentSource, defineRpc } from "@getpaseo/plugin";
+import { defineAttachmentSource, defineRpc } from "@ohmypcode/plugin";
 import { z } from "zod";
 
 export const searchIssues = defineRpc({
@@ -1837,7 +1837,7 @@ export const issues = defineAttachmentSource({
 `server/issues.ts`:
 
 ```ts
-import type { RpcInput } from "@getpaseo/plugin";
+import type { RpcInput } from "@ohmypcode/plugin";
 import { searchIssues } from "../shared/issues";
 
 export function search({ query }: RpcInput<typeof searchIssues>) {
@@ -1848,7 +1848,7 @@ export function search({ query }: RpcInput<typeof searchIssues>) {
 `index.client.tsx`:
 
 ```ts
-import type { PluginClientContext } from "@getpaseo/plugin/client";
+import type { PluginClientContext } from "@ohmypcode/plugin/client";
 import { issues } from "./shared/issues";
 
 export default function contribute(client: PluginClientContext) {
@@ -1860,7 +1860,7 @@ export default function contribute(client: PluginClientContext) {
 `index.server.ts`:
 
 ```ts
-import type { PluginServerContext } from "@getpaseo/plugin/server";
+import type { PluginServerContext } from "@ohmypcode/plugin/server";
 import { search } from "./server/issues";
 import { searchIssues } from "./shared/issues";
 

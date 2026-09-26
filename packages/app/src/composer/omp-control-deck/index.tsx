@@ -15,7 +15,7 @@ import { Combobox, ComboboxItem, type ComboboxOption } from "@/components/ui/com
 import { SegmentedControl, type SegmentedControlOption } from "@/components/ui/segmented-control";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import type { AgentFeature, AgentToolDefinition } from "@getpaseo/protocol/agent-types";
+import type { AgentFeature, AgentToolDefinition } from "@ohmypcode/protocol/agent-types";
 import { resolveToolCallIcon, type ToolCallIconComponent } from "@/utils/tool-call-icon";
 import { useComposerControlLayout } from "@/composer/agent-controls/layout-context";
 import {

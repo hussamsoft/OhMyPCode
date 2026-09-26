@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { OmpProviderLoginEvent } from "@getpaseo/protocol/messages";
+import type { OmpProviderLoginEvent } from "@ohmypcode/protocol/messages";
 import { useHostRuntimeClient } from "@/runtime/host-runtime";
 import { providersSnapshotQueryRoot } from "@/hooks/use-providers-snapshot";
 import { openExternalUrl } from "@/utils/open-external-url";

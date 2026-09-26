@@ -55,7 +55,7 @@ The heart of Paseo. A Node.js process that:
 All paths are under `packages/server/src/`.
 
 Desktop and CLI import server capabilities through explicit package subpaths such as
-`@getpaseo/server/daemon-control`, `/configuration`, and `/process`. The root export
+`@ohmypcode/server/daemon-control`, `/configuration`, and `/process`. The root export
 loads daemon bootstrap eagerly, even when a caller only uses a path or process helper.
 Keep process-management and configuration dependencies independent of bootstrap and
 WebSocket message schemas. Shared configuration schemas belong in protocol leaf modules;
@@ -93,15 +93,15 @@ not retain non-Git directories.
 
 The source of truth for WebSocket messages, binary frame codecs, endpoint parsing,
 agent timeline types, provider config schemas, and other values shared by daemon
-and clients. Server, app, CLI, and `@getpaseo/client` all depend on this package;
+and clients. Server, app, CLI, and `@ohmypcode/client` all depend on this package;
 it does not depend on the server.
 
 ### `packages/client` — Daemon client library and SDK facade
 
 Owns the low-level daemon WebSocket driver plus the higher-level `PaseoClient`
 facade. App and CLI may import the low-level driver from
-`@getpaseo/client/internal/daemon-client` during migration, while new SDK-shaped
-code imports from `@getpaseo/client`.
+`@ohmypcode/client/internal/daemon-client` during migration, while new SDK-shaped
+code imports from `@ohmypcode/client`.
 
 `PaseoApi` is the capability-only boundary over workspaces, agents, terminals, providers, and config.
 `PaseoClient` adds connection lifecycle. App plugin surfaces borrow an API over their selected

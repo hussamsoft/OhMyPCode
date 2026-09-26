@@ -22,7 +22,10 @@ import {
   UserCheck,
   Zap,
 } from "lucide-react-native";
-import { getModeVisuals, type AgentProviderDefinition } from "@getpaseo/protocol/provider-manifest";
+import {
+  getModeVisuals,
+  type AgentProviderDefinition,
+} from "@ohmypcode/protocol/provider-manifest";
 
 export interface AgentControlIconProps {
   size: number;

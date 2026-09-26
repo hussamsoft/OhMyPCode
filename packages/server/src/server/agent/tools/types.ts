@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { ProviderPaseoToolsPolicy } from "@getpaseo/protocol/provider-config";
+import type { ProviderPaseoToolsPolicy } from "@ohmypcode/protocol/provider-config";
 
 export interface PaseoToolExecutionContext {
   signal?: AbortSignal;

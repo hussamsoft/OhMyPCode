@@ -4,8 +4,8 @@ import type {
   JsonValue,
   ProviderOptions,
   ToolPolicy,
-} from "@getpaseo/protocol/agent-types";
-import type { AgentAttachment } from "@getpaseo/protocol/messages";
+} from "@ohmypcode/protocol/agent-types";
+import type { AgentAttachment } from "@ohmypcode/protocol/messages";
 import type { PaseoToolCatalog } from "./tools/types.js";
 import type { ProviderSubagentInputEvent } from "./provider-subagents/store.js";
 import type {

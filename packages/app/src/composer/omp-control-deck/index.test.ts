@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AgentFeature, AgentToolDefinition } from "@getpaseo/protocol/agent-types";
+import type { AgentFeature, AgentToolDefinition } from "@ohmypcode/protocol/agent-types";
 import { applyOmpToolSelection, buildOmpSettingsGroups, resolveOmpLabelVisibility } from "./model";
 
 const tools: AgentToolDefinition[] = [

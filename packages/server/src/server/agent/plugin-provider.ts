@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Logger } from "pino";
-import type { JsonValue, ProviderOptions } from "@getpaseo/protocol/agent-types";
+import type { JsonValue, ProviderOptions } from "@ohmypcode/protocol/agent-types";
 import { z } from "zod";
 import {
   PROVIDER_CAPABILITIES,
@@ -21,7 +21,7 @@ import {
   type ProviderSessionConfig,
   type ProviderContent,
   type ProviderTimelineItem,
-} from "@getpaseo/plugin/server/provider";
+} from "@ohmypcode/plugin/server/provider";
 import type {
   AgentCapabilityFlags,
   AgentClient,

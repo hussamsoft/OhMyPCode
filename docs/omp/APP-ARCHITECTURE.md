@@ -103,7 +103,7 @@ Registered in `packages/app/src/panels/register-panels.ts` and `panel-manifest.t
 - **RPC Parity**: Drives the bundled OMP CLI runtime via JSON-RPC (`--mode rpc`).
 - **Terminal Escape Hatch**: Complete fallback via embedded workspace terminal profile (`{ id: "omp", command: "omp" }`) resolved to the bundled binary via `resolveOmpTerminalSpawn`.
 - **Feature Probing**: Daemon probes `isOmpRuntimeAvailable()` and advertises `ompRuntime`, `ompCollab`, `ompVibe`, and `ompToolSelection` in `server_info.features`.
-- **Protocol Gateway**: Correlated protocol request/response pairs in `@getpaseo/protocol` routed through `OmpParitySessionController`.
+- **Protocol Gateway**: Correlated protocol request/response pairs in `@ohmypcode/protocol` routed through `OmpParitySessionController`.
 
 ## 7. Branding Surface
 

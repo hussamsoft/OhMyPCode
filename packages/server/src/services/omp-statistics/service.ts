@@ -1,5 +1,5 @@
 import type { Logger } from "pino";
-import { OmpStatisticsSchema, type OmpStatistics } from "@getpaseo/protocol/messages";
+import { OmpStatisticsSchema, type OmpStatistics } from "@ohmypcode/protocol/messages";
 import { execCommand } from "../../utils/spawn.js";
 import { resolveOmpCommand } from "../omp-command.js";
 const OMP_STATS_TIMEOUT_MS = 15_000;

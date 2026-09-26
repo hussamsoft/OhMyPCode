@@ -1,7 +1,7 @@
 import { createPluginHosts } from "./hosts";
 import { expect, test } from "vitest";
-import { createPaseoApi } from "@getpaseo/client";
-import { DaemonClient } from "@getpaseo/client/internal/daemon-client";
+import { createPaseoApi } from "@ohmypcode/client";
+import { DaemonClient } from "@ohmypcode/client/internal/daemon-client";
 import { PluginRegistry } from "./registry";
 
 function registry() {

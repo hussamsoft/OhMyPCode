@@ -13,7 +13,7 @@ import {
   type PluginUpdateProposal,
   type PluginUpdateSelection,
   type PluginUpdateTarget,
-} from "@getpaseo/protocol/messages";
+} from "@ohmypcode/protocol/messages";
 import { runGitCommand } from "../../utils/run-git-command.js";
 import { ensurePrivateDirectory, writePrivateFileAtomicSync } from "../private-files.js";
 import { readPluginManifest, type PluginManifest } from "./manifest.js";

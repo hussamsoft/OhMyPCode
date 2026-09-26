@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ComponentType } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
-import type { OmpStatistics } from "@getpaseo/protocol/messages";
+import type { OmpStatistics } from "@ohmypcode/protocol/messages";
 import {
   Activity,
   BarChart3,

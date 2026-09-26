@@ -3,7 +3,7 @@
 Install on a Paseo host with npm source installation support and npm available:
 
 ```sh
-paseo plugin install npm:@getpaseo/plugin-example-modal-ui@0.1.1
+paseo plugin install npm:@ohmypcode/plugin-example-modal-ui@0.1.1
 ```
 
 In host **Settings → Plugins**, paste the same `npm:` identifier into **Plugin source**.
@@ -16,7 +16,7 @@ An explicit install version selects the initial content; later updates still che
 
 The package ships the existing TypeScript entry and client sources. Paseo compiles them through
 its directory plugin loader; no package build or preparation command is required. React,
-React Native, and `@getpaseo/plugin` are peer contracts supplied by the host. npm is needed for
+React Native, and `@ohmypcode/plugin` are peer contracts supplied by the host. npm is needed for
 installation, not loading or reloading. You can also install this directory while developing.
 See the [source reference](https://paseo.sh/docs/plugins/reference#plugin-sources)
 for supported identifiers and preparation rules.

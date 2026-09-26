@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { z } from "zod";
-import type { ProviderSnapshotEntry } from "@getpaseo/protocol/agent-types";
-import type { AgentProfile } from "@getpaseo/protocol/messages";
+import type { ProviderSnapshotEntry } from "@ohmypcode/protocol/agent-types";
+import type { AgentProfile } from "@ohmypcode/protocol/messages";
 import { FormPreferencesSchema } from "@/create-agent-preferences/preferences";
 import {
   CREATE_AGENT_PREFERENCES_STORAGE_KEY,

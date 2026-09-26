@@ -16,8 +16,8 @@ import {
   decodeTerminalStreamFrame,
   encodeTerminalStreamFrame,
   TerminalStreamOpcode,
-} from "@getpaseo/protocol/terminal-stream-protocol";
-import { CLIENT_CAPS } from "@getpaseo/protocol/client-capabilities";
+} from "@ohmypcode/protocol/terminal-stream-protocol";
+import { CLIENT_CAPS } from "@ohmypcode/protocol/client-capabilities";
 import { APPLICATION_SOCKET_LEASE_MS } from "./websocket/physical-socket.js";
 
 type SocketListener = (...args: unknown[]) => void;

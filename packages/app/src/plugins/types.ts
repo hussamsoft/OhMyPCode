@@ -1,10 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { PluginRequirements } from "@getpaseo/protocol/messages";
+import type { PluginRequirements } from "@ohmypcode/protocol/messages";
 import type {
   PluginAttachmentSourceContribution,
   PluginCleanup,
   PluginThemeContribution,
-} from "@getpaseo/plugin";
+} from "@ohmypcode/plugin";
 import type {
   PluginCommandCenterItemContribution,
   PluginClientSlashCommandContribution,
@@ -16,7 +16,7 @@ import type {
   PluginTimelineTransformerContribution,
   PluginPanelLocation,
   PluginWorkspacePanelContribution,
-} from "@getpaseo/plugin/client";
+} from "@ohmypcode/plugin/client";
 
 export type EvaluatedPluginWorkspacePanelContribution = PluginWorkspacePanelContribution & {
   locations: readonly PluginPanelLocation[];

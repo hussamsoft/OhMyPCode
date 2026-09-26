@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { execCommand } from "@getpaseo/server/process";
-import { isOmpRuntimeAvailable } from "@getpaseo/server/omp-command";
+import { execCommand } from "@ohmypcode/server/process";
+import { isOmpRuntimeAvailable } from "@ohmypcode/server/omp-command";
 import { resolveBundledOmpPath } from "./runtime-paths.js";
 
 export interface OmpRuntimeStatus {

@@ -2,7 +2,7 @@ import {
   waitForDaemonReady,
   resolvePaseoHome,
   type DaemonInstance,
-} from "@getpaseo/server/daemon-control";
+} from "@ohmypcode/server/daemon-control";
 import { describeDaemonTarget, type DaemonTarget } from "./daemon-target.js";
 export type { DaemonTarget } from "./daemon-target.js";
 import {
@@ -11,13 +11,13 @@ import {
   normalizeHostPort,
   parseConnectionUri,
   shouldUseTlsForDefaultHostedRelay,
-} from "@getpaseo/protocol/daemon-endpoints";
+} from "@ohmypcode/protocol/daemon-endpoints";
 import {
   parseConnectionOfferFromUrl,
   type ConnectionOffer,
-} from "@getpaseo/protocol/connection-offer";
-import { parseSshTransportUri } from "@getpaseo/protocol/ssh-transport";
-import { DaemonClient, type WebSocketLike } from "@getpaseo/client/internal/daemon-client";
+} from "@ohmypcode/protocol/connection-offer";
+import { parseSshTransportUri } from "@ohmypcode/protocol/ssh-transport";
+import { DaemonClient, type WebSocketLike } from "@ohmypcode/client/internal/daemon-client";
 import { WebSocket } from "ws";
 import { getOrCreateCliClientId } from "./client-id.js";
 import { resolveCliVersion } from "../version.js";

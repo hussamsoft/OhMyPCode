@@ -6,10 +6,10 @@ import type {
   ConnectionState,
   FetchAgentsEntry,
   FetchAgentsOptions,
-} from "@getpaseo/client/internal/daemon-client";
-import type { ConnectionOffer } from "@getpaseo/protocol/connection-offer";
-import type { SessionOutboundMessage } from "@getpaseo/protocol/messages";
-import type { AgentPermissionRequest } from "@getpaseo/protocol/agent-types";
+} from "@ohmypcode/client/internal/daemon-client";
+import type { ConnectionOffer } from "@ohmypcode/protocol/connection-offer";
+import type { SessionOutboundMessage } from "@ohmypcode/protocol/messages";
+import type { AgentPermissionRequest } from "@ohmypcode/protocol/agent-types";
 import type { HostConnection, HostProfile } from "@/types/host-connection";
 import { defaultHostAppearance } from "@/hosts/appearance";
 import { useSessionStore, type Agent } from "@/stores/session-store";

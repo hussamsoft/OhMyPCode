@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
-import type { OmpProvidersListPayload } from "@getpaseo/client/internal/daemon-client";
+import type { OmpProvidersListPayload } from "@ohmypcode/client/internal/daemon-client";
 import { AdaptiveTextInput } from "@/components/adaptive-modal-sheet";
 import { SettingsSection } from "@/components/settings/headings/settings-section";
 import { Alert } from "@/components/ui/alert";

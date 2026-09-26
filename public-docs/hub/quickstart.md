@@ -15,7 +15,7 @@ You need [Paseo installed and running](/docs), Node.js, and a Slack workspace wh
 ## 1. Start Hub
 
 ```sh
-npx @getpaseo/hub
+npx @ohmypcode/hub
 ```
 
 Open the address it prints, normally <http://localhost:3000>, and create the operator account Hub asks for.

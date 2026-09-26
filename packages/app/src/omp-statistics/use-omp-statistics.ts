@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
-import type { OmpStatisticsResponseMessage } from "@getpaseo/protocol/messages";
+import type { DaemonClient } from "@ohmypcode/client/internal/daemon-client";
+import type { OmpStatisticsResponseMessage } from "@ohmypcode/protocol/messages";
 import { useFetchQuery } from "@/data/query";
 import { useHostRuntimeClient, useHostRuntimeIsConnected } from "@/runtime/host-runtime";
 import { useSessionStore } from "@/stores/session-store";

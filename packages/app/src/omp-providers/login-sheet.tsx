@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
-import type { OmpProviderLoginEvent } from "@getpaseo/protocol/messages";
+import type { OmpProviderLoginEvent } from "@ohmypcode/protocol/messages";
 import {
   AdaptiveModalSheet,
   AdaptiveTextInput,

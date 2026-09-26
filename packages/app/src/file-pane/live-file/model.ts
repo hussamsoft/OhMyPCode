@@ -1,5 +1,5 @@
-import type { FileReadResult } from "@getpaseo/client/internal/daemon-client";
-import type { FileVersion } from "@getpaseo/protocol/messages";
+import type { FileReadResult } from "@ohmypcode/client/internal/daemon-client";
+import type { FileVersion } from "@ohmypcode/protocol/messages";
 
 export interface LiveFileTarget {
   cwd: string;

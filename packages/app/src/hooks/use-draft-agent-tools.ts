@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useFetchQuery } from "@/data/query";
-import type { AgentProvider, AgentToolDefinition } from "@getpaseo/protocol/agent-types";
+import type { AgentProvider, AgentToolDefinition } from "@ohmypcode/protocol/agent-types";
 import { useHostRuntimeClient, useHostRuntimeIsConnected } from "@/runtime/host-runtime";
 import { useSessionStore } from "@/stores/session-store";
 import { mergeProviderPreferences, useFormPreferences } from "./use-form-preferences";

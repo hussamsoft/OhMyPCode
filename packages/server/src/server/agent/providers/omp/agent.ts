@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { setImmediate as waitForImmediate, setTimeout as delay } from "node:timers/promises";
 import type { Logger } from "pino";
 import stripAnsi from "strip-ansi";
-import type { JsonValue } from "@getpaseo/protocol/agent-types";
+import type { JsonValue } from "@ohmypcode/protocol/agent-types";
 
 import {
   type AgentCapabilityFlags,

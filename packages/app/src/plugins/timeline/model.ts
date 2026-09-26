@@ -2,8 +2,8 @@ import type {
   PluginTimelineData,
   PluginTimelineItem,
   PluginTimelineTransformResult,
-} from "@getpaseo/plugin";
-import type { AgentTimelineItem } from "@getpaseo/protocol/agent-types";
+} from "@ohmypcode/plugin";
+import type { AgentTimelineItem } from "@ohmypcode/protocol/agent-types";
 import type { InstalledPlugin } from "../types";
 
 export interface InstalledPluginTimelineItem extends PluginTimelineItem {

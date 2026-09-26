@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import type {
   AgentStreamEvent as ProtocolAgentStreamEvent,
   AgentToolDefinition as ProtocolAgentToolDefinition,
-} from "@getpaseo/protocol/agent-types";
+} from "@ohmypcode/protocol/agent-types";
 import type { AgentStreamEvent, AgentToolDefinition } from "./agent-sdk-types.js";
 
 const tool: ProtocolAgentToolDefinition = {

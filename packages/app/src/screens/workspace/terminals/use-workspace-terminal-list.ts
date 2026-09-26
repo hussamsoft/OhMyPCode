@@ -1,5 +1,5 @@
-import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
-import type { ListTerminalsResponse } from "@getpaseo/protocol/messages";
+import type { DaemonClient } from "@ohmypcode/client/internal/daemon-client";
+import type { ListTerminalsResponse } from "@ohmypcode/protocol/messages";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { workspaceTerminalsPushRoute } from "@/data/push-router";

@@ -56,7 +56,7 @@ my-plugin/
   shared/greeting.ts
 ```
 
-The generated `package.json` installs `@getpaseo/plugin` and the other host modules as development
+The generated `package.json` installs `@ohmypcode/plugin` and the other host modules as development
 dependencies for local typechecking and tests. Paseo compiles TypeScript and TSX and supplies the
 runtime modules, so consumers do not install these packages when adding the plugin.
 
@@ -182,9 +182,9 @@ wiring. Runtime code lives behind directory boundaries:
 
 Do not put any other code modules in the plugin root.
 
-Shared files import contract helpers and types from `@getpaseo/plugin`. Server handler files import
-`PluginHandlerContext` from `@getpaseo/plugin/server`. Client files import Paseo UI from
-`@getpaseo/plugin/client/react-native`. Its `Icon` resolves a Lucide name using the client's installed icon
+Shared files import contract helpers and types from `@ohmypcode/plugin`. Server handler files import
+`PluginHandlerContext` from `@ohmypcode/plugin/server`. Client files import Paseo UI from
+`@ohmypcode/plugin/client/react-native`. Its `Icon` resolves a Lucide name using the client's installed icon
 set; an unknown name renders nothing so it cannot break the plugin surface.
 Its controlled modal keeps presentation metadata on `<Modal title="…" icon={…}>` and body UI in
 `<Modal.Content>`. Body layout, sheet-aware scrolling, and clipboard actions follow the
@@ -200,14 +200,14 @@ Classify every SDK export before adding it. All client entry points and implemen
 Zod schemas, and functions that run in both runtimes. A type-only import is still an architectural
 dependency; shared types must not refer to React components, hooks, Node APIs, or server contexts.
 
-| Entry                                                | Owns                                                                       | May depend on          |
-| ---------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------- |
-| `@getpaseo/plugin`                                   | Shared data, schemas, RPC/settings definitions, runtime-neutral helpers    | Shared code only       |
-| `@getpaseo/plugin/server`                            | Server contribution/handler contexts and lifecycle contracts               | Shared and server code |
-| `@getpaseo/plugin/server/provider`, `/server/acp`    | Server provider contracts and adapters                                     | Shared and server code |
-| `@getpaseo/plugin/client`                            | Client contribution contexts, hooks, navigation, and UI contribution types | Shared and client code |
-| `@getpaseo/plugin/client/react-native`, `/client/ui` | Host-provided UI components                                                | Shared and client code |
-| `@getpaseo/plugin/client/host`                       | App-owned rendering integration; not a plugin-author entry                 | Shared and client code |
+| Entry                                                 | Owns                                                                       | May depend on          |
+| ----------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------- |
+| `@ohmypcode/plugin`                                   | Shared data, schemas, RPC/settings definitions, runtime-neutral helpers    | Shared code only       |
+| `@ohmypcode/plugin/server`                            | Server contribution/handler contexts and lifecycle contracts               | Shared and server code |
+| `@ohmypcode/plugin/server/provider`, `/server/acp`    | Server provider contracts and adapters                                     | Shared and server code |
+| `@ohmypcode/plugin/client`                            | Client contribution contexts, hooks, navigation, and UI contribution types | Shared and client code |
+| `@ohmypcode/plugin/client/react-native`, `/client/ui` | Host-provided UI components                                                | Shared and client code |
+| `@ohmypcode/plugin/client/host`                       | App-owned rendering integration; not a plugin-author entry                 | Shared and client code |
 
 Server code imports shared helpers from the root and server capabilities from `/server`. Client
 code imports shared helpers from the root and client capabilities from `/client`. Neither runtime
@@ -237,7 +237,7 @@ pattern.
 
 ```ts
 // index.server.ts
-import type { PluginServerContext } from "@getpaseo/plugin/server";
+import type { PluginServerContext } from "@ohmypcode/plugin/server";
 import { createGreeting } from "./server/greeting";
 import { greetRpc } from "./shared/greeting";
 
@@ -249,7 +249,7 @@ export default function contribute(server: PluginServerContext) {
 
 ```tsx
 // index.client.tsx
-import type { PluginClientContext } from "@getpaseo/plugin/client";
+import type { PluginClientContext } from "@ohmypcode/plugin/client";
 import { Greeting } from "./client/greeting";
 
 export default function contribute(client: PluginClientContext) {
@@ -332,8 +332,8 @@ Register a provider from `index.server.ts`. The provider connection is callback-
 of its sessions; plugin RPC is not part of the provider data path.
 
 ```ts
-import type { PluginServerContext } from "@getpaseo/plugin/server";
-import type { ProviderRegistration } from "@getpaseo/plugin/server/provider";
+import type { PluginServerContext } from "@ohmypcode/plugin/server";
+import type { ProviderRegistration } from "@ohmypcode/plugin/server/provider";
 import { createProvider } from "./server/provider";
 
 export default function contribute(server: PluginServerContext) {
@@ -359,7 +359,7 @@ persistence. Providers re-read credentials, environment, global configuration, a
 `session.open`; there is no provider reload input.
 
 For an ACP command, register `runAcpProvider({ id, label, command })` from
-`@getpaseo/plugin/server/acp`. Its transformer hooks cover narrow vendor differences; do not translate the
+`@ohmypcode/plugin/server/acp`. Its transformer hooks cover narrow vendor differences; do not translate the
 whole provider event stream. The direct and ACP examples live in `plugin-examples/provider-direct`
 and `plugin-examples/provider-acp-transformer`.
 
@@ -473,7 +473,7 @@ credentials and vendor API calls stay in the daemon handler.
 
 ```ts
 // index.server.ts
-import type { PluginServerContext } from "@getpaseo/plugin/server";
+import type { PluginServerContext } from "@ohmypcode/plugin/server";
 import { search } from "./server/issues";
 import { searchIssues } from "./shared/issues";
 
@@ -485,7 +485,7 @@ export default function contribute(server: PluginServerContext) {
 
 ```tsx
 // index.client.tsx
-import type { PluginClientContext } from "@getpaseo/plugin/client";
+import type { PluginClientContext } from "@ohmypcode/plugin/client";
 import { issues } from "./shared/issues";
 
 export default function contribute(client: PluginClientContext) {

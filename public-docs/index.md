@@ -42,7 +42,7 @@ Paseo checks sandbox availability each time it launches. AppImage and extracted 
 For headless machines, dev boxes, or any setup where you want the daemon running without the desktop UI:
 
 ```bash
-npm install -g @getpaseo/cli
+npm install -g @ohmypcode/cli
 paseo
 ```
 

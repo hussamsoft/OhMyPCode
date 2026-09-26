@@ -72,7 +72,7 @@ Paseo는 코딩 에이전트를 관리하는 로컬 서버인 데몬을 실행�
 CLI를 설치하고 Paseo를 시작하세요.
 
 ```bash
-npm install -g @getpaseo/cli
+npm install -g @ohmypcode/cli
 paseo
 ```
 

@@ -15,7 +15,7 @@ import {
   type PackageInfo,
 } from "./package-paths.js";
 
-const SERVER_PACKAGE_NAME = "@getpaseo/server";
+const SERVER_PACKAGE_NAME = "@ohmypcode/server";
 
 /** `omp` on POSIX; `omp.exe` on Windows -- matches scripts/build-omp-runtime.mjs's binaryName(). */
 function ompBinaryName(): string {
@@ -50,7 +50,7 @@ export function resolveDaemonRunnerEntrypoint(): NodeEntrypointSpec {
         filePath: path.join(
           resolvePackagedAsarPath(),
           "node_modules",
-          "@getpaseo",
+          "@ohmypcode",
           "server",
           "dist",
           "scripts",

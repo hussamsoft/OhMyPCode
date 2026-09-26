@@ -3,8 +3,8 @@ import type {
   AgentStreamEventPayload,
   CreateAgentWorktreeTarget,
   HubExecutionControlAction,
-} from "@getpaseo/protocol/messages";
-import type { ProviderOptions, ToolPolicy } from "@getpaseo/protocol/agent-types";
+} from "@ohmypcode/protocol/messages";
+import type { ProviderOptions, ToolPolicy } from "@ohmypcode/protocol/agent-types";
 
 import type { AgentManager, AgentManagerEvent, ManagedAgent } from "../agent/agent-manager.js";
 import type { McpServerConfig } from "../agent/agent-sdk-types.js";

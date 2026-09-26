@@ -102,7 +102,7 @@ pointers. The npm invariant is:
 
 - A beta release moves only `beta`; `latest` remains on the newest stable.
 - A stable release moves both `latest` and `beta` to that stable version. This
-  keeps users who install `@getpaseo/cli@beta` on the newest Paseo release after
+  keeps users who install `@ohmypcode/cli@beta` on the newest Paseo release after
   a beta is promoted or superseded by a direct stable release.
 
 ## Release version decision
@@ -151,7 +151,7 @@ republish the packages:
 ```bash
 PASEO_VERSION=$(node -p "require('./package.json').version")
 for package in highlight relay protocol client plugin server cli; do
-  npm dist-tag add "@getpaseo/$package@$PASEO_VERSION" beta
+  npm dist-tag add "@ohmypcode/$package@$PASEO_VERSION" beta
 done
 ```
 
@@ -188,7 +188,7 @@ npm run release:promote          # Promote X.Y.Z-beta.N to stable X.Y.Z
 ```
 
 - Beta tags are published GitHub prereleases like `v0.1.41-beta.1`
-- Betas publish npm packages with `--tag beta`, so `npm install @getpaseo/cli@beta` opts in while plain `npm install @getpaseo/cli` stays on `latest`
+- Betas publish npm packages with `--tag beta`, so `npm install @ohmypcode/cli@beta` opts in while plain `npm install @ohmypcode/cli` stays on `latest`
 - Betas publish desktop assets and APKs for testing. They also build iOS, upload it to TestFlight, add it to the `Paseo Beta` external group, and submit it for Beta App Review. They do not submit mobile builds to the production stores.
 - `release:promote` creates a fresh stable tag like `v0.1.41`; the final release never reuses the beta tag
 - Desktop assets now come from the Electron package at `packages/desktop`
@@ -498,7 +498,7 @@ intentionally unavailable to desktop updater clients.
 
 ## Notes
 
-- `version:all:*` bumps root + syncs workspace versions and `@getpaseo/*` dependency versions
+- `version:all:*` bumps root + syncs workspace versions and `@ohmypcode/*` dependency versions
 - `release:prepare` refreshes workspace `node_modules` links to prevent stale types
 - `npm run dev:desktop` and `npm run build:desktop` target the Electron desktop package in `packages/desktop`
 - If `release:publish` partially fails, re-run it — npm skips already-published versions

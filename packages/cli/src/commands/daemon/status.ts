@@ -1,12 +1,12 @@
 import { Command } from "commander";
-import { DaemonConnectionError } from "@getpaseo/client/internal/daemon-client";
+import { DaemonConnectionError } from "@ohmypcode/client/internal/daemon-client";
 import {
   readDaemonInstance,
   daemonLogPath,
   isSameDaemonInstance,
   DaemonInstanceError,
-} from "@getpaseo/server/daemon-control";
-import { readPersistedConfig, resolveConfigFromPersisted } from "@getpaseo/server/configuration";
+} from "@ohmypcode/server/daemon-control";
+import { readPersistedConfig, resolveConfigFromPersisted } from "@ohmypcode/server/configuration";
 import { connectToDaemon, buildDaemonConnectionCommandError } from "../../utils/client.js";
 import { withOutput, toCommandError, type CommandOptions } from "../../output/index.js";
 import { addJsonAndDaemonHostOptions } from "../../utils/command-options.js";

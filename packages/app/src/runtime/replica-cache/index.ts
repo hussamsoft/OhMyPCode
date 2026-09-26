@@ -3,9 +3,9 @@ import {
   AgentStatusSchema,
   AgentTimelineItemPayloadSchema,
   WorkspaceGitHubRuntimePayloadSchema,
-} from "@getpaseo/protocol/messages";
-import { AgentProviderSchema } from "@getpaseo/protocol/provider-manifest";
-import type { PluginTimelineData } from "@getpaseo/plugin";
+} from "@ohmypcode/protocol/messages";
+import { AgentProviderSchema } from "@ohmypcode/protocol/provider-manifest";
+import type { PluginTimelineData } from "@ohmypcode/plugin";
 import {
   normalizeProjectDescriptor,
   normalizeWorkspaceDescriptor,

@@ -11,7 +11,7 @@ import {
   readDaemonInstance,
   isSameDaemonInstance,
   type DaemonInstance,
-} from "@getpaseo/server/daemon-control";
+} from "@ohmypcode/server/daemon-control";
 import {
   copyAttachmentFileToManagedStorage,
   deleteManagedAttachmentFile,

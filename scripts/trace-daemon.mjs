@@ -80,7 +80,7 @@ const additionalInputs = [
         "packages/desktop/assets/**",
         // resolveExternalCliEntrypoint() looks up the workspace through this
         // link at runtime; nft traces the target files but not the link.
-        "node_modules/@getpaseo/cli",
+        "node_modules/@ohmypcode/cli",
       ]
     : []),
 ];

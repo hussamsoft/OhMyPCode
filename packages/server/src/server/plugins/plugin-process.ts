@@ -5,19 +5,19 @@ import {
   type PluginProcessRequest,
 } from "./plugin-process-protocol.js";
 import { createRequire } from "node:module";
-import * as pluginSharedRuntime from "@getpaseo/plugin";
-import * as pluginProviderRuntime from "@getpaseo/plugin/server/provider";
-import * as pluginAcpRuntime from "@getpaseo/plugin/server/acp";
-import type { SettingsDefinition, PluginRpcContract } from "@getpaseo/plugin";
-import type { PluginHandlerContext } from "@getpaseo/plugin/server";
+import * as pluginSharedRuntime from "@ohmypcode/plugin";
+import * as pluginProviderRuntime from "@ohmypcode/plugin/server/provider";
+import * as pluginAcpRuntime from "@ohmypcode/plugin/server/acp";
+import type { SettingsDefinition, PluginRpcContract } from "@ohmypcode/plugin";
+import type { PluginHandlerContext } from "@ohmypcode/plugin/server";
 import type { ZodType } from "zod";
 import {
   ProviderEventSchema,
   type ProviderConnection,
   type ProviderRegistration,
-} from "@getpaseo/plugin/server/provider";
-import { createPaseoApi, type PaseoApi } from "@getpaseo/client";
-import { DaemonClient } from "@getpaseo/client/internal/daemon-client";
+} from "@ohmypcode/plugin/server/provider";
+import { createPaseoApi, type PaseoApi } from "@ohmypcode/client";
+import { DaemonClient } from "@ohmypcode/client/internal/daemon-client";
 import { createPluginDaemonTransportFactory } from "./daemon-transport.js";
 import { isPluginClientOnlySdkSpecifier } from "./plugin-sdk-specifiers.js";
 import { createPluginClientId } from "./plugin-session-identity.js";
@@ -214,11 +214,11 @@ function runtimeRequire(name: string): unknown {
   if (isPluginClientOnlySdkSpecifier(name)) {
     throw new Error(`${name} is available only in plugin client code`);
   }
-  if (name === "@getpaseo/plugin") return pluginSharedRuntime;
-  if (name === "@getpaseo/plugin/server") return {};
-  if (name === "@getpaseo/plugin/server/provider") return pluginProviderRuntime;
-  if (name === "@getpaseo/plugin/server/acp") return pluginAcpRuntime;
-  if (name === "@getpaseo/plugin/client/host")
+  if (name === "@ohmypcode/plugin") return pluginSharedRuntime;
+  if (name === "@ohmypcode/plugin/server") return {};
+  if (name === "@ohmypcode/plugin/server/provider") return pluginProviderRuntime;
+  if (name === "@ohmypcode/plugin/server/acp") return pluginAcpRuntime;
+  if (name === "@ohmypcode/plugin/client/host")
     throw new Error(`${name} is private to the app host`);
   return nodeRequire(name);
 }

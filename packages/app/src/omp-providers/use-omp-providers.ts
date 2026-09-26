@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type {
   DaemonClient,
   OmpProvidersListPayload,
-} from "@getpaseo/client/internal/daemon-client";
+} from "@ohmypcode/client/internal/daemon-client";
 import { useFetchQuery } from "@/data/query";
 import { useHostRuntimeClient, useHostRuntimeIsConnected } from "@/runtime/host-runtime";
 import { useSessionStore } from "@/stores/session-store";

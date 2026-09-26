@@ -118,7 +118,7 @@ buildNpmPackage {
     npm run build:server
 
     # App workspace deps not covered by build:server
-    npm run build --workspace=@getpaseo/expo-two-way-audio
+    npm run build --workspace=@ohmypcode/expo-two-way-audio
 
     # Expo web export for the Electron renderer
     ( cd packages/app && PASEO_WEB_PLATFORM=electron npx expo export --platform web )

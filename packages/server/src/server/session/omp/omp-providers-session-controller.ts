@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { OmpProviderLoginEvent } from "@getpaseo/protocol/messages";
+import type { OmpProviderLoginEvent } from "@ohmypcode/protocol/messages";
 import type pino from "pino";
 import type { SessionInboundMessage, SessionOutboundMessage } from "../../messages.js";
 import type { OwnedOperation, SessionDelivery } from "../owned-subscriptions/index.js";

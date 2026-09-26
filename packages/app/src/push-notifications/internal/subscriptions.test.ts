@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
+import type { DaemonClient } from "@ohmypcode/client/internal/daemon-client";
 
 const storageItems = vi.hoisted(() => new Map<string, string>());
 

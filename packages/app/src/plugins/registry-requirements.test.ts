@@ -1,7 +1,7 @@
 import { createPluginHosts } from "./hosts";
 import { afterEach, expect, it } from "vitest";
-import { createPaseoApi } from "@getpaseo/client";
-import { DaemonClient } from "@getpaseo/client/internal/daemon-client";
+import { createPaseoApi } from "@ohmypcode/client";
+import { DaemonClient } from "@ohmypcode/client/internal/daemon-client";
 import { PluginRegistry } from "./registry";
 
 const client = new DaemonClient({ url: "ws://unused.test", clientId: "plugin-requirements-test" });

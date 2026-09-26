@@ -4,7 +4,7 @@
 import React from "react";
 import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { AgentToolDefinition } from "@getpaseo/protocol/agent-types";
+import type { AgentToolDefinition } from "@ohmypcode/protocol/agent-types";
 import { OmpControlDeck, type OmpToolControls } from "./index";
 
 vi.mock("react-i18next", () => ({

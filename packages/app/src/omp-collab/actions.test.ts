@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
+import type { DaemonClient } from "@ohmypcode/client/internal/daemon-client";
 import type { Agent } from "@/stores/session-store";
 import {
   createAndCopyOmpCollabLink,

@@ -1,11 +1,11 @@
-import { callPluginRpc } from "@getpaseo/plugin/client/host";
+import { callPluginRpc } from "@ohmypcode/plugin/client/host";
 import type {
   PluginAgentCommandContext,
   PluginCommandCapabilities,
   PluginPanelLocation,
   PluginWorkspaceCommandContext,
-} from "@getpaseo/plugin/client";
-import type { PluginClientStateSource } from "@getpaseo/plugin/client/host";
+} from "@ohmypcode/plugin/client";
+import type { PluginClientStateSource } from "@ohmypcode/plugin/client/host";
 import { resolvePluginPanelOpenLocation } from "./workspace-panels/locations";
 import type { PluginSurfaceRuntime } from "./surface-runtime";
 import type { InstalledPlugin } from "./types";

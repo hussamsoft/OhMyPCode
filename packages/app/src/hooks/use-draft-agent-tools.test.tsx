@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import React, { type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AgentToolDefinition } from "@getpaseo/protocol/agent-types";
+import type { AgentToolDefinition } from "@ohmypcode/protocol/agent-types";
 import type { FormPreferenceUpdate } from "@/create-agent-preferences/service";
 import type { FormPreferences } from "@/create-agent-preferences/preferences";
 import { mergeProviderPreferences } from "@/create-agent-preferences/preferences";

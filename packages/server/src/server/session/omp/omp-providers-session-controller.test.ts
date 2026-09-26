@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import type { OmpProviderLoginEvent } from "@getpaseo/protocol/messages";
+import type { OmpProviderLoginEvent } from "@ohmypcode/protocol/messages";
 import { SessionDelivery } from "../owned-subscriptions/index.js";
 import { OmpProvidersSessionController } from "./omp-providers-session-controller.js";
 import type {

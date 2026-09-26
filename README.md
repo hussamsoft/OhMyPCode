@@ -80,7 +80,7 @@ To connect from your phone, open **Settings → your host → Pair Device**.
 Install the CLI and start Paseo:
 
 ```bash
-npm install -g @getpaseo/cli
+npm install -g @ohmypcode/cli
 paseo
 ```
 
@@ -127,10 +127,10 @@ See the [full CLI reference](https://paseo.sh/docs/cli) for more.
 
 ## TypeScript SDK
 
-Build issue integrations, dashboards, and orchestration services with `@getpaseo/client`:
+Build issue integrations, dashboards, and orchestration services with `@ohmypcode/client`:
 
 ```ts
-import { createPaseoClient } from "@getpaseo/client";
+import { createPaseoClient } from "@ohmypcode/client";
 
 const client = createPaseoClient({ url: "ws://127.0.0.1:6767/ws" });
 await client.connect();

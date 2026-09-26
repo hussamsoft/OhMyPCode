@@ -14,7 +14,7 @@ import {
   WorkspaceHeaderMenuMobile,
 } from "@/screens/workspace/workspace-header-menu";
 import type { WorkspaceDescriptor } from "@/stores/session-store";
-import type { TerminalProfile } from "@getpaseo/protocol/messages";
+import type { TerminalProfile } from "@ohmypcode/protocol/messages";
 import {
   resolveWorkspaceFrameHeaderHeight,
   resolveWorkspaceFrameLayout,

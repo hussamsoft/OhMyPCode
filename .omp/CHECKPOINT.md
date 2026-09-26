@@ -481,7 +481,7 @@ and requires `node scripts/build-omp-runtime.mjs --target win32-x64`.
 
 ## Resume rebuild requirement
 
-Package `dist` directories were intentionally removed. `@getpaseo/protocol` and `@getpaseo/client` export only `dist/*`, so typecheck, tests, and dev will not resolve until the workspace outputs are rebuilt. Before resuming OMP work:
+Package `dist` directories were intentionally removed. `@ohmypcode/protocol` and `@ohmypcode/client` export only `dist/*`, so typecheck, tests, and dev will not resolve until the workspace outputs are rebuilt. Before resuming OMP work:
 
 1. From `vendor/oh-my-pi`, run `bun install --frozen-lockfile`.
 2. From the repository root, run `npm run build` (or at minimum `npm run build:server` and `npm run build:app-deps`).

@@ -1,4 +1,4 @@
-# @getpaseo/protocol
+# @ohmypcode/protocol
 
 Shared Paseo protocol schemas, codecs, and wire types.
 

@@ -54,8 +54,8 @@ vi.mock("electron-log/main", () => ({
   },
 }));
 
-vi.mock("@getpaseo/server/daemon-control", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@getpaseo/server/daemon-control")>();
+vi.mock("@ohmypcode/server/daemon-control", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@ohmypcode/server/daemon-control")>();
   return {
     resolvePaseoHome: vi.fn(() => mocks.paseoHome),
     spawnProcess: mocks.spawnProcess,

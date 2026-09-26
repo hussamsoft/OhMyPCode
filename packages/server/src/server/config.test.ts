@@ -187,7 +187,7 @@ describe("server config", () => {
             packageRoot,
             "app.asar",
             "node_modules",
-            "@getpaseo",
+            "@ohmypcode",
             "server",
             "dist",
             "server",

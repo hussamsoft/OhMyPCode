@@ -1,4 +1,4 @@
-import type { AgentFeature, AgentToolDefinition } from "@getpaseo/protocol/agent-types";
+import type { AgentFeature, AgentToolDefinition } from "@ohmypcode/protocol/agent-types";
 
 export const OMP_VIBE_FEATURE_ID = "omp_vibe";
 export type OmpMode = "build" | "vibe";

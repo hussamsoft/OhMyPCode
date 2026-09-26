@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
-import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
-import type { WorkspaceDescriptorPayload } from "@getpaseo/protocol/messages";
+import type { DaemonClient } from "@ohmypcode/client/internal/daemon-client";
+import type { WorkspaceDescriptorPayload } from "@ohmypcode/protocol/messages";
 import {
   normalizeProjectDescriptor,
   normalizeWorkspaceDescriptor,

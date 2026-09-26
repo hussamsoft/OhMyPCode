@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
-import type { PaseoApi } from "@getpaseo/client";
-import type { AgentTimelineItem } from "@getpaseo/protocol/agent-types";
+import type { PaseoApi } from "@ohmypcode/client";
+import type { AgentTimelineItem } from "@ohmypcode/protocol/agent-types";
 import type { ZodType, input as ZodInput, output as ZodOutput } from "zod";
 import type { PluginRpcContract } from "../rpc.js";
 import type {
