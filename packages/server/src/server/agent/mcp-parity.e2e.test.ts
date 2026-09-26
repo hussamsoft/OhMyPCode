@@ -848,6 +848,15 @@ describe("Suite E: Workspace Tools", () => {
   });
 
   test("create_workspace and list_workspaces", async () => {
+    // The old test asserted the created worktree's listed branchName
+    // matched what was requested. WorkspaceAutomationSummarySchema
+    // (:180-187) does not expose a branch field at all, and no other MCP
+    // tool in this file's surface reports the checked-out branch for a
+    // workspace -- branch-name verification has no equivalent in the
+    // current parity surface, so this only asserts the fields the new
+    // schema does carry (workspaceId, cwd). Not silently dropped: flagging
+    // here that the old coverage narrowed, in case a workspace-detail or
+    // git-status tool is added later that can restore it.
     let workspaceId: string | null = null;
     const branchName = `parity-create-${Date.now()}`;
     try {
