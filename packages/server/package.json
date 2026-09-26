@@ -43,6 +43,11 @@
       "source": "./src/utils/spawn.ts",
       "default": "./dist/server/utils/spawn.js"
     },
+    "./omp-command": {
+      "types": "./dist/server/services/omp-command.d.ts",
+      "source": "./src/services/omp-command.ts",
+      "default": "./dist/server/services/omp-command.js"
+    },
     "./auth": {
       "types": "./dist/server/server/auth.d.ts",
       "source": "./src/server/auth.ts",

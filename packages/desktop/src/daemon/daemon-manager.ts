@@ -41,6 +41,7 @@ import {
   resolveBundledOmpPath,
   resolveDaemonRunnerEntrypoint,
 } from "./runtime-paths.js";
+import { resolveOmpRuntimeStatus } from "./omp-runtime-status.js";
 import { runExternalCliJsonCommand, runExternalCliTextCommand } from "./cli/external.js";
 import {
   createDesktopSettingsCommandHandlers,
@@ -451,6 +452,7 @@ export function createDaemonCommandHandlers(): Record<string, DesktopCommandHand
       appVersion: resolveDesktopAppVersion(),
       runningUnderARM64Translation: isRunningUnderARM64Translation(),
     }),
+    desktop_get_omp_runtime_status: () => resolveOmpRuntimeStatus(),
     desktop_daemon_status: () => resolveDesktopDaemonStatus(),
     start_desktop_daemon: () => startDaemon(),
     stop_desktop_daemon: (args) =>

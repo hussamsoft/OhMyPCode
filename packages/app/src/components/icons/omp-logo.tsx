@@ -37,6 +37,24 @@ function ThemedOmpLogo({ size = 64, foreground, accent, surface0 }: ThemedOmpLog
 
 const ThemedOmpLogoIcon = withUnistyles(ThemedOmpLogo);
 
-export function OmpLogo({ size = 64 }: OmpLogoProps) {
+/**
+ * A `color` override renders every shape in one flat fill instead of the
+ * themed foreground/accent/surface0 trio -- needed for silhouette use cases
+ * (mask elements, shimmer animations) where a single-tone shape is required.
+ */
+export function OmpLogo({ size = 64, color }: OmpLogoProps) {
+  if (color !== undefined)
+    return (
+      <Svg width={size} height={size * 0.75} viewBox="0 0 120 90">
+        <Rect x="10" y="8" width="100" height="12" rx="2" fill={color} />
+        <Rect x="25" y="20" width="12" height="62" rx="2" fill={color} />
+        <Rect x="75" y="20" width="12" height="45" rx="2" fill={color} />
+        <Rect x="71" y="55" width="20" height="16" rx="3" fill={color} />
+        <Rect x="76" y="59" width="3" height="8" rx="1" fill={color} />
+        <Rect x="82" y="59" width="3" height="8" rx="1" fill={color} />
+        <Circle cx="18" cy="14" r="2" fill={color} />
+        <Circle cx="102" cy="14" r="2" fill={color} />
+      </Svg>
+    );
   return <ThemedOmpLogoIcon size={size} uniProps={ompLogoColorMapping} />;
 }

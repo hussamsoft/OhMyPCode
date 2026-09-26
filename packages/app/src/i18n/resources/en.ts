@@ -1276,7 +1276,7 @@ export const en = {
       diagnostics: "Run diagnostics",
       shortcuts: "Keyboard shortcuts",
       reportIssue: "Report an issue",
-      discord: "Discord",
+      githubRepo: "View on GitHub",
       github: "Create GitHub issue",
       whatsNew: "What's new",
     },
@@ -2399,6 +2399,13 @@ export const en = {
       connectedHosts: "Connected hosts",
       offline: "Offline",
       versionDiffers: "Version differs from this device",
+      ompRuntime: "OMP runtime",
+      ompRuntimeSystem: "system omp",
+      ompRuntimeUnavailable: "Not found",
+      ompRuntimeStaleWarning:
+        "Bundled OMP runtime is out of date — rebuild with `npm run build:omp-runtime`",
+      ompSource: "OMP source",
+      ompSourceUnavailable: "Unknown",
       releaseChannel: {
         label: "Release channel",
         description: "Switch to Beta to get updates sooner and help shape them",

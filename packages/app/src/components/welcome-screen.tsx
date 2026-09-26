@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { resolveAppVersion } from "@/utils/app-version";
 import { formatVersionWithPrefix } from "@/desktop/updates/desktop-updates";
 import { buildOpenProjectRoute } from "@/utils/host-routes";
-import { PaseoLogo } from "@/components/icons/paseo-logo";
+import { OmpLogo } from "@/components/icons/omp-logo";
 import { openExternalUrl } from "@/utils/open-external-url";
 import { isWeb, isNative } from "@/constants/platform";
 import { isElectronRuntime } from "@/desktop/host";
@@ -284,7 +284,7 @@ export function WelcomeScreen({ onHostAdded }: WelcomeScreenProps) {
         testID="welcome-screen"
       >
         <View style={styles.content}>
-          <PaseoLogo size={96} />
+          <OmpLogo size={96} />
           <View style={styles.copyBlock}>
             <Text style={styles.title}>{t("onboarding.title")}</Text>
             <Text style={styles.subtitle}>{t("onboarding.subtitle")}</Text>
