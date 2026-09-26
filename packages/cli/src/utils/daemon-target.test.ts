@@ -1,9 +1,13 @@
 import { test, expect } from "vitest";
+import path from "node:path";
 import { selectDaemonTarget, describeDaemonTarget } from "./daemon-target.js";
 
 test("explicit selectors win over both environment selectors", () => {
   const env = { PASEO_HOME: "/tmp/a", PASEO_HOST: "unused:12345" };
-  expect(selectDaemonTarget({ home: "/tmp/b" }, env)).toEqual({ kind: "instance", home: "/tmp/b" });
+  expect(selectDaemonTarget({ home: "/tmp/b" }, env)).toEqual({
+    kind: "instance",
+    home: path.resolve("/tmp/b"),
+  });
   expect(selectDaemonTarget({ host: "chosen:23456" }, env)).toEqual({
     kind: "endpoint",
     host: "chosen:23456",
@@ -15,7 +19,7 @@ test("explicit selectors win over both environment selectors", () => {
 test("local operations ignore routing environment but reject an explicit endpoint", () => {
   expect(
     selectDaemonTarget({}, { PASEO_HOME: "/tmp/b", PASEO_HOST: "unused:12345" }, true),
-  ).toEqual({ kind: "instance", home: "/tmp/b" });
+  ).toEqual({ kind: "instance", home: path.resolve("/tmp/b") });
   expect(() => selectDaemonTarget({ host: "chosen:23456" }, {}, true)).toThrow();
 });
 

@@ -52,7 +52,10 @@ export async function launchLocalDaemon(options: {
   try {
     const entry = resolveDaemonRunnerEntry();
     return await startDaemonInstance({
-      home: resolvePaseoHome({ PASEO_HOME: options.home }),
+      home: resolvePaseoHome({
+        OHMYPCODE_HOME: options.home ?? process.env.OHMYPCODE_HOME,
+        PASEO_HOME: process.env.PASEO_HOME,
+      }),
       command: process.execPath,
       args: [...(entry.endsWith(".ts") ? ["--import", "tsx"] : []), entry],
       env: process.env,

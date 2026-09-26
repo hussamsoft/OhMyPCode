@@ -81,7 +81,10 @@ export async function setDaemonPasswordInConfig(
   newPassword: string,
   options: SetPasswordOptions = {},
 ): Promise<SetPasswordResult> {
-  const paseoHome = resolvePaseoHome({ PASEO_HOME: options.home });
+  const paseoHome = resolvePaseoHome({
+    OHMYPCODE_HOME: options.home ?? process.env.OHMYPCODE_HOME,
+    PASEO_HOME: process.env.PASEO_HOME,
+  });
   const configPath = path.join(paseoHome, CONFIG_FILENAME);
   const persisted = readPersistedConfig(paseoHome);
   const nextConfig: PersistedConfig = {
