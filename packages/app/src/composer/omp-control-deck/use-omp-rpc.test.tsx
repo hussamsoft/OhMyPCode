@@ -1,0 +1,334 @@
+/** @vitest-environment jsdom */
+import React, { type ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import {
+  ompModesQueryKey,
+  ompSettingsQueryKey,
+  useOmpModeSetter,
+  useOmpModes,
+  useOmpSettingSetter,
+  useOmpSettings,
+  useOmpSettingsUpdate,
+  useOmpSlashCommand,
+} from "./use-omp-rpc";
+
+interface FakeRpcClient {
+  getOmpModes?: Mock;
+  setOmpMode?: Mock;
+  getOmpSettings?: Mock;
+  setOmpSetting?: Mock;
+  runOmpSlashCommand?: Mock;
+}
+
+interface FakeRuntime {
+  connected: boolean;
+  sessions: Map<string, unknown>;
+  clients: Map<string, FakeRpcClient>;
+}
+
+const runtime: FakeRuntime = vi.hoisted(() => ({
+  connected: true,
+  sessions: new Map<string, unknown>(),
+  clients: new Map<string, FakeRpcClient>(),
+}));
+
+vi.mock("@/runtime/host-runtime", () => ({
+  useHostRuntimeClient: (serverId: string) => runtime.clients.get(serverId) ?? null,
+  useHostRuntimeIsConnected: () => runtime.connected,
+}));
+
+vi.mock("@/stores/session-store", () => ({
+  useSessionStore: (selector: (state: { sessions: Record<string, unknown> }) => unknown) =>
+    selector({ sessions: Object.fromEntries(runtime.sessions) }),
+}));
+
+function wrapper({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      {children}
+    </QueryClientProvider>
+  );
+}
+
+function installClient(serverId: string, methods: FakeRpcClient) {
+  runtime.clients.set(serverId, methods);
+}
+
+function installSession(serverId: string, features: Record<string, boolean>) {
+  runtime.sessions.set(serverId, {
+    serverInfo: { features },
+    agents: new Map(),
+  });
+}
+
+beforeEach(() => {
+  runtime.connected = true;
+  runtime.sessions.clear();
+  runtime.clients.clear();
+});
+
+describe("useOmpModes", () => {
+  it("fetches modes from the daemon client when supported", async () => {
+    installSession("server-1", { ompModes: true });
+    installClient("server-1", {
+      getOmpModes: vi.fn(async () => ({
+        requestId: "req-1",
+        state: {
+          mode: "plan",
+          planModeEnabled: true,
+          planModePaused: false,
+          goalModeEnabled: false,
+          goalModePaused: false,
+          loopModeEnabled: false,
+          loopModePaused: false,
+          canEnter: true,
+        },
+      })),
+      setOmpMode: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useOmpModes("server-1", "agent-1"), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.modes?.mode).toBe("plan");
+    expect(runtime.clients.get("server-1")!.getOmpModes).toHaveBeenCalledWith("agent-1");
+  });
+
+  it("stays loading when the OMP modes feature is not advertised", async () => {
+    installSession("server-1", { ompModes: false });
+    const getOmpModes = vi.fn();
+    installClient("server-1", { getOmpModes, setOmpMode: vi.fn() });
+
+    const { result } = renderHook(() => useOmpModes("server-1", "agent-1"), { wrapper });
+
+    expect(result.current.modes).toBeNull();
+    expect(result.current.isLoading).toBe(false);
+    expect(getOmpModes).not.toHaveBeenCalled();
+  });
+});
+
+describe("useOmpModeSetter", () => {
+  it("calls setOmpMode and invalidates the modes query", async () => {
+    installSession("server-1", { ompModes: true });
+    const setOmpMode = vi.fn(async () => ({
+      requestId: "req-2",
+      state: {
+        mode: "goal",
+        planModeEnabled: false,
+        planModePaused: false,
+        goalModeEnabled: true,
+        goalModePaused: false,
+        loopModeEnabled: false,
+        loopModePaused: false,
+        canEnter: true,
+      },
+      changed: true,
+    }));
+    installClient("server-1", {
+      getOmpModes: vi.fn(async () => ({
+        requestId: "req-1",
+        state: {
+          mode: "plan",
+          planModeEnabled: true,
+          planModePaused: false,
+          goalModeEnabled: false,
+          goalModePaused: false,
+          loopModeEnabled: false,
+          loopModePaused: false,
+          canEnter: true,
+        },
+      })),
+      setOmpMode,
+    });
+
+    const { result } = renderHook(
+      () => ({
+        setter: useOmpModeSetter("server-1", "agent-1"),
+        query: useOmpModes("server-1", "agent-1"),
+      }),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current.query.modes?.mode).toBe("plan"));
+
+    await act(async () => {
+      const response = await result.current.setter.setMode({ mode: "goal" });
+      expect(response.state.mode).toBe("goal");
+    });
+
+    expect(setOmpMode).toHaveBeenCalledWith("agent-1", "goal", undefined);
+    expect(result.current.setter.error).toBeNull();
+    expect(result.current.setter.isPending).toBe(false);
+  });
+
+  it("refuses to call when the OMP modes feature is not advertised", async () => {
+    installSession("server-1", { ompModes: false });
+    const setOmpMode = vi.fn();
+    installClient("server-1", { getOmpModes: vi.fn(), setOmpMode });
+
+    const { result } = renderHook(() => useOmpModeSetter("server-1", "agent-1"), { wrapper });
+
+    await expect(result.current.setMode({ mode: "loop" })).rejects.toThrow(
+      /omp modes capability unavailable/i,
+    );
+    expect(setOmpMode).not.toHaveBeenCalled();
+  });
+});
+
+describe("useOmpSettings + useOmpSettingSetter", () => {
+  it("loads settings and exposes them as the canonical entry list", async () => {
+    installSession("server-1", { ompSettings: true });
+    installClient("server-1", {
+      getOmpSettings: vi.fn(async () => ({
+        requestId: "req-3",
+        revision: 7,
+        settings: [
+          {
+            path: "tools.approvalMode",
+            type: "string",
+            credential: false,
+            value: "always-ask",
+            enumValues: ["always-ask", "write", "yolo"],
+            ui: { tab: "tools", group: "approval", label: "Approval mode" },
+          },
+        ],
+      })),
+      setOmpSetting: vi.fn(async () => ({
+        requestId: "req-4",
+        path: "tools.approvalMode",
+        value: "write",
+        revision: 8,
+      })),
+    });
+
+    const { result } = renderHook(() => useOmpSettings("server-1", "agent-1"), { wrapper });
+
+    await waitFor(() => expect(result.current.settings).toHaveLength(1));
+    expect(result.current.revision).toBe(7);
+    expect(result.current.settings[0].path).toBe("tools.approvalMode");
+  });
+
+  it("setSetting forwards path/value and invalidates the settings query", async () => {
+    installSession("server-1", { ompSettings: true });
+    const setOmpSetting = vi.fn(async () => ({
+      requestId: "req-5",
+      path: "tools.approvalMode",
+      value: "write",
+      revision: 9,
+    }));
+    installClient("server-1", {
+      getOmpSettings: vi.fn(async () => ({
+        requestId: "req-3",
+        revision: 7,
+        settings: [],
+      })),
+      setOmpSetting,
+    });
+
+    const { result } = renderHook(
+      () => ({
+        settings: useOmpSettings("server-1", "agent-1"),
+        setter: useOmpSettingSetter("server-1", "agent-1"),
+      }),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current.settings.isLoading).toBe(false));
+
+    await act(async () => {
+      const response = await result.current.setter.setSetting({
+        path: "tools.approvalMode",
+        value: "write",
+      });
+      expect(response.value).toBe("write");
+    });
+
+    expect(setOmpSetting).toHaveBeenCalledWith("agent-1", "tools.approvalMode", "write");
+  });
+});
+
+describe("useOmpSlashCommand", () => {
+  it("runs a slash command and exposes the canonical cache keys", async () => {
+    installSession("server-1", {
+      ompSlashCommands: true,
+      ompModes: true,
+      ompSettings: true,
+    });
+    const runOmpSlashCommand = vi.fn(async () => ({
+      requestId: "req-6",
+      agentInvoked: false,
+      output: "ok",
+      stateChange: false,
+    }));
+    installClient("server-1", {
+      runOmpSlashCommand,
+      getOmpModes: vi.fn(),
+      getOmpSettings: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useOmpSlashCommand("server-1", "agent-1"), { wrapper });
+
+    await act(async () => {
+      const response = await result.current.run({ name: "compact", args: "--force" });
+      expect(response.output).toBe("ok");
+    });
+
+    expect(runOmpSlashCommand).toHaveBeenCalledWith("agent-1", "compact", "--force");
+    // Query keys used for invalidation must match the exported shape.
+    expect(ompModesQueryKey("server-1", "agent-1")).toEqual(["ompModes", "server-1", "agent-1"]);
+    expect(ompSettingsQueryKey("server-1", "agent-1")).toEqual([
+      "ompSettings",
+      "server-1",
+      "agent-1",
+    ]);
+  });
+});
+
+describe("useOmpSettingsUpdate subscription", () => {
+  it("returns null when no settings payload has been projected into runtime info", () => {
+    runtime.sessions.set("server-1", {
+      serverInfo: { features: {} },
+      agents: new Map([
+        [
+          "agent-1",
+          {
+            provider: "omp",
+            runtimeInfo: { provider: "omp", sessionId: null, extra: {} },
+          },
+        ],
+      ]),
+    });
+
+    const { result } = renderHook(() => useOmpSettingsUpdate("server-1", "agent-1"), { wrapper });
+    expect(result.current).toBeNull();
+  });
+
+  it("returns the projected payload once the agent surfaces settings", () => {
+    runtime.sessions.set("server-1", {
+      serverInfo: { features: {} },
+      agents: new Map([
+        [
+          "agent-1",
+          {
+            provider: "omp",
+            runtimeInfo: {
+              provider: "omp",
+              sessionId: null,
+              extra: { settings: { revision: 3, paths: ["tools.approvalMode"] } },
+            },
+          },
+        ],
+      ]),
+    });
+
+    const { result } = renderHook(() => useOmpSettingsUpdate("server-1", "agent-1"), { wrapper });
+    expect(result.current).toEqual({
+      revision: 3,
+      paths: ["tools.approvalMode"],
+    });
+  });
+});
