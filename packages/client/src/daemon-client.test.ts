@@ -889,6 +889,7 @@ test("advertises client capabilities in hello", async () => {
       timeline_replacement_invalidation: true,
       provider_snapshot_references: true,
       explicit_event_subscriptions: true,
+      omp_provider_state_events: true,
       owned_subscriptions: true,
       compact_provider_snapshots: true,
       custom_mode_icons: true,
