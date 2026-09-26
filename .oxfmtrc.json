@@ -14,6 +14,7 @@
   "ignorePatterns": [
     "*.lock",
     "**/*.gen.ts",
+    "**/*.generated.ts",
     "**/*.gen.tsx",
     "docs/omp/CONTROL-SURFACE.md",
     "docs/omp/PARITY.md",
