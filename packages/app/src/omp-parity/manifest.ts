@@ -3,7 +3,7 @@
  * Hand-owned contract.
  */
 
-export interface OmpParityEntry {
+interface OmpParityEntry {
   /** Unique identifier: "<surface>:<name>" */
   id: string;
   /** Surface category */
