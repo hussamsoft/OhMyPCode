@@ -1,10 +1,13 @@
+const OMPCODE_NODE_ENV = "OMPCODE_NODE_ENV";
 const PASEO_NODE_ENV = "PASEO_NODE_ENV";
 const ELECTRON_RUN_AS_NODE = "ELECTRON_RUN_AS_NODE";
 
 const RUNTIME_CONTROL_ENV_KEYS = [
+  OMPCODE_NODE_ENV,
   PASEO_NODE_ENV,
   "OHMYPCODE_DESKTOP_MANAGED",
   "PASEO_SUPERVISED",
+  "OMPCODE_SUPERVISED",
   ELECTRON_RUN_AS_NODE,
   "ELECTRON_NO_ATTACH_CONSOLE",
   "ESBUILD_BINARY_PATH",
@@ -76,7 +79,21 @@ export function buildSelfNodeCommand(
   };
 }
 
+let warnedStalePaseoNodeEnv = false;
+
 export function resolvePaseoNodeEnv(env: NodeJS.ProcessEnv): PaseoNodeEnv | undefined {
-  const value = env[PASEO_NODE_ENV];
+  let value = env[OMPCODE_NODE_ENV];
+  // COMPAT(paseoEnv): remove after 2027-01-01.
+  if (value === undefined && env[PASEO_NODE_ENV] !== undefined) {
+    value = env[PASEO_NODE_ENV];
+    if (!warnedStalePaseoNodeEnv) {
+      warnedStalePaseoNodeEnv = true;
+      console.warn(
+        "[paseo-env] PASEO_NODE_ENV is set but no longer read directly; using its value as a " +
+          "fallback. Rename it to OMPCODE_NODE_ENV -- PASEO_NODE_ENV support may be removed " +
+          "in a future release.",
+      );
+    }
+  }
   return value === "development" || value === "production" || value === "test" ? value : undefined;
 }

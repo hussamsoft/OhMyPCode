@@ -9,9 +9,15 @@ if not exist "%APP_EXECUTABLE%" (
   exit /b 1
 )
 
-if not defined PASEO_HOME set "PASEO_HOME=%USERPROFILE%\.ohmypcode"
+if not defined OHMYPCODE_HOME (
+  if defined PASEO_HOME (
+    set "OHMYPCODE_HOME=%PASEO_HOME%"
+  ) else (
+    set "OHMYPCODE_HOME=%USERPROFILE%\.ohmypcode"
+  )
+)
 set "ELECTRON_RUN_AS_NODE=1"
-set "PASEO_NODE_ENV=production"
+set "OMPCODE_NODE_ENV=production"
 rem OHMYPCODE_DESKTOP_MANAGED marks daemons started through this bundled CLI as
 rem desktop-managed, so the desktop app restarts them when it upgrades.
 set "OHMYPCODE_DESKTOP_MANAGED=1"

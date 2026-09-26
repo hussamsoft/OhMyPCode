@@ -57,6 +57,7 @@ function cleanEnvForDesktopLaunch(): NodeJS.ProcessEnv {
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.ELECTRON_NO_ATTACH_CONSOLE;
   delete env.PASEO_NODE_ENV;
+  delete env.OMPCODE_NODE_ENV;
   return env;
 }
 

@@ -52,7 +52,7 @@ function createFakeMacBundle(options: { includeHelper: boolean }): {
       helperPath,
       [
         "#!/bin/sh",
-        'printf "helper env=%s/%s/%s cli=%s\\n" "$ELECTRON_RUN_AS_NODE" "$PASEO_NODE_ENV" "$OHMYPCODE_DESKTOP_MANAGED" "$PASEO_CLI"',
+        'printf "helper env=%s/%s/%s cli=%s\\n" "$ELECTRON_RUN_AS_NODE" "$OMPCODE_NODE_ENV" "$OHMYPCODE_DESKTOP_MANAGED" "$PASEO_CLI"',
         'printf "args=%s\\n" "$*"',
         "",
       ].join("\n"),

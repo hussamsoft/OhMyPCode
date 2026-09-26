@@ -24,8 +24,10 @@ describe("paseo env contract", () => {
   const runtimeControlEnvKeys = [
     "ELECTRON_RUN_AS_NODE",
     "PASEO_NODE_ENV",
+    "OMPCODE_NODE_ENV",
     "OHMYPCODE_DESKTOP_MANAGED",
     "PASEO_SUPERVISED",
+    "OMPCODE_SUPERVISED",
     "ELECTRON_NO_ATTACH_CONSOLE",
     "ESBUILD_BINARY_PATH",
   ] as const;
@@ -52,7 +54,9 @@ describe("paseo env contract", () => {
       EXTRA_VALUE: "from-overlay",
       OHMYPCODE_DESKTOP_MANAGED: "1",
       PASEO_NODE_ENV: "test",
+      OMPCODE_NODE_ENV: "test",
       PASEO_SUPERVISED: "1",
+      OMPCODE_SUPERVISED: "1",
       PATH: "/custom/bin",
     });
 
@@ -117,5 +121,13 @@ describe("paseo env contract", () => {
       "production",
     );
     expect(resolvePaseoNodeEnv({ NODE_ENV: "test", PASEO_NODE_ENV: "local" })).toBeUndefined();
+  });
+
+  test("OMPCODE_NODE_ENV is canonical; PASEO_NODE_ENV is a COMPAT(paseoEnv) fallback", () => {
+    expect(resolvePaseoNodeEnv({ OMPCODE_NODE_ENV: "production" })).toBe("production");
+    expect(resolvePaseoNodeEnv({ PASEO_NODE_ENV: "development" })).toBe("development");
+    expect(
+      resolvePaseoNodeEnv({ OMPCODE_NODE_ENV: "production", PASEO_NODE_ENV: "development" }),
+    ).toBe("production");
   });
 });
