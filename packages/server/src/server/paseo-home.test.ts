@@ -40,4 +40,20 @@ describe("resolvePaseoHome", () => {
   test("defaults to ~/.paseo when neither is set", () => {
     expect(resolvePaseoHome({})).toBe(path.join(homedir(), ".paseo"));
   });
+
+  test("empty or whitespace-only env values are treated as unset, not resolved to cwd", () => {
+    // Regression: path.resolve("") returns process.cwd(), so OHMYPCODE_HOME/
+    // PASEO_HOME set to an empty string (rather than truly unset) silently
+    // made the daemon operate out of whatever directory it was launched
+    // from instead of the intended ~/.paseo default.
+    expect(resolvePaseoHome({ OHMYPCODE_HOME: "" })).toBe(path.join(homedir(), ".paseo"));
+    expect(resolvePaseoHome({ OHMYPCODE_HOME: "   " })).toBe(path.join(homedir(), ".paseo"));
+    const parent = mkdtempSync(path.join(tmpdir(), "paseo-home-parent-"));
+    const paseoHome = path.join(parent, "home");
+    try {
+      expect(resolvePaseoHome({ OHMYPCODE_HOME: "", PASEO_HOME: paseoHome })).toBe(paseoHome);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
 });

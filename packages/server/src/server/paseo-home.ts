@@ -14,8 +14,8 @@ function expandHomeDir(input: string): string {
 let warnedStalePaseoHome = false;
 
 export function resolvePaseoHome(env: NodeJS.ProcessEnv = process.env): string {
-  let raw = env.OHMYPCODE_HOME;
-  if (raw === undefined && env.PASEO_HOME !== undefined) {
+  let raw = env.OHMYPCODE_HOME?.trim() ? env.OHMYPCODE_HOME : undefined;
+  if (raw === undefined && env.PASEO_HOME?.trim()) {
     raw = env.PASEO_HOME;
     if (!warnedStalePaseoHome) {
       warnedStalePaseoHome = true;
