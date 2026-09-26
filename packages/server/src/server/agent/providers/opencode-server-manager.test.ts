@@ -1,6 +1,6 @@
 import type { ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type ServerResponse } from "node:http";
 import os from "node:os";
 import path from "node:path";
@@ -9,6 +9,14 @@ import pino, { type Logger } from "pino";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { findExecutable } from "../../../executable-resolution/executable-resolution.js";
+
+vi.mock("../../../executable-resolution/executable-resolution.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("../../../executable-resolution/executable-resolution.js")
+    >();
+  return { ...actual, findExecutable: vi.fn() };
+});
 import { createTestLogger } from "../../../test-utils/test-logger.js";
 import type {
   ManagedProcessRecord,
@@ -19,6 +27,7 @@ import type {
 import type { ProcessTerminator, TreeKillTarget } from "../../../utils/tree-kill.js";
 import {
   OpenCodeServerManager,
+  resolveOpenCodeBinary,
   type OpenCodeCommandPrefixResolver,
   type OpenCodePortAllocator,
   type OpenCodeServerProcessSpawner,
@@ -361,46 +370,66 @@ describe("OpenCodeServerManager managed process ledger", () => {
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
+
+  test("passes the command prefix resolver's return value through to the spawned process", async () => {
+    // Uses a distinctive command/args pair (not the "opencode" literal every other
+    // test's fake resolver returns) so this proves the resolver's actual return
+    // value flows through to spawnServerProcess, not a coincidental match with a
+    // hardcoded default elsewhere in the manager.
+    const runtime = new FakeOpenCodeServerRuntime([4604], { autoAnnounce: true });
+    const manager = new OpenCodeServerManager({
+      logger: createTestLogger(),
+      managedProcesses: runtime.managedProcesses,
+      portAllocator: runtime.allocatePort,
+      resolveCommandPrefix: async () => ({
+        command: "distinctive-test-command",
+        args: ["--distinctive-flag"],
+      }),
+      spawnServerProcess: runtime.spawnServerProcess,
+      terminateProcess: runtime.terminateProcess,
+    });
+
+    try {
+      const acquisition = await manager.acquireCurrent();
+      expect(runtime.spawnCalls).toEqual([
+        expect.objectContaining({
+          command: "distinctive-test-command",
+          args: ["--distinctive-flag", "serve", "--port", "4604"],
+        }),
+      ]);
+      await acquisition.release();
+    } finally {
+      await manager.shutdown();
+    }
+  });
 });
 
 describe.runIf(process.platform === "win32")(
   "OpenCodeServerManager Windows OpenCode npm install",
   () => {
     test("resolves the Windows npm shim to its native helper executable", async () => {
-      const detectedOpenCode = await findExecutable("opencode");
-      expect(detectedOpenCode, "Windows CI must install opencode-ai before server tests").not.toBe(
-        null,
-      );
-      expect(path.extname(detectedOpenCode!).toLowerCase()).toBe(".cmd");
+      const tempDir = mkdtempSync(path.join(os.tmpdir(), "opencode-binary-resolve-"));
+      const cmdPath = path.join(tempDir, "opencode.cmd");
+      writeFileSync(cmdPath, "");
+      const exeDir = path.join(tempDir, "node_modules", "opencode-ai", "bin");
+      mkdirSync(exeDir, { recursive: true });
+      const exePath = path.join(exeDir, "opencode.exe");
+      writeFileSync(exePath, "");
 
-      const tempDir = mkdtempSync(path.join(os.tmpdir(), "opencode-real-windows-"));
-      const opencodeHomeDir = path.join(tempDir, "opencode-home");
-      const runtime = new FakeOpenCodeServerRuntime([4604], { autoAnnounce: true });
-      const manager = new OpenCodeServerManager({
-        logger: createTestLogger(),
-        managedProcesses: runtime.managedProcesses,
-        resolveHomeDir: () => opencodeHomeDir,
-        portAllocator: runtime.allocatePort,
-        spawnServerProcess: runtime.spawnServerProcess,
-        terminateProcess: runtime.terminateProcess,
-      });
-
+      vi.mocked(findExecutable).mockResolvedValue(cmdPath);
       try {
-        // Resolve the actual npm installation. Generation lifecycle coverage above
-        // owns process readiness; this regression owns the Windows launch command.
-        const acquisition = await manager.acquireCurrent();
-        const records = await runtime.managedProcesses.list();
-        expect(records).toHaveLength(1);
-        const record = records[0]!;
-        expect(path.extname(record.command).toLowerCase()).toBe(".exe");
-        expect(path.normalize(record.command).toLowerCase()).toContain(
+        // Exercises the real .cmd -> .exe fallback in resolveOpenCodeBinary against a
+        // synthetic fixture, independent of what OpenCode version (if any) is actually
+        // installed on this machine. Manager-level spawn wiring is covered by the
+        // other tests above via their injected resolveCommandPrefix fakes.
+        const resolved = await resolveOpenCodeBinary();
+        expect(path.extname(resolved).toLowerCase()).toBe(".exe");
+        expect(path.normalize(resolved).toLowerCase()).toContain(
           path.normalize("node_modules/opencode-ai/bin/opencode.exe").toLowerCase(),
         );
-        expect(record.command.toLowerCase()).not.toBe(detectedOpenCode!.toLowerCase());
-        expect(record.args).toEqual(["serve", "--port", String(acquisition.server.port)]);
-        await acquisition.release();
+        expect(resolved.toLowerCase()).not.toBe(cmdPath.toLowerCase());
       } finally {
-        await manager.shutdown();
+        vi.mocked(findExecutable).mockReset();
         rmSync(tempDir, { recursive: true, force: true });
       }
     });

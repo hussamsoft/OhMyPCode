@@ -613,7 +613,7 @@ async function waitForServerAcquisition<T>(
   }
 }
 
-async function resolveOpenCodeBinary(): Promise<string> {
+export async function resolveOpenCodeBinary(): Promise<string> {
   const found = await findExecutable("opencode");
   if (!found) {
     throw new Error(
