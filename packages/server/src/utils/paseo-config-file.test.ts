@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -78,7 +86,7 @@ describe("paseo config file substrate", () => {
     expect(getWorktreeTeardownCommands(tempDir)).toEqual(["npm run clean", "npm run reset"]);
   });
 
-  it("writes pretty JSON with a trailing newline when revision matches", () => {
+  it("writes pretty JSON with a trailing newline when revision matches, migrating a legacy paseo.json", () => {
     writeFileSync(join(tempDir, "paseo.json"), JSON.stringify({ worktree: { setup: "old" } }));
     const expectedRevision = statPaseoConfigPath(tempDir);
 
@@ -93,9 +101,26 @@ describe("paseo config file substrate", () => {
       config: { worktree: { setup: "npm install" } },
       revision: statPaseoConfigPath(tempDir),
     });
-    expect(readFileSync(join(tempDir, "paseo.json"), "utf8")).toBe(
+    expect(readFileSync(join(tempDir, "ohmypcode.json"), "utf8")).toBe(
       '{\n  "worktree": {\n    "setup": "npm install"\n  }\n}\n',
     );
+    expect(existsSync(join(tempDir, "paseo.json"))).toBe(false);
+  });
+
+  it("prefers ohmypcode.json over a legacy paseo.json when both exist", () => {
+    writeFileSync(join(tempDir, "paseo.json"), JSON.stringify({ worktree: { setup: "legacy" } }));
+    writeFileSync(
+      join(tempDir, "ohmypcode.json"),
+      JSON.stringify({ worktree: { setup: "current" } }),
+    );
+
+    const result = readPaseoConfigForEdit(tempDir);
+
+    expect(result).toEqual({
+      ok: true,
+      config: { worktree: { setup: "current" } },
+      revision: statPaseoConfigPath(tempDir),
+    });
   });
 
   // POSIX-only: Windows mtime granularity can collapse the two revisions in this fixture.

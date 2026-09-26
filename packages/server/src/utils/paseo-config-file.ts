@@ -14,7 +14,20 @@ export {
   type ProjectConfigRpcError,
 } from "@ohmypcode/protocol/paseo-config-schema";
 
-export const PASEO_CONFIG_FILE_NAME = "paseo.json";
+export const PASEO_CONFIG_FILE_NAME = "ohmypcode.json";
+
+// COMPAT(paseoConfigFileRename): the project config file was renamed from
+// paseo.json to ohmypcode.json. Reads prefer the new name but fall back to
+// this legacy name for repos not yet migrated; writes always target the new
+// name and remove the stale legacy file once migrated. No fixed sunset --
+// this is a local on-disk filename, not a server API, so old repos should
+// keep working indefinitely until they're next edited.
+const LEGACY_PASEO_CONFIG_FILE_NAME = "paseo.json";
+
+/** Preferred-first list of on-disk names this app recognizes as the project config file. */
+export function getPaseoConfigFileNameCandidates(): string[] {
+  return [PASEO_CONFIG_FILE_NAME, LEGACY_PASEO_CONFIG_FILE_NAME];
+}
 
 export type ReadPaseoConfigForEditResult =
   | { ok: true; config: PaseoConfigRaw | null; revision: PaseoConfigRevision | null }
@@ -34,8 +47,20 @@ export function resolvePaseoConfigPath(repoRoot: string): string {
   return join(repoRoot, PASEO_CONFIG_FILE_NAME);
 }
 
+/** Resolves whichever recognized config filename currently exists on disk, preferring the
+ * current name; defaults to the current name's path if neither exists yet. */
+export function resolveExistingPaseoConfigPath(repoRoot: string): string {
+  for (const name of getPaseoConfigFileNameCandidates()) {
+    const candidate = join(repoRoot, name);
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return resolvePaseoConfigPath(repoRoot);
+}
+
 export function statPaseoConfigPath(repoRoot: string): PaseoConfigRevision | null {
-  const configPath = resolvePaseoConfigPath(repoRoot);
+  const configPath = resolveExistingPaseoConfigPath(repoRoot);
   if (!existsSync(configPath)) {
     return null;
   }
@@ -47,7 +72,7 @@ export function statPaseoConfigPath(repoRoot: string): PaseoConfigRevision | nul
 }
 
 export function readPaseoConfigJson(repoRoot: string): unknown {
-  const configPath = resolvePaseoConfigPath(repoRoot);
+  const configPath = resolveExistingPaseoConfigPath(repoRoot);
   if (!existsSync(configPath)) {
     return null;
   }
@@ -99,6 +124,7 @@ export function writePaseoConfigForEdit(
     }
 
     renameSync(tempPath, configPath);
+    removeLegacyPaseoConfigAfterMigration(input.repoRoot, configPath);
     const revision = statPaseoConfigPath(input.repoRoot);
     if (!revision) {
       return { ok: false, error: { code: "write_failed" } };
@@ -107,6 +133,16 @@ export function writePaseoConfigForEdit(
   } catch {
     removeTempPaseoConfig(tempPath);
     return { ok: false, error: { code: "write_failed" } };
+  }
+}
+
+function removeLegacyPaseoConfigAfterMigration(repoRoot: string, writtenPath: string): void {
+  const legacyPath = join(repoRoot, LEGACY_PASEO_CONFIG_FILE_NAME);
+  if (legacyPath === writtenPath) return;
+  try {
+    rmSync(legacyPath, { force: true });
+  } catch {
+    // Best-effort cleanup only; the write itself already succeeded.
   }
 }
 

@@ -37,6 +37,7 @@ import {
   navigateToProjectSettings,
   openProjectEditSheet,
   openProjectSettings,
+  resolveProjectConfigPath,
   openProjects,
   removeProjectScript,
   restorePaseoConfig,
@@ -162,7 +163,7 @@ async function expectProjectConfigSaved(project: ProjectsSettingsProject): Promi
 }
 
 async function readProjectConfigFile(project: ProjectsSettingsProject): Promise<string> {
-  return readFile(path.join(project.path, "paseo.json"), "utf8");
+  return readFile(resolveProjectConfigPath(project.path), "utf8");
 }
 
 async function addProjectFromSidebar(page: Page, projectPath: string): Promise<string> {

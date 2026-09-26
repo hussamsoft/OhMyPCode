@@ -4,7 +4,7 @@ Paseo proxies HTTP traffic to services running inside your workspaces. Localhost
 
 ## How it works
 
-When a `paseo.json` script of `"type": "service"` starts, Paseo assigns it a local port and registers a route in the service proxy. Incoming requests whose `Host` header matches the script's generated hostname are forwarded to that port.
+When a `ohmypcode.json` script of `"type": "service"` starts, Paseo assigns it a local port and registers a route in the service proxy. Incoming requests whose `Host` header matches the script's generated hostname are forwarded to that port.
 
 The generated hostname is built from the script name, branch, and project:
 
@@ -28,7 +28,7 @@ Local and public routes use one combined leftmost label (`script--branch--projec
 
 ## Managing workspace scripts
 
-Configured `paseo.json` scripts can be managed without addressing their backing terminal directly:
+Configured `ohmypcode.json` scripts can be managed without addressing their backing terminal directly:
 
 ```bash
 paseo script ls [--cwd <path> | --workspace <workspace-id>]

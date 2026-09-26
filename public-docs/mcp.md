@@ -113,7 +113,7 @@ For worktree isolation, `create_workspace` accepts the same useful choices as th
 
 ### Workspace scripts
 
-These tools manage scripts configured in a workspace's `paseo.json`. Each requires an explicit `workspaceId`; start and stop also require the configured `scriptName`.
+These tools manage scripts configured in a workspace's `ohmypcode.json`. Each requires an explicit `workspaceId`; start and stop also require the configured `scriptName`.
 
 | Tool                     | Function                                                                                |
 | ------------------------ | --------------------------------------------------------------------------------------- |
@@ -121,7 +121,7 @@ These tools manage scripts configured in a workspace's `paseo.json`. Each requir
 | `start_workspace_script` | Start a configured script through Paseo's managed launcher.                             |
 | `stop_workspace_script`  | Stop a running script through its supervised terminal.                                  |
 
-See [Git worktrees](/docs/worktrees#scripts-and-services) for `paseo.json` configuration.
+See [Git worktrees](/docs/worktrees#scripts-and-services) for `ohmypcode.json` configuration.
 
 ### Terminals
 
