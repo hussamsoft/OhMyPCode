@@ -60,7 +60,7 @@ You aren't expected to own every device. You are expected to say what you covere
 | Desktop Windows |        |       |
 | Desktop Linux   |        |       |
 
-Install what you reasonably can. An iOS simulator and an Android emulator cover most of the gap on a single machine, see [development.md](development.md) and [android.md](android.md).
+Install what you reasonably can, see [development.md](development.md).
 
 For the rules about which code runs where, read the platform gating section in [CLAUDE.md](../CLAUDE.md). The recurring traps have their own docs: [hover.md](hover.md), [unistyles.md](unistyles.md), [floating-panels.md](floating-panels.md), [mobile-panels.md](mobile-panels.md), [expo-router.md](expo-router.md).
 
@@ -77,4 +77,4 @@ Tests are evidence only when they exercise the real thing.
 
 Tests that mock away the behavior, assert on internals, or pass against the broken code claim coverage that isn't there.
 
-[testing.md](testing.md) is the standard, including how to run suites without freezing your machine. For driving a real daemon in a test, see [ad-hoc-daemon-testing.md](ad-hoc-daemon-testing.md). For mobile flows, [mobile-testing.md](mobile-testing.md). For Electron screenshots, [browser-capture-harness.md](browser-capture-harness.md).
+[testing.md](testing.md) is the standard, including how to run suites without freezing your machine. For driving a real daemon in a test, see [ad-hoc-daemon-testing.md](ad-hoc-daemon-testing.md). For Electron screenshots, [browser-capture-harness.md](browser-capture-harness.md).

@@ -3,54 +3,39 @@ const path = require("node:path");
 const pkg = require("./package.json");
 const withAndroidAsyncStorageSize = require("./plugins/with-android-async-storage-size");
 const withAndroidProfileable = require("./plugins/with-android-profileable");
-const withFdroidAutolinking = require("./plugins/with-fdroid-autolinking");
 const withPasteInput = require("./plugins/with-paste-input");
 const withAndroidScroll = require("./modules/paseo-scroll/app.plugin");
 const { getNativeReleaseVersion } = require("./native-release-version");
 const appVariant = process.env.APP_VARIANT ?? "production";
-const isFdroidBuild = process.env.PASEO_FDROID_BUILD === "1";
 const isProfileBuild = process.env.PASEO_PROFILE_BUILD === "1";
 const isElectronExport = process.env.PASEO_WEB_PLATFORM === "electron";
 
-const buildProfile = isFdroidBuild
-  ? {
-      androidPermissions: [
-        "RECORD_AUDIO",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-      ],
-      cameraPlugins: [],
-      fdroidPlugins: [withFdroidAutolinking],
-      notificationPlugins: [],
-    }
-  : {
-      androidPermissions: [
-        "RECORD_AUDIO",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "CAMERA",
-        "android.permission.CAMERA",
-      ],
-      cameraPlugins: [
-        [
-          "expo-camera",
-          {
-            cameraPermission:
-              "Allow $(PRODUCT_NAME) to access your camera to scan pairing QR codes.",
-          },
-        ],
-      ],
-      fdroidPlugins: [],
-      notificationPlugins: [
-        [
-          "expo-notifications",
-          {
-            icon: "./assets/images/notification-icon.png",
-            color: "#20744A",
-          },
-        ],
-      ],
-    };
+const buildProfile = {
+  androidPermissions: [
+    "RECORD_AUDIO",
+    "android.permission.RECORD_AUDIO",
+    "android.permission.MODIFY_AUDIO_SETTINGS",
+    "CAMERA",
+    "android.permission.CAMERA",
+  ],
+  cameraPlugins: [
+    [
+      "expo-camera",
+      {
+        cameraPermission: "Allow $(PRODUCT_NAME) to access your camera to scan pairing QR codes.",
+      },
+    ],
+  ],
+  notificationPlugins: [
+    [
+      "expo-notifications",
+      {
+        icon: "./assets/images/notification-icon.png",
+        color: "#20744A",
+      },
+    ],
+  ],
+};
 
 function resolveSecretFile(params) {
   const fromEnv = process.env[params.envKey];
@@ -180,7 +165,6 @@ export default {
           },
         },
       ],
-      ...buildProfile.fdroidPlugins,
       ...(isProfileBuild ? [withAndroidProfileable] : []),
     ],
     experiments: {
@@ -189,7 +173,6 @@ export default {
       autolinkingModuleResolution: true,
     },
     extra: {
-      fdroidBuild: isFdroidBuild,
       profileBuild: isProfileBuild,
       router: {},
       eas: {
