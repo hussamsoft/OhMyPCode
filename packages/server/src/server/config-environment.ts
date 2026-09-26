@@ -84,14 +84,20 @@ export function configurationEnvironment(env: NodeJS.ProcessEnv): NodeJS.Process
     if (resolved[key] !== undefined && resolved[key].trim()) continue;
     const legacyKey = legacyDaemonEnvKey(key);
     const legacyValue = legacyKey === undefined ? undefined : env[legacyKey];
-    if (legacyKey === undefined || legacyValue === undefined || !legacyValue.trim()) continue;
-    resolved[key] = legacyValue;
-    if (!warnedStaleDaemonEnvKeys.has(legacyKey)) {
-      warnedStaleDaemonEnvKeys.add(legacyKey);
-      console.warn(
-        `[config] ${legacyKey} is set but no longer read directly; using its value as a ` +
-          `fallback for ${key}. Rename it -- ${legacyKey} support may be removed in a future release.`,
-      );
+    if (legacyKey !== undefined && legacyValue !== undefined && legacyValue.trim()) {
+      resolved[key] = legacyValue;
+      if (!warnedStaleDaemonEnvKeys.has(legacyKey)) {
+        warnedStaleDaemonEnvKeys.add(legacyKey);
+        console.warn(
+          `[config] ${legacyKey} is set but no longer read directly; using its value as a ` +
+            `fallback for ${key}. Rename it -- ${legacyKey} support may be removed in a future release.`,
+        );
+      }
+    } else {
+      // Neither name holds a usable value -- a blank canonical value must not
+      // shadow the caller's own default/persisted fallback (e.g. config.ts's
+      // `?? persisted...` chains only skip null/undefined, not "").
+      resolved[key] = undefined;
     }
   }
   return resolved;

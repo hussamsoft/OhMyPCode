@@ -26,6 +26,11 @@ describe("configurationEnvironment", () => {
     expect(env.OMPCODE_LISTEN).toBe("127.0.0.1:7000");
   });
 
+  test("blank canonical value with no legacy fallback normalizes to undefined, not blank", () => {
+    const env = configurationEnvironment({ OMPCODE_LISTEN: "" });
+    expect(env.OMPCODE_LISTEN).toBeUndefined();
+  });
+
   test("does not fabricate a value when neither name is set", () => {
     const env = configurationEnvironment({});
     expect(env.OMPCODE_LISTEN).toBeUndefined();
