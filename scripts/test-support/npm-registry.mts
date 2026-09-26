@@ -68,7 +68,13 @@ export async function startNpmRegistry(packages: FixturePackage[]) {
       const { stdout } = await execCommand("npm", ["pack", "--ignore-scripts", "--json"], {
         cwd: directory,
       });
-      const packed: Array<{ filename: string }> = JSON.parse(stdout);
+      // npm >= 12 changed `pack --json` from an array of packed-package
+      // objects to a single object keyed by package name (npm/cli#9247);
+      // normalize both shapes rather than pin to one npm major.
+      const rawPacked: unknown = JSON.parse(stdout);
+      const packed: Array<{ filename: string }> = Array.isArray(rawPacked)
+        ? rawPacked
+        : Object.values(rawPacked as Record<string, { filename: string }>);
       const artifact = await readFile(path.join(directory, packed[0].filename));
       const artifactPath = `/artifacts/${index}.tgz`;
       artifacts.set(artifactPath, artifact);

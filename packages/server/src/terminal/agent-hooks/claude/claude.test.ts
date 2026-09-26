@@ -171,7 +171,11 @@ describe("Claude terminal agent hooks", () => {
     ).toLowerCase();
 
     for (const providerId of Object.keys(AGENT_HOOK_PROVIDERS)) {
-      expect(source).not.toContain(providerId);
+      // Word-boundary match, not a raw substring search: short provider
+      // ids like "omp" are also common substrings of ordinary English
+      // words (component, complete, ...), which a bare .toContain would
+      // false-positive on.
+      expect(source).not.toMatch(new RegExp(`\\b${providerId}\\b`));
     }
   });
 

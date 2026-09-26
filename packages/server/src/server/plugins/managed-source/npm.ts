@@ -66,6 +66,15 @@ export async function acquireNpm(source: string, installRoot: string, target?: N
       "--omit=dev",
       "--global=false",
       "--workspaces=false",
+      // npm >= 12 defaults allow-remote=none, blocking a root dependency
+      // pinned directly to a tarball URL (npm/cli's install-time security
+      // hardening). We write exactly that shape above when applying a
+      // previously reviewed update (dependencies: { [packageName]:
+      // target.resolved }), specifically so the installed artifact's
+      // version/integrity/resolved can be verified against the reviewed
+      // target below -- allow-remote=root permits it for our own root
+      // package.json only, not transitive dependencies.
+      "--allow-remote=root",
     ],
     { cwd: installRoot, timeout: 120_000, maxBuffer: 1024 * 1024 },
   );
