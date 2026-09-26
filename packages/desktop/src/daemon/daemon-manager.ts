@@ -453,6 +453,7 @@ export function createDaemonCommandHandlers(): Record<string, DesktopCommandHand
       runningUnderARM64Translation: isRunningUnderARM64Translation(),
     }),
     desktop_get_omp_runtime_status: () => resolveOmpRuntimeStatus(),
+    desktop_get_omp_runtime_path: () => resolveBundledOmpPath(),
     desktop_daemon_status: () => resolveDesktopDaemonStatus(),
     start_desktop_daemon: () => startDaemon(),
     stop_desktop_daemon: (args) =>
