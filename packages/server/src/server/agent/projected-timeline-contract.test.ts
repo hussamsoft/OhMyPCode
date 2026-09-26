@@ -33,6 +33,7 @@ test("projects Codex child history and confines old-client degradation to the ch
     pluginsEnabled: false,
     relayEnabled: false,
     agentClients: { codex: provider },
+    providerOverrides: { codex: { enabled: true } },
   });
   const legacy = new DaemonClient({
     url: `ws://127.0.0.1:${ctx.daemon.port}/ws`,

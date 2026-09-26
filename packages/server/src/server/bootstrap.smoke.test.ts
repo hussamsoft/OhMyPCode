@@ -88,7 +88,11 @@ describe("paseo daemon bootstrap", () => {
     await mkdir(obsoleteTimelineDirectory, { recursive: true });
     await writeFile(path.join(obsoleteTimelineDirectory, "obsolete.json"), "{}\n", "utf-8");
 
-    const daemonHandle = await createTestPaseoDaemon({ paseoHomeRoot, cleanup: false });
+    const daemonHandle = await createTestPaseoDaemon({
+      paseoHomeRoot,
+      cleanup: false,
+      providerOverrides: { codex: { enabled: true } },
+    });
     try {
       await expect(access(obsoleteTimelineDirectory)).rejects.toMatchObject({ code: "ENOENT" });
 
@@ -116,7 +120,11 @@ describe("paseo daemon bootstrap", () => {
   test("does not create a timeline directory for live timeline activity", async () => {
     const paseoHomeRoot = await mkdtemp(path.join(os.tmpdir(), "paseo-timeline-memory-"));
     const agentCwd = await mkdtemp(path.join(os.tmpdir(), "paseo-timeline-agent-"));
-    const daemonHandle = await createTestPaseoDaemon({ paseoHomeRoot, cleanup: false });
+    const daemonHandle = await createTestPaseoDaemon({
+      paseoHomeRoot,
+      cleanup: false,
+      providerOverrides: { codex: { enabled: true } },
+    });
     const timelineDirectory = path.join(daemonHandle.paseoHome, "agent-timelines");
     try {
       const agent = await daemonHandle.daemon.agentManager.createAgent(
@@ -985,6 +993,7 @@ async function beginDaemonShutdownWithAgentClosing(): Promise<BlockedDaemonShutd
   const daemonHandle = await createTestPaseoDaemon({
     cleanup: false,
     agentClients: createTestAgentClients({ closeSession: heldAgentClose.closeSession }),
+    providerOverrides: { codex: { enabled: true } },
   });
   const agentCwd = await mkdtemp(path.join(os.tmpdir(), "paseo-shutdown-agent-"));
   await daemonHandle.daemon.agentManager.createAgent(

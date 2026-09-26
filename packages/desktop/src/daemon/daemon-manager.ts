@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { app, ipcMain, powerMonitor } from "electron";
 import log from "electron-log/main";
@@ -273,6 +273,52 @@ function assertBuiltInDaemonManagementEnabled(settings: DesktopSettings): void {
   }
 }
 
+/**
+ * The packaged desktop build's opt-in defaults (currently: enable the `omp`
+ * provider -- every built-in provider defaults to disabled in
+ * provider-manifest.ts, and this is the only place that turns it on for a
+ * fresh install). Copied into `<home>/config.json` the first time the daemon
+ * starts for this home; an existing config.json is never touched. The
+ * daemon's own loader (persisted-config.ts's loadPersistedConfig) validates
+ * whatever lands here on read, so this only needs to get the bytes there
+ * before it runs -- the "config.json is absent" branch it would otherwise
+ * take writes a seed with no provider opinion at all.
+ */
+function resolveDefaultConfigPath(): string {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "ohmypcode", "default-config.json")
+    : path.resolve(__dirname, "../../../..", "ohmypcode", "default-config.json");
+}
+
+function seedDaemonConfigFromPackagedDefault(home: string): void {
+  const configPath = path.join(home, "config.json");
+  if (existsSync(configPath)) return;
+
+  const defaultConfigPath = resolveDefaultConfigPath();
+  let contents: string;
+  try {
+    contents = readFileSync(defaultConfigPath, "utf-8");
+    JSON.parse(contents);
+  } catch (error) {
+    logDesktopDaemonLifecycle("skipping default config seed: unreadable or invalid", {
+      defaultConfigPath,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return;
+  }
+
+  try {
+    mkdirSync(home, { recursive: true });
+    writeFileSync(configPath, contents, { mode: 0o600 });
+    logDesktopDaemonLifecycle("seeded daemon config from packaged default", { configPath });
+  } catch (error) {
+    logDesktopDaemonLifecycle("failed to seed daemon config", {
+      configPath,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 async function startDaemon(): Promise<DesktopDaemonStatus> {
   assertBuiltInDaemonManagementEnabled(await getDesktopSettingsStore().get());
 
@@ -298,6 +344,7 @@ async function startDaemon(): Promise<DesktopDaemonStatus> {
   }
 
   const home = getPaseoHome();
+  seedDaemonConfigFromPackagedDefault(home);
   const invocation = createNodeEntrypointInvocation({
     entrypoint: resolveDaemonRunnerEntrypoint(),
     argvMode: "node-script",

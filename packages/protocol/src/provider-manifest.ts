@@ -256,7 +256,12 @@ export const AGENT_PROVIDER_DEFINITIONS: AgentProviderDefinition[] = [
     id: "omp",
     label: "Oh My Pi",
     description: "OhMyPCode default agent",
-    enabledByDefault: true,
+    // Opt-in built-in, not runtime-gated: `enabled` here is a user-preference
+    // default, separate from listProviderAvailability()'s real availability
+    // probe. ohmypcode/default-config.json opts this in for a fresh install;
+    // a stock daemon with no config opt-in leaves it off like every other
+    // built-in provider.
+    enabledByDefault: false,
     defaultModeId: "write",
     modes: OMP_MODES,
   },

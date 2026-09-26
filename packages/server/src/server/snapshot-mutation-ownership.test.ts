@@ -30,7 +30,9 @@ describe("snapshot mutation ownership boundary", () => {
   });
 
   test("daemon live mutations write one durable snapshot through the manager-owned path", async () => {
-    const daemonHandle = await createTestPaseoDaemon();
+    const daemonHandle = await createTestPaseoDaemon({
+      providerOverrides: { codex: { enabled: true } },
+    });
     const cwd = mkdtempSync(path.join(os.tmpdir(), "snapshot-owner-live-"));
 
     try {

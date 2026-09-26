@@ -992,7 +992,7 @@ test("enabled: false keeps provider metadata in registry", () => {
   expect(registry.claude.modes).toEqual(
     AGENT_PROVIDER_DEFINITIONS.find((definition) => definition.id === "claude")?.modes,
   );
-  expect(registry.codex.enabled).toBe(true);
+  expect(registry.codex.enabled).toBe(false);
 });
 
 test("enabled: false still produces a client (enabled gate is enforced elsewhere)", () => {

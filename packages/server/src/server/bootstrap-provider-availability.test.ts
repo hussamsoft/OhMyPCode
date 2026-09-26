@@ -80,6 +80,7 @@ describe("bootstrap provider availability", () => {
       agentStoragePath,
       relayEnabled: false,
       appBaseUrl: "https://app.paseo.sh",
+      providerOverrides: { codex: { enabled: true } },
       openai: undefined,
       speech: undefined,
     };
