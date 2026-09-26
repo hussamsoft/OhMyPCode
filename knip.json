@@ -40,7 +40,8 @@
       "paths": {
         "@server/*": ["../server/src/*"]
       },
-      "ignore": ["android/**", "ios/**", ".expo/**", "dist/**", "scripts/reset-project.js"]
+      "ignore": ["android/**", "ios/**", ".expo/**", "dist/**", "scripts/reset-project.js"],
+      "expo": { "config": [] }
     },
     "packages/cli": {
       "entry": ["src/index.ts", "bin/paseo", "src/**/*.test.{ts,tsx}", "tests/**/*.{ts,tsx}"],

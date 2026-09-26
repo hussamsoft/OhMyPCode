@@ -1,0 +1,31 @@
+Knip baseline, first successful run after unblocking the Expo-plugin crash (knip.json's
+"expo": { "config": [] } workaround, see commit message for root cause). This is a
+starting-point snapshot for Phase 11's "robustness/soundness gate" (typecheck+lint+
+format+knip all clean repo-wide), not something this session attempted to clear -
+528 unused exports + 1280 unused exported types alone means ~1800 individual
+findings, each needing verification against false positives (dynamic imports,
+reflection, string-based lookups knip's static analysis can't see) before removal is
+safe. Regenerate this file (npm run knip) rather than trusting it stays current -
+every commit after this one can change the counts.
+
+Summary counts at time of capture:
+- Unused files: 44
+- Unused dependencies: 10
+- Unused devDependencies: 4
+- Unlisted dependencies: 31
+- Unlisted binaries: 2
+- Unresolved imports: 6
+- Unused exports: 528
+- Unused exported types: 1280
+- Duplicate exports: 10
+- Configuration hints: 36
+
+Immediately actionable configuration hints (cheap, low-risk, knip.json cleanup only -
+not touched this round since it's tangential to what unblocked the crash, but worth a
+quick look before the real Phase 11 pass): several ignoreDependencies/ignoreBinaries
+entries knip says are unused as ignores (concurrently, cross-env, expo-module-scripts,
+metro-config, expo-module, playwright, tsx) and a few "Remove redundant entry pattern"
+hints where an entry glob is already covered by project glob.
+
+Full report: `npm run knip` (regenerate; not preserved verbatim here to avoid checking
+in a snapshot that goes stale on the next commit).
