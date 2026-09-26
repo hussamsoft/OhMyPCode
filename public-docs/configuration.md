@@ -240,7 +240,7 @@ Set the persisted value in `config.json`:
 Legacy `PASEO_*` names (for example `PASEO_LISTEN`) still work as a fallback for every `OMPCODE_*` variable below; the daemon logs a one-time warning and switches to the new name. Support for the old names may be removed in a future release.
 
 - `PASEO_HOME`, set Paseo home directory
-- `PASEO_HOST`, set the daemon target for CLI commands
+- `OMPCODE_HOST`, set the daemon target for CLI commands
 - `OMPCODE_PASSWORD`, on the daemon, the password to require (plaintext, hashed at startup); on the CLI, the password used to connect when the host URI doesn't include one
 - `OMPCODE_LISTEN`, override `daemon.listen`
 - `OMPCODE_RELAY_ENABLED`, enable or disable the outbound relay for this daemon launch

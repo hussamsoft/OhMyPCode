@@ -79,7 +79,7 @@ paseo project delete <project-id>
 
 `--reset` restores the name derived from the project directory. Deleting a project archives its active workspaces and removes the project from Paseo. It does not delete the project directory.
 
-For a local daemon, `paseo project create [path]` defaults to the current directory and resolves relative paths on the CLI machine. When you use the global `--host` option or `PASEO_HOST`, provide a path that the target daemon can access:
+For a local daemon, `paseo project create [path]` defaults to the current directory and resolves relative paths on the CLI machine. When you use the global `--host` option or `OMPCODE_HOST`, provide a path that the target daemon can access:
 
 ```bash
 paseo --host devbox:6767 project create /srv/repos/api
@@ -320,11 +320,11 @@ Every daemon-connected CLI command accepts global `--home` or `--host`, before o
 | `--home`                                   | That local home, overriding both environment selectors |
 | `--host`                                   | That endpoint, overriding both environment selectors   |
 | Both flags, or conflicting duplicate flags | `TARGET_AMBIGUOUS`                                     |
-| Only `PASEO_HOME` or only `PASEO_HOST`     | The corresponding target                               |
+| Only `PASEO_HOME` or only `OMPCODE_HOST`   | The corresponding target                               |
 | Both environment selectors, without a flag | `TARGET_AMBIGUOUS`                                     |
 | Neither                                    | Default local home, `~/.paseo`                         |
 
-Local-only `start`, `daemon run`, `config`, `onboard`, and `set-password` reject explicit `--host` and ignore `PASEO_HOST`. Endpoint operations retain TCP, Unix socket, Windows pipe, SSH, and pairing-offer transports. A host-side CLI controlling a container needs `--host` or `PASEO_HOST`.
+Local-only `start`, `daemon run`, `config`, `onboard`, and `set-password` reject explicit `--host` and ignore `OMPCODE_HOST`. Endpoint operations retain TCP, Unix socket, Windows pipe, SSH, and pairing-offer transports. A host-side CLI controlling a container needs `--host` or `OMPCODE_HOST`.
 
 ## Hub
 
@@ -380,7 +380,7 @@ paseo --host 'https://app.paseo.sh/#offer=eyJ2IjoyLC...' ls
 paseo --host "$OFFER_URL" run "fix the failing tests"
 ```
 
-You can also set it once via `PASEO_HOST` instead of passing `--host` on every command. An explicit flag overrides the environment variable.
+You can also set it once via `OMPCODE_HOST` instead of passing `--host` on every command. An explicit flag overrides the environment variable.
 
 ## Multi-agent workflows
 

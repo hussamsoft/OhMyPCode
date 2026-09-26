@@ -2,6 +2,23 @@ import { resolvePaseoHome } from "@getpaseo/server/daemon-control";
 
 export type DaemonTarget = { kind: "instance"; home: string } | { kind: "endpoint"; host: string };
 
+let warnedStalePaseoHost = false;
+
+// COMPAT(paseoEnv): remove after 2027-01-01.
+function resolveDaemonHostEnv(env: NodeJS.ProcessEnv): string | undefined {
+  if (env.OMPCODE_HOST !== undefined) return env.OMPCODE_HOST;
+  if (env.PASEO_HOST === undefined) return undefined;
+  if (!warnedStalePaseoHost) {
+    warnedStalePaseoHost = true;
+    console.warn(
+      "[daemon-target] PASEO_HOST is set but no longer read directly; using its value as a " +
+        "fallback. Rename it to OMPCODE_HOST -- PASEO_HOST support may be removed in a future " +
+        "release.",
+    );
+  }
+  return env.PASEO_HOST;
+}
+
 export function selectDaemonTarget(
   options: { home?: string; host?: string },
   env: NodeJS.ProcessEnv = process.env,
@@ -30,12 +47,13 @@ export function selectDaemonTarget(
   if (options.home !== undefined)
     return { kind: "instance", home: resolvePaseoHome({ OHMYPCODE_HOME: options.home }) };
   if (options.host !== undefined) return { kind: "endpoint", host: options.host };
-  if ((env.OHMYPCODE_HOME || env.PASEO_HOME) && env.PASEO_HOST)
+  const hostEnv = resolveDaemonHostEnv(env);
+  if ((env.OHMYPCODE_HOME || env.PASEO_HOME) && hostEnv)
     throw {
       code: "TARGET_AMBIGUOUS",
-      message: "OHMYPCODE_HOME and PASEO_HOST are both set. Choose --home or --host explicitly.",
+      message: "OHMYPCODE_HOME and OMPCODE_HOST are both set. Choose --home or --host explicitly.",
     };
-  if (env.PASEO_HOST) return { kind: "endpoint", host: env.PASEO_HOST };
+  if (hostEnv) return { kind: "endpoint", host: hostEnv };
   return {
     kind: "instance",
     home: resolvePaseoHome({ OHMYPCODE_HOME: env.OHMYPCODE_HOME, PASEO_HOME: env.PASEO_HOME }),

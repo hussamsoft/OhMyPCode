@@ -112,6 +112,7 @@ export function daemonLaunchEnvironment(input: {
     }
   }
   delete env.PASEO_HOST;
+  delete env.OMPCODE_HOST;
   delete env.OHMYPCODE_DESKTOP_MANAGED;
   env.OHMYPCODE_HOME = input.home;
   if (input.desktopManaged) env.OHMYPCODE_DESKTOP_MANAGED = "1";

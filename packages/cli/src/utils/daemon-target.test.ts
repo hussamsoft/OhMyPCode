@@ -16,6 +16,23 @@ test("explicit selectors win over both environment selectors", () => {
   expect(() => selectDaemonTarget({ home: "/tmp/b", host: "chosen:23456" }, {})).toThrow();
 });
 
+test("OMPCODE_HOST is canonical; PASEO_HOST is a COMPAT(paseoEnv) fallback", () => {
+  expect(selectDaemonTarget({}, { OMPCODE_HOST: "canonical:12345" })).toEqual({
+    kind: "endpoint",
+    host: "canonical:12345",
+  });
+  expect(selectDaemonTarget({}, { PASEO_HOST: "legacy:23456" })).toEqual({
+    kind: "endpoint",
+    host: "legacy:23456",
+  });
+  expect(
+    selectDaemonTarget({}, { OMPCODE_HOST: "canonical:12345", PASEO_HOST: "legacy:23456" }),
+  ).toEqual({ kind: "endpoint", host: "canonical:12345" });
+  expect(() =>
+    selectDaemonTarget({}, { OHMYPCODE_HOME: "/tmp/a", OMPCODE_HOST: "unused:12345" }),
+  ).toThrow();
+});
+
 test("local operations ignore routing environment but reject an explicit endpoint", () => {
   expect(
     selectDaemonTarget({}, { PASEO_HOME: "/tmp/b", PASEO_HOST: "unused:12345" }, true),

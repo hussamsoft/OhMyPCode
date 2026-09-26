@@ -56,4 +56,22 @@ describe("daemonLaunchEnvironment", () => {
     });
     expect(env.OMPCODE_LISTEN).toBe("127.0.0.1:7000");
   });
+
+  test("always strips PASEO_HOST and OMPCODE_HOST regardless of mode", () => {
+    const managed = daemonLaunchEnvironment({
+      env: { PASEO_HOST: "old:1", OMPCODE_HOST: "new:1" },
+      home: "/tmp/home",
+      mode: "managed",
+    });
+    expect(managed.PASEO_HOST).toBeUndefined();
+    expect(managed.OMPCODE_HOST).toBeUndefined();
+
+    const deployment = daemonLaunchEnvironment({
+      env: { PASEO_HOST: "old:1", OMPCODE_HOST: "new:1" },
+      home: "/tmp/home",
+      mode: "deployment",
+    });
+    expect(deployment.PASEO_HOST).toBeUndefined();
+    expect(deployment.OMPCODE_HOST).toBeUndefined();
+  });
 });

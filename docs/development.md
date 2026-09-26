@@ -564,8 +564,8 @@ npm run cli -- --host localhost:7777 ls -a
 npm run cli -- --host ssh://user@host ls -a
 ```
 
-Set `PASEO_HOST` to use the same target across invocations. An explicit
-selector overrides both environment selectors. With both `OHMYPCODE_HOME` (or its `PASEO_HOME` fallback) and `PASEO_HOST` set, pass an explicit selector. See [CLI target selection](../public-docs/cli.md#select-one-daemon).
+Set `OMPCODE_HOST` to use the same target across invocations. An explicit
+selector overrides both environment selectors. With both `OHMYPCODE_HOME` (or its `PASEO_HOME` fallback) and `OMPCODE_HOST` (or its `PASEO_HOST` fallback) set, pass an explicit selector. See [CLI target selection](../public-docs/cli.md#select-one-daemon).
 
 In an SSH URI, the URL port is the SSH server port. The remote daemon defaults to `127.0.0.1:6767`; use `?daemonPort=7777` to override it. The transport runs non-interactively through the local OpenSSH client and never installs, starts, or configures the remote daemon. User-facing setup and troubleshooting live in [public-docs/connectivity.md](../public-docs/connectivity.md#ssh).
 
