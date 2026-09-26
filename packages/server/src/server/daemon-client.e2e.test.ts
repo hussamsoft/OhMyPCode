@@ -159,19 +159,42 @@ test("DaemonClient uploads file bytes to daemon temp storage", async () => {
       chunkSize: 5,
     });
 
-    expect(result).toEqual({
-      requestId: "req-upload-e2e",
-      file: {
-        type: "uploaded_file",
-        id: "upload_req-upload-e2e",
-        fileName: "notes.txt",
-        mimeType: "text/plain",
-        size: 11,
-        path: path.join(daemon.paseoHome, "uploads", "upload_req-upload-e2e", "notes.txt"),
-      },
-      error: null,
+    expect(result.requestId).toBe("req-upload-e2e");
+    expect(result.error).toBe(null);
+    expect(result.file?.id).toMatch(
+      /^upload_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
+    expect(result.file).toMatchObject({
+      type: "uploaded_file",
+      fileName: "notes.txt",
+      mimeType: "text/plain",
+      size: 11,
+      path: path.join(daemon.paseoHome, "uploads", result.file!.id, "notes.txt"),
     });
     await expect(readFile(result.file?.path ?? "", "utf8")).resolves.toBe("hello world");
+
+    // The upload id must be unique per connection, not derived solely from
+    // requestId: two different sources reusing the same requestId must not
+    // collide (see file-upload/index.ts's per-source `pending` map).
+    const otherClient = new DaemonClient({
+      url: `ws://127.0.0.1:${daemon.port}/ws`,
+      appVersion: "0.1.82",
+    });
+    try {
+      await otherClient.connect();
+      const otherResult = await otherClient.uploadFile({
+        fileName: "notes.txt",
+        mimeType: "text/plain",
+        bytes: new TextEncoder().encode("hello again"),
+        modifiedAt: "2026-05-02T00:00:00.000Z",
+        requestId: "req-upload-e2e",
+        chunkSize: 5,
+      });
+      expect(otherResult.error).toBe(null);
+      expect(otherResult.file?.id).not.toBe(result.file?.id);
+    } finally {
+      await otherClient.close();
+    }
   } finally {
     await client.close();
     await daemon.close();
