@@ -1,5 +1,16 @@
 # Mobile panels
 
+> **Platform split:** The mobile-panels gesture runtime is native-only. On
+> web/Electron the provider is a no-op (`mobile-panels/provider.web.tsx`), the
+> overlay is a plain host (`MobilePanelOverlay` web variant), and the four
+> sidebar/terminal-pane components have web variants that strip the gesture
+> hooks. The desktop bundle does not load `mobile-panels/gestures.ts`,
+> `mobile-panels/presentation.tsx`, or the gesture-enabled
+> `mobile-panels/provider.tsx`. Behavior on iOS/Android is unchanged. At
+> <=500px width on Electron the compact layout path still renders, but there
+> is no swipe-to-close affordance — a deliberate cutover trade-off (see
+> `OMP_DESKTOP_MASTER_PLAN.md`).
+
 Compact layouts have three mutually exclusive destinations:
 
 - `agent-list` on the left

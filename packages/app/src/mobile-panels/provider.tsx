@@ -6,7 +6,6 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
-  useState,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -67,7 +66,6 @@ interface FinishGestureInput {
 }
 
 const MobilePanelsContext = createContext<MobilePanelsRuntime | null>(null);
-const MobilePanelActiveContext = createContext<MobilePanelView>("agent");
 
 export function MobilePanelsProvider({ children }: { children: ReactNode }) {
   const { width: windowWidth } = useWindowDimensions();
@@ -80,7 +78,6 @@ export function MobilePanelsProvider({ children }: { children: ReactNode }) {
   const leftCloseGestureRef = useRef<GestureType | undefined>(undefined);
   const rightOpenGestureRef = useRef<GestureType | undefined>(undefined);
   const rightCloseGestureRef = useRef<GestureType | undefined>(undefined);
-  const [activePanel, setActivePanel] = useState(initialSelection.target);
 
   const setOpenGestureBlocked = useCallback(
     (owner: symbol, blocked: boolean) => {
@@ -102,7 +99,6 @@ export function MobilePanelsProvider({ children }: { children: ReactNode }) {
     if (isNative && panel !== "agent") {
       Keyboard.dismiss();
     }
-    setActivePanel(panel);
   }, []);
 
   useAnimatedReaction(
@@ -242,9 +238,7 @@ export function MobilePanelsProvider({ children }: { children: ReactNode }) {
 
   return (
     <MobilePanelsContext.Provider value={value}>
-      <MobilePanelActiveContext.Provider value={activePanel}>
-        {children}
-      </MobilePanelActiveContext.Provider>
+      {children}
     </MobilePanelsContext.Provider>
   );
 }
@@ -259,7 +253,7 @@ export function useMobilePanelsRuntime(): MobilePanelsRuntime {
 }
 
 export function useIsMobilePanelActive(panel: MobilePanelView): boolean {
-  return useContext(MobilePanelActiveContext) === panel;
+  return usePanelStore((state) => state.mobilePanel.target) === panel;
 }
 
 export function useBlockMobilePanelOpenGestures(blocked: boolean): void {
