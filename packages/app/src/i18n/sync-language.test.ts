@@ -5,7 +5,7 @@ describe("ensureI18nLanguageForRender", () => {
   it("changes the i18n language before callers render children", () => {
     const calls: string[] = [];
     const i18n = {
-      language: "en",
+      language: "fr",
       changeLanguage: (locale: string) => {
         calls.push(locale);
         i18n.language = locale;
@@ -13,10 +13,10 @@ describe("ensureI18nLanguageForRender", () => {
       },
     };
 
-    ensureI18nLanguageForRender("zh-CN", i18n);
+    ensureI18nLanguageForRender("en", i18n);
 
-    expect(i18n.language).toBe("zh-CN");
-    expect(calls).toEqual(["zh-CN"]);
+    expect(i18n.language).toBe("en");
+    expect(calls).toEqual(["en"]);
   });
 
   it("does not call changeLanguage when the current language already matches", () => {

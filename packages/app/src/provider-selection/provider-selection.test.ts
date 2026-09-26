@@ -393,7 +393,20 @@ describe("combined model selector data", () => {
   });
 
   it("uses the active app language for utility labels", async () => {
-    await i18n.changeLanguage("zh-CN");
+    i18n.addResourceBundle(
+      "test-locale",
+      "translation",
+      {
+        providerSelection: {
+          defaultModel: "TEST_DEFAULT",
+          unavailable: "TEST_UNAVAILABLE",
+          readiness: { initialPromptRequired: "TEST_PROMPT_REQUIRED" },
+        },
+      },
+      true,
+      true,
+    );
+    await i18n.changeLanguage("test-locale");
     try {
       const providers = buildSelectableProviderSelectorProviders([
         snapshotEntry({
@@ -408,10 +421,10 @@ describe("combined model selector data", () => {
         }),
       ]);
 
-      expect(getAllModelLabels(providers)).toContain("默认");
+      expect(getAllModelLabels(providers)).toContain("TEST_DEFAULT");
       expect(providers[1]?.modelSelection).toEqual({
         kind: "error",
-        message: "不可用",
+        message: "TEST_UNAVAILABLE",
       });
       expect(
         resolveSubmissionReadiness({
@@ -428,9 +441,10 @@ describe("combined model selector data", () => {
           workspaceDirectory: "/repo",
           hasClient: true,
         }),
-      ).toEqual({ ok: false, reason: "初始 prompt 必填" });
+      ).toEqual({ ok: false, reason: "TEST_PROMPT_REQUIRED" });
     } finally {
       await i18n.changeLanguage("en");
+      i18n.removeResourceBundle("test-locale", "translation");
     }
   });
 });

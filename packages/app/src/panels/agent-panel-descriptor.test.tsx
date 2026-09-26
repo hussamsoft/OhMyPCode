@@ -44,7 +44,14 @@ describe("buildDraftPanelDescriptor", () => {
   });
 
   it("uses the active language for draft descriptor chrome", async () => {
-    await i18n.changeLanguage("zh-CN");
+    i18n.addResourceBundle(
+      "test-locale",
+      "translation",
+      { panels: { draft: { newAgent: "TEST_NEW_AGENT", creatingAgent: "TEST_CREATING_AGENT" } } },
+      true,
+      true,
+    );
+    await i18n.changeLanguage("test-locale");
     const idleDescriptor = buildDraftPanelDescriptor({
       isCreating: false,
       icon: TestIcon,
@@ -56,13 +63,14 @@ describe("buildDraftPanelDescriptor", () => {
     });
 
     expect(idleDescriptor).toMatchObject({
-      label: "新建 Agent",
-      subtitle: "新建 Agent",
+      label: "TEST_NEW_AGENT",
+      subtitle: "TEST_NEW_AGENT",
     });
     expect(creatingDescriptor).toMatchObject({
-      label: "新建 Agent",
-      subtitle: "正在创建 Agent",
+      label: "TEST_NEW_AGENT",
+      subtitle: "TEST_CREATING_AGENT",
     });
     await i18n.changeLanguage("en");
+    i18n.removeResourceBundle("test-locale", "translation");
   });
 });

@@ -743,26 +743,48 @@ describe("git-actions-policy", () => {
   });
 
   it("uses the active language for policy-owned action labels and unavailable messages", async () => {
-    await i18n.changeLanguage("zh-CN");
-    const actions = buildGitActions(
-      createInput({
-        hasRemote: true,
-        behindOfOrigin: 1,
-        isOnBaseBranch: false,
-        aheadCount: 0,
-      }),
+    i18n.addResourceBundle(
+      "test-locale",
+      "translation",
+      {
+        workspace: {
+          git: {
+            actions: {
+              pull: { label: "TEST_PULL", pending: "TEST_PULLING", success: "TEST_PULLED" },
+              createPr: { label: "TEST_CREATE_PR" },
+              unavailable: { createPrNoCommits: "TEST_NO_COMMITS_TO_CREATE_PR" },
+            },
+          },
+        },
+      },
+      true,
+      true,
     );
+    await i18n.changeLanguage("test-locale");
+    try {
+      const actions = buildGitActions(
+        createInput({
+          hasRemote: true,
+          behindOfOrigin: 1,
+          isOnBaseBranch: false,
+          aheadCount: 0,
+        }),
+      );
 
-    expect(actions.primary).toMatchObject({
-      id: "pull",
-      label: "Pull",
-      pendingLabel: "正在 pull...",
-      successLabel: "已 pull",
-    });
-    expect(actions.secondary.find((entry) => entry.id === "pr")).toMatchObject({
-      label: "创建 PR",
-      unavailableMessage: "无法创建 PR，因为此分支还没有新的 commit",
-    });
+      expect(actions.primary).toMatchObject({
+        id: "pull",
+        label: "TEST_PULL",
+        pendingLabel: "TEST_PULLING",
+        successLabel: "TEST_PULLED",
+      });
+      expect(actions.secondary.find((entry) => entry.id === "pr")).toMatchObject({
+        label: "TEST_CREATE_PR",
+        unavailableMessage: "TEST_NO_COMMITS_TO_CREATE_PR",
+      });
+    } finally {
+      await i18n.changeLanguage("en");
+      i18n.removeResourceBundle("test-locale", "translation");
+    }
   });
 
   it.each([

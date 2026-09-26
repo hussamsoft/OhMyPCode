@@ -19,11 +19,19 @@ describe("getCompactionMarkerLabel", () => {
   });
 
   it("renders labels in the active app language", async () => {
-    await i18n.changeLanguage("zh-CN");
+    i18n.addResourceBundle(
+      "test-locale",
+      "translation",
+      { message: { compaction: { loading: "TEST_LOADING" } } },
+      true,
+      true,
+    );
+    await i18n.changeLanguage("test-locale");
     try {
-      expect(getCompactionMarkerLabel({ status: "loading" })).toBe("正在压缩...");
+      expect(getCompactionMarkerLabel({ status: "loading" })).toBe("TEST_LOADING");
     } finally {
       await i18n.changeLanguage("en");
+      i18n.removeResourceBundle("test-locale", "translation");
     }
   });
 });

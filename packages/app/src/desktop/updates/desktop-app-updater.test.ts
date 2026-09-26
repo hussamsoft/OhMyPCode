@@ -463,7 +463,23 @@ describe("formatStatusText", () => {
   });
 
   it("uses the active app language for local status wrappers", async () => {
-    await i18n.changeLanguage("zh-CN");
+    i18n.addResourceBundle(
+      "test-locale",
+      "translation",
+      {
+        desktop: {
+          updates: {
+            status: {
+              checking: "TEST_CHECKING",
+              availableWithVersion: "TEST_AVAILABLE {{version}}",
+            },
+          },
+        },
+      },
+      true,
+      true,
+    );
+    await i18n.changeLanguage("test-locale");
     try {
       expect(
         formatStatusText({
@@ -474,7 +490,7 @@ describe("formatStatusText", () => {
           formatVersion,
           formatLastCheckedAt,
         }),
-      ).toBe("正在检查 app 更新...");
+      ).toBe("TEST_CHECKING");
       expect(
         formatStatusText({
           status: "available",
@@ -484,9 +500,10 @@ describe("formatStatusText", () => {
           formatVersion,
           formatLastCheckedAt,
         }),
-      ).toBe("更新已就绪：v1.2.3");
+      ).toBe("TEST_AVAILABLE v1.2.3");
     } finally {
       await i18n.changeLanguage("en");
+      i18n.removeResourceBundle("test-locale", "translation");
     }
   });
 });

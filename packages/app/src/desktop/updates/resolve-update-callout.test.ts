@@ -107,17 +107,35 @@ describe("resolveUpdateCalloutDescriptor", () => {
   });
 
   it("uses the active app language for local callout chrome", async () => {
-    await i18n.changeLanguage("zh-CN");
+    i18n.addResourceBundle(
+      "test-locale",
+      "translation",
+      {
+        desktop: {
+          updates: {
+            callout: {
+              availableTitle: "TEST_AVAILABLE_TITLE",
+              whatsNew: "TEST_WHATS_NEW",
+              installAndRestart: "TEST_INSTALL_AND_RESTART",
+            },
+          },
+        },
+      },
+      true,
+      true,
+    );
+    await i18n.changeLanguage("test-locale");
     try {
       const descriptor = resolveUpdateCalloutDescriptor(input());
 
-      expect(descriptor?.title).toBe("有可用更新");
+      expect(descriptor?.title).toBe("TEST_AVAILABLE_TITLE");
       expect(descriptor?.actions).toEqual([
-        { role: "changelog", label: "更新内容" },
-        { role: "install", label: "安装并重启", variant: "primary", disabled: false },
+        { role: "changelog", label: "TEST_WHATS_NEW" },
+        { role: "install", label: "TEST_INSTALL_AND_RESTART", variant: "primary", disabled: false },
       ]);
     } finally {
       await i18n.changeLanguage("en");
+      i18n.removeResourceBundle("test-locale", "translation");
     }
   });
 });

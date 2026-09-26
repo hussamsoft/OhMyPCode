@@ -183,7 +183,21 @@ describe("desktop-permissions", () => {
   });
 
   it("uses the active app language for local status details", async () => {
-    await i18n.changeLanguage("zh-CN");
+    i18n.addResourceBundle(
+      "test-locale",
+      "translation",
+      {
+        desktop: {
+          permissions: {
+            notifications: { allowed: "TEST_NOTIFICATIONS_ALLOWED" },
+            microphone: { notGranted: "TEST_MICROPHONE_NOT_GRANTED" },
+          },
+        },
+      },
+      true,
+      true,
+    );
+    await i18n.changeLanguage("test-locale");
     try {
       const permissions = createDesktopPermissions(
         fakeEnvironment({
@@ -199,10 +213,11 @@ describe("desktop-permissions", () => {
 
       const snapshot = await permissions.getDesktopPermissionSnapshot();
 
-      expect(snapshot.notifications.detail).toBe("系统已允许通知。");
-      expect(snapshot.microphone.detail).toBe("麦克风权限尚未授予。");
+      expect(snapshot.notifications.detail).toBe("TEST_NOTIFICATIONS_ALLOWED");
+      expect(snapshot.microphone.detail).toBe("TEST_MICROPHONE_NOT_GRANTED");
     } finally {
       await i18n.changeLanguage("en");
+      i18n.removeResourceBundle("test-locale", "translation");
     }
   });
 });
