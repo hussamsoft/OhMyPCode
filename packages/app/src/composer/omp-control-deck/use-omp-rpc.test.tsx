@@ -91,7 +91,9 @@ describe("useOmpModes", () => {
       setOmpMode: vi.fn(),
     });
 
-    const { result } = renderHook(() => useOmpModes("server-1", "agent-1"), { wrapper });
+    const { result } = renderHook(() => useOmpModes("server-1", "agent-1"), {
+      wrapper,
+    });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.modes?.mode).toBe("plan");
@@ -103,7 +105,9 @@ describe("useOmpModes", () => {
     const getOmpModes = vi.fn();
     installClient("server-1", { getOmpModes, setOmpMode: vi.fn() });
 
-    const { result } = renderHook(() => useOmpModes("server-1", "agent-1"), { wrapper });
+    const { result } = renderHook(() => useOmpModes("server-1", "agent-1"), {
+      wrapper,
+    });
 
     expect(result.current.modes).toBeNull();
     expect(result.current.isLoading).toBe(false);
@@ -205,7 +209,9 @@ describe("useOmpSettings + useOmpSettingSetter", () => {
       })),
     });
 
-    const { result } = renderHook(() => useOmpSettings("server-1", "agent-1"), { wrapper });
+    const { result } = renderHook(() => useOmpSettings("server-1", "agent-1"), {
+      wrapper,
+    });
 
     await waitFor(() => expect(result.current.settings).toHaveLength(1));
     expect(result.current.revision).toBe(7);
@@ -273,7 +279,10 @@ describe("useOmpSlashCommand", () => {
     const { result } = renderHook(() => useOmpSlashCommand("server-1", "agent-1"), { wrapper });
 
     await act(async () => {
-      const response = await result.current.run({ name: "compact", args: "--force" });
+      const response = await result.current.run({
+        name: "compact",
+        args: "--force",
+      });
       expect(response.output).toBe("ok");
     });
 
@@ -318,7 +327,9 @@ describe("useOmpSettingsUpdate subscription", () => {
             runtimeInfo: {
               provider: "omp",
               sessionId: null,
-              extra: { settings: { revision: 3, paths: ["tools.approvalMode"] } },
+              extra: {
+                settings: { revision: 3, paths: ["tools.approvalMode"] },
+              },
             },
           },
         ],

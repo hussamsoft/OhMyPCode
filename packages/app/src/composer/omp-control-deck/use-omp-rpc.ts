@@ -49,9 +49,9 @@ export function ompSettingsQueryKey(
   return ["ompSettings", serverId ?? "", agentId ?? ""] as const;
 }
 
-export type UseOmpAgentScopeOptions = {
+export interface UseOmpAgentScopeOptions {
   enabled?: boolean;
-};
+}
 
 export type OmpSettingEntry = z.infer<typeof OmpSettingEntrySchema>;
 
@@ -62,7 +62,7 @@ export type OmpSettingEntry = z.infer<typeof OmpSettingEntrySchema>;
  * lookup and keeping them in lockstep avoids the capability-gating going
  * out of sync.
  */
-function useOmpAgentScope(serverId: string | null | undefined, agentId: string | null | undefined) {
+function useOmpAgentScope(serverId: string | null | undefined) {
   const { t } = useTranslation();
   const client = useHostRuntimeClient(serverId ?? "");
   const isConnected = useHostRuntimeIsConnected(serverId ?? "");
@@ -103,17 +103,13 @@ export function useOmpModes(
   agentId: string | null | undefined,
   options: UseOmpAgentScopeOptions = {},
 ): UseOmpModesResult {
-  const { client, isConnected, supportsOmpModes, errorHostDisconnected } = useOmpAgentScope(
-    serverId,
-    agentId,
-  );
+  const { client, isConnected, supportsOmpModes, errorHostDisconnected } =
+    useOmpAgentScope(serverId);
   const queryClient = useQueryClient();
-  const queryKey = useMemo(
-    () => ompModesQueryKey(serverId, agentId),
-    [serverId, agentId],
-  );
+  const queryKey = useMemo(() => ompModesQueryKey(serverId, agentId), [serverId, agentId]);
   const enabled =
-    (options.enabled ?? true) && Boolean(serverId && agentId && client && isConnected && supportsOmpModes);
+    (options.enabled ?? true) &&
+    Boolean(serverId && agentId && client && isConnected && supportsOmpModes);
   const query = useFetchQuery({
     queryKey,
     enabled,
@@ -160,12 +156,9 @@ export function useOmpModeSetter(
   serverId: string | null | undefined,
   agentId: string | null | undefined,
 ): UseOmpModeSetterResult {
-  const { client, isConnected, supportsOmpModes } = useOmpAgentScope(serverId, agentId);
+  const { client, isConnected, supportsOmpModes } = useOmpAgentScope(serverId);
   const queryClient = useQueryClient();
-  const queryKey = useMemo(
-    () => ompModesQueryKey(serverId, agentId),
-    [serverId, agentId],
-  );
+  const queryKey = useMemo(() => ompModesQueryKey(serverId, agentId), [serverId, agentId]);
   const mutation = useMutation({
     mutationFn: async (input: UseOmpModeSetterInput): Promise<OmpModesSetPayload> => {
       if (!client || !agentId) {
@@ -208,12 +201,9 @@ export function useOmpSettings(
   agentId: string | null | undefined,
   options: UseOmpAgentScopeOptions = {},
 ): UseOmpSettingsResult {
-  const { client, isConnected, errorHostDisconnected } = useOmpAgentScope(serverId, agentId);
+  const { client, isConnected, errorHostDisconnected } = useOmpAgentScope(serverId);
   const queryClient = useQueryClient();
-  const queryKey = useMemo(
-    () => ompSettingsQueryKey(serverId, agentId),
-    [serverId, agentId],
-  );
+  const queryKey = useMemo(() => ompSettingsQueryKey(serverId, agentId), [serverId, agentId]);
   const supportsOmpSettings = useOmpSupportsFeature(serverId, "ompSettings");
   const enabled =
     (options.enabled ?? true) &&
@@ -267,13 +257,10 @@ export function useOmpSettingSetter(
   serverId: string | null | undefined,
   agentId: string | null | undefined,
 ): UseOmpSettingSetterResult {
-  const { client, isConnected } = useOmpAgentScope(serverId, agentId);
+  const { client, isConnected } = useOmpAgentScope(serverId);
   const queryClient = useQueryClient();
   const supportsOmpSettings = useOmpSupportsFeature(serverId, "ompSettings");
-  const queryKey = useMemo(
-    () => ompSettingsQueryKey(serverId, agentId),
-    [serverId, agentId],
-  );
+  const queryKey = useMemo(() => ompSettingsQueryKey(serverId, agentId), [serverId, agentId]);
   const mutation = useMutation({
     mutationFn: async (input: UseOmpSettingSetterInput): Promise<OmpSettingsSetPayload> => {
       if (!client || !agentId) {
@@ -318,7 +305,7 @@ export function useOmpSlashCommand(
   serverId: string | null | undefined,
   agentId: string | null | undefined,
 ): UseOmpSlashCommandResult {
-  const { client, isConnected } = useOmpAgentScope(serverId, agentId);
+  const { client, isConnected } = useOmpAgentScope(serverId);
   const queryClient = useQueryClient();
   const supportsOmpSlashCommands = useOmpSupportsFeature(serverId, "ompSlashCommands");
   const mutation = useMutation({
@@ -332,8 +319,12 @@ export function useOmpSlashCommand(
       // Slash commands can change agent mode/settings; invalidate the
       // cached snapshots so the next read picks up the new server-side
       // state without a manual refresh.
-      void queryClient.invalidateQueries({ queryKey: ompModesQueryKey(serverId, agentId) });
-      void queryClient.invalidateQueries({ queryKey: ompSettingsQueryKey(serverId, agentId) });
+      void queryClient.invalidateQueries({
+        queryKey: ompModesQueryKey(serverId, agentId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ompSettingsQueryKey(serverId, agentId),
+      });
     },
   });
   const run = useCallback(
