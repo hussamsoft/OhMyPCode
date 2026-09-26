@@ -21,6 +21,7 @@ const testTheme = {
     surface3: "#e4e4e7",
     border: "#e4e4e7",
     borderAccent: "#a1a1aa",
+    ring: "#2563eb",
     palette: {
       amber: { 500: "#f59e0b" },
       blue: { 300: "#93c5fd" },
