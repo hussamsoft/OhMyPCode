@@ -763,6 +763,10 @@ describe("agent MCP end-to-end (offline)", () => {
 
       let agentId: string | null = null;
       try {
+        // execFileSync (argv array), not execSync (shell string): on
+        // Windows, execSync runs through cmd.exe, where single quotes
+        // aren't a quoting mechanism -- an argument with spaces tokenizes
+        // into multiple positional args instead of staying intact.
         const { execFileSync } = await import("node:child_process");
         execFileSync("git", ["init", "-b", "main"], { cwd: repoRoot, stdio: "pipe" });
         execFileSync("git", ["config", "user.email", "test@test.com"], {
@@ -795,9 +799,6 @@ describe("agent MCP end-to-end (offline)", () => {
           "utf8",
         );
         execFileSync("git", ["add", "paseo.json"], { cwd: repoRoot, stdio: "pipe" });
-        // execSync runs through cmd.exe on Windows, where single quotes are
-        // not a quoting mechanism -- a message with spaces gets tokenized
-        // into multiple positional args instead of one -m value.
         execFileSync("git", ["-c", "commit.gpgsign=false", "commit", "-m", "add worktree config"], {
           cwd: repoRoot,
           stdio: "pipe",

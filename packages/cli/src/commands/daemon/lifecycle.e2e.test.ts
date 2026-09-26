@@ -581,7 +581,10 @@ test("malformed configuration cannot turn a readiness timeout into launch cancel
     await writeFile(configPath, "{");
     await exited;
     expect(errors).toContain("DAEMON_NOT_READY");
-    expect(errors).toContain(path.join(home, "daemon.log"));
+    // errors accumulates raw stderr from a --json CLI invocation; on
+    // Windows, path.join's backslashes appear JSON-escaped (\\) in that
+    // text, not as plain single backslashes.
+    expect(errors).toContain(JSON.stringify(path.join(home, "daemon.log")).slice(1, -1));
     process.kill(captured.pid, 0);
     await writeFile(configPath, saved);
     await f.ok(["status", "--home", home]);

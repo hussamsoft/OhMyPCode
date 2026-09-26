@@ -165,19 +165,41 @@ async function waitForProcessExit(relayProcess: ChildProcess, deadline: number):
   return waitForProcessExit(relayProcess, deadline);
 }
 
+async function killRelayProcess(relayProcess: ChildProcess, signal: "SIGTERM" | "SIGKILL") {
+  if (process.platform !== "win32") {
+    relayProcess.kill(signal);
+    return;
+  }
+  // wrangler dev spawns a nested workerd runtime process; on Windows,
+  // ChildProcess#kill() maps to TerminateProcess() on the direct child
+  // only, orphaning workerd. taskkill /T recurses the whole process tree.
+  // Windows has no catchable-signal equivalent of a tree-wide SIGTERM, so
+  // /F (force) applies to both the "SIGTERM" and "SIGKILL" calls here --
+  // the first call already forcefully clears the whole tree, and the
+  // second (if ever reached) is a no-op against an already-exited process.
+  if (!relayProcess.pid) return;
+  await new Promise<void>((resolve) => {
+    const killer = spawn("taskkill", ["/pid", String(relayProcess.pid), "/T", "/F"], {
+      stdio: "ignore",
+    });
+    killer.once("exit", () => resolve());
+    killer.once("error", () => resolve());
+  });
+}
+
 async function stopRelayProcess(relayProcess: ChildProcess): Promise<void> {
   if (relayProcess.exitCode !== null) {
     return;
   }
 
-  relayProcess.kill("SIGTERM");
+  await killRelayProcess(relayProcess, "SIGTERM");
   await waitForProcessExit(relayProcess, Date.now() + SHUTDOWN_TIMEOUT_MS);
 
   if (relayProcess.exitCode !== null) {
     return;
   }
 
-  relayProcess.kill("SIGKILL");
+  await killRelayProcess(relayProcess, "SIGKILL");
   await waitForProcessExit(relayProcess, Date.now() + 2000);
 
   if (relayProcess.exitCode === null) {
@@ -224,7 +246,10 @@ async function stopRelayProcess(relayProcess: ChildProcess): Promise<void> {
       await stopRelayProcess(relayProcess);
       relayProcess = null;
     }
-  }, SHUTDOWN_TIMEOUT_MS);
+    // stopRelayProcess's own worst case is SHUTDOWN_TIMEOUT_MS (SIGTERM
+    // wait) + 2000ms (SIGKILL wait) = 12s; a hook timeout equal to just the
+    // SIGTERM half left zero room for the SIGKILL fallback to ever run.
+  }, SHUTDOWN_TIMEOUT_MS + 5000);
 
   it(
     "full flow: daemon and client exchange encrypted messages through relay",
