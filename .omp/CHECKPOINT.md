@@ -4,6 +4,78 @@
 
 Execute the OhMyPCode master plan step-by-step, verifying each step before the next. Preserve source and uncommitted work.
 
+## SESSION UPDATE — 2026-09-26 — Phase 5 rename-sweep status
+
+This supersedes the "Renames with no shims" bullet's stale text wherever it appears
+(including in the session's todo tracker, which is append-only and cannot be edited in
+place — this file is authoritative over that list for this specific bullet).
+
+**DONE, committed, verified** (branch `review/omp-desktop-fixes`, commits `f377c8b3` →
+`bc15481e`):
+
+- localStorage/AsyncStorage/Zustand-persist `@paseo:*` keys → `@ohmypcode:*` (14 keys,
+  plus `paseo-drafts`/`ohmypcode-drafts` which has no `@` prefix). Each key uses a
+  per-callsite one-time legacy-read fallback (new key primary, old key read once as
+  fallback, forward-written, all future writes go only to the new key) — not a boot-time
+  copy, which was tried and rejected: `client-id.ts` is get-or-create with a mint-and-
+  persist side effect on cache miss, so an early reader beats an unfinished async
+  migration and mints a new identity, orphaning the one the daemon already knows.
+- Window globals with a real product-source producer (not e2e/perf/scripts-only) →
+  `__OMPCODE_*`/`__ompcode*`, including `packages/desktop/src/features/browser-automation/`
+  and `render-profiler.tsx`, both found via follow-up sweeps after the first pass only
+  searched `packages/app`.
+- `packages/app/e2e` + `perf` + one `packages/desktop/e2e` file: repointed all seed
+  literals to the renamed keys, so the suite exercises the new steady-state path, not
+  just the legacy fallback.
+- `bin/paseo` → `ompc`: fixed a real, independently-confirmed pre-existing bug along the
+  way — `electron-builder.yml` already packaged the CLI shim as `bin/ompc`/`bin/ompc.cmd`,
+  but `packages/desktop/src/integrations/cli-install/paths.ts` still looked for
+  `bin/paseo`, meaning a packaged "Install CLI" silently symlinked to a resource that no
+  longer existed. Added a conservative one-time cleanup of a stale pre-rename
+  `~/.local/bin/paseo(.cmd)` (only when provably this app's own leftover, via `readlink`
+  not `realpath` — `realpath` throws on the dangling-target case that's the actual
+  real-world upgrade scenario, confirmed empirically before fixing). `packages/cli`'s npm
+  `bin` map got `"ompc"` ADDED alongside the existing `"paseo"` entry (not replaced — that
+  package is published, dropping `"paseo"` would break existing global installs).
+
+**NOT started, genuine open decisions — not mine to make unilaterally:**
+
+- `paseo.json` → `ohmypcode.json`: different risk class from everything above. It's a
+  per-PROJECT file committed to users' own git repos (not app-local state), with a whole
+  "Commit paseo.json changes" UI warning flow built around that exact filename, 35+
+  references across server/app/protocol, and its JSON schema writes into the still-
+  unresolved `packages/website/public/schemas/` path. Needs a real compat-strategy
+  decision (permanent dual-filename support? a migration that touches users' git working
+  trees?), not a mechanical rename.
+- Daemon env `PASEO_*` → `OMPCODE_*`: confirmed this is NOT a read-fallback case like
+  everything else — a stock, un-upgraded `paseo` CLI is a separate process that only ever
+  reads `PASEO_*`, so a client-side fallback can't help a reader we don't control. The
+  daemon needs to dual-write both prefixes to child-process environments for as long as a
+  stock `paseo` CLI might run against it. How long that compat window lasts is a real
+  product decision the plan text gestures at but doesn't specify.
+- The wider Paseo-branding storage surface beyond localStorage: ~5 IndexedDB/SQLite
+  database names carrying real user data (attachments, icon cache, replica rows), a
+  `paseo://` URL scheme, a `paseo:browser:execute-automation-command` wire-protocol
+  string. IndexedDB has no rename primitive (needs open-both/copy/delete, a different
+  technical shape entirely); the URL scheme is an OS-registration change Phase 6 already
+  anticipates as its own constant; the wire string needs both-ends (client+daemon)
+  verification. Own dedicated pass.
+- ~40 remaining `__PASEO_*`/`__paseo*` window globals confined to
+  `packages/app/e2e|perf|scripts` with no product-source producer — confirmed dev/test
+  tooling only, zero product/user impact, lowest priority of anything in this bullet.
+  `packages/desktop/capture-harness/main.js`'s equivalent 8 sites (same class) WERE folded
+  in since they were cheap and self-contained.
+
+**Methodology note for whoever picks this up:** a `grep`-based "repo-wide, therefore
+complete" claim in this rename work was wrong three separate times this session, each a
+failure of one of two independent axes — PATH scope (`packages/desktop` wasn't searched
+at all in the first localStorage pass) and PATTERN scope (`= "@paseo:` missed object-
+property syntax; `@paseo:`-anchored searches structurally cannot find `paseo-drafts`,
+which has no `@` prefix). For the still-deferred IndexedDB pass, enumerate by STORAGE
+MECHANISM (every `indexedDB.open`/`openDB(`/SQLite-open call/`createValidatedPersistStorage`
+call-site/`persist({` call/`AsyncStorage.setItem` key literal, repo-wide) rather than by
+assumed name pattern.
+
 ## Safety Warning
 
 Do not run a HEAD restore on the modified files. The worktree still holds the user's
