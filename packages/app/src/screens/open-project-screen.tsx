@@ -127,8 +127,8 @@ export function OpenProjectScreen() {
           />
           <HomeTile
             icon={Plug}
-            title={t("openProject.tiles.setupProviders.title")}
-            description={t("openProject.tiles.setupProviders.description")}
+            title={t("openProject.tiles.connectProviders.title")}
+            description={t("openProject.tiles.connectProviders.description")}
             onPress={handleOpenProviders}
             testID="open-project-setup-providers"
           />
