@@ -6,6 +6,10 @@ import { Switch } from "@/components/ui/switch";
 
 const mounted: Array<{ container: HTMLDivElement; root: Root }> = [];
 
+// A colour-only concern for this crash-avoidance test (see the render below) --
+// any two distinct values satisfy the explicit-override path in switch.tsx.
+const TEST_SWITCH_TRACK_COLOR = { false: "#000000", true: "#000000" };
+
 function requireElement<T extends Element>(element: T | null, name: string): T {
   if (!element) throw new Error(`Expected ${name}`);
   return element;
@@ -83,7 +87,16 @@ describe("SegmentedControl accessibility", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
-    act(() => root.render(<Switch value accessibilityLabel="Enable Vibe" />));
+    act(() =>
+      root.render(
+        <Switch
+          value
+          accessibilityLabel="Enable Vibe"
+          trackColor={TEST_SWITCH_TRACK_COLOR}
+          thumbColor="#ffffff"
+        />,
+      ),
+    );
     mounted.push({ container, root });
     const control = requireElement(
       container.querySelector<HTMLElement>('[role="switch"]'),
