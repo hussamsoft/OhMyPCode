@@ -297,6 +297,10 @@ beforeAll(async () => {
   daemonHandle = await createTestPaseoDaemon({
     agentClients: createRecordingAgentClients(),
     agentProfiles: [seededAgentProfile],
+    providerOverrides: {
+      claude: { enabled: true },
+      codex: { enabled: true },
+    },
   });
   topLevelClient = await createMcpClient(`http://127.0.0.1:${daemonHandle.port}/mcp/agents`);
 
@@ -331,7 +335,7 @@ afterAll(async () => {
   await agentScopedClient?.close();
   await topLevelClient?.close();
   await daemonHandle?.close();
-  await rm(tempRoot, { recursive: true, force: true });
+  await rm(tempRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 describe("Suite A: Core Fixes", () => {

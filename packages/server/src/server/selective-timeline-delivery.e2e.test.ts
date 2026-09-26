@@ -165,7 +165,9 @@ let daemon: TestPaseoDaemon;
 const clients: ConnectedClient[] = [];
 
 beforeEach(async () => {
-  daemon = await createTestPaseoDaemon();
+  daemon = await createTestPaseoDaemon({
+    providerOverrides: { codex: { enabled: true } },
+  });
 });
 
 afterEach(async () => {

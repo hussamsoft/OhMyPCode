@@ -13,6 +13,9 @@ test("the configuration example adds MCP servers and overrides Codex options whi
     daemonVersion: "0.8.0",
     agentClients: { codex: createTestAgentClient("codex", { supportsMcpServers: true }) },
     mcpEnabled: false,
+    providerOverrides: {
+      codex: { enabled: true },
+    },
   });
   const client = new DaemonClient({ url: `ws://127.0.0.1:${daemon.port}/ws`, appVersion: "0.8.0" });
   try {
@@ -51,6 +54,6 @@ test("the configuration example adds MCP servers and overrides Codex options whi
   } finally {
     await client.close();
     await daemon.close();
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 }, 60_000);

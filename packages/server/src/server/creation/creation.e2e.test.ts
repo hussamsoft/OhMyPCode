@@ -40,6 +40,7 @@ test("creation progresses before agent readiness and continues after the disconn
         },
       },
     ),
+    providerOverrides: { codex: { enabled: true } },
     agentClients: createTestAgentClients({
       beforeCreateSession: async () => {
         agents++;
@@ -122,7 +123,7 @@ test("creation progresses before agent readiness and continues after the disconn
     await client.close();
     await observer.close();
     await daemon.close();
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 }, 60000);
 
@@ -188,7 +189,7 @@ test.each([false, true])(
     } finally {
       peer.close();
       await daemon.close();
-      await rm(directory, { recursive: true, force: true });
+      await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   },
   60000,
@@ -200,6 +201,7 @@ test.each(["create_agent_request", "agent.create.request"] as const)(
     const directory = await mkdtemp(join(tmpdir(), "creation-agent-identity-"));
     let creations = 0;
     const daemon = await createTestPaseoDaemon({
+      providerOverrides: { codex: { enabled: true } },
       agentClients: createTestAgentClients({
         beforeCreateSession: async () => {
           creations++;
@@ -241,7 +243,7 @@ test.each(["create_agent_request", "agent.create.request"] as const)(
     } finally {
       peer.close();
       await daemon.close();
-      await rm(directory, { recursive: true, force: true });
+      await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   },
   60000,
@@ -264,7 +266,10 @@ test("legacy keyed creation preserves checkout error codes", async () => {
     ],
     { cwd: directory, stdio: "pipe" },
   );
-  const daemon = await createTestPaseoDaemon({ agentClients: createTestAgentClients() });
+  const daemon = await createTestPaseoDaemon({
+    providerOverrides: { codex: { enabled: true } },
+    agentClients: createTestAgentClients(),
+  });
   const peer = await connectCreationPeer(daemon.port);
   try {
     const result = await peer.request({
@@ -281,6 +286,6 @@ test("legacy keyed creation preserves checkout error codes", async () => {
   } finally {
     peer.close();
     await daemon.close();
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 }, 60000);

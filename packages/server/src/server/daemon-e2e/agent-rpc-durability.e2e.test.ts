@@ -69,7 +69,7 @@ test("agent fetch RPCs tolerate an agent whose workspace project record is gone"
     await client?.close().catch(() => undefined);
     await daemon?.close().catch(() => undefined);
     for (const target of fixture.cleanupPaths) {
-      rmSync(target, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   }
 });
@@ -113,7 +113,8 @@ test("history search filters before pagination and keeps newest matches first", 
   } finally {
     await client?.close().catch(() => undefined);
     await daemon?.close().catch(() => undefined);
-    for (const target of fixture.cleanupPaths) rmSync(target, { recursive: true, force: true });
+    for (const target of fixture.cleanupPaths)
+      rmSync(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
 

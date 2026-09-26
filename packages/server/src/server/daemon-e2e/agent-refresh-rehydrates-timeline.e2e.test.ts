@@ -102,6 +102,7 @@ describe("daemon E2E - refresh rehydrates timeline from on-disk session", () => 
   test("refresh picks up entries appended externally and advances the epoch", async () => {
     const logger = pino({ level: "silent" });
     daemon = await createTestPaseoDaemon({
+      providerOverrides: { claude: { enabled: true } },
       agentClients: {
         claude: new ClaudeAgentClient({
           logger,

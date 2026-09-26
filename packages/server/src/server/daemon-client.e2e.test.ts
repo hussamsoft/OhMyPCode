@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync } from "node:
 import { readFile } from "node:fs/promises";
 import { tmpdir, homedir } from "node:os";
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { execSync, execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
@@ -113,7 +113,9 @@ test("DaemonClient surfaces password auth failures from WebSocket close reasons"
 });
 
 test("createAgent without an initial prompt returns an idle snapshot", async () => {
-  const daemon = await createTestPaseoDaemon();
+  const daemon = await createTestPaseoDaemon({
+    providerOverrides: { codex: { enabled: true } },
+  });
   const client = new DaemonClient({
     url: `ws://127.0.0.1:${daemon.port}/ws`,
     appVersion: "0.1.82",
@@ -177,7 +179,9 @@ test("DaemonClient uploads file bytes to daemon temp storage", async () => {
 });
 
 test("createAgent with background initialPrompt returns a running snapshot before turn completion", async () => {
-  const daemon = await createTestPaseoDaemon();
+  const daemon = await createTestPaseoDaemon({
+    providerOverrides: { codex: { enabled: true } },
+  });
   const client = new DaemonClient({
     url: `ws://127.0.0.1:${daemon.port}/ws`,
     appVersion: "0.1.82",
@@ -407,6 +411,7 @@ test("createAgent fails when the initial turn cannot start", async () => {
 
   const daemon = await createTestPaseoDaemon({
     agentClients: { codex: testAgent },
+    providerOverrides: { codex: { enabled: true } },
   });
   const client = new DaemonClient({
     url: `ws://127.0.0.1:${daemon.port}/ws`,
@@ -445,6 +450,7 @@ test("DaemonClient rejects a replacement prompt when cancellation is not acknowl
   const cwd = tmpCwd();
   const daemon = await createTestPaseoDaemon({
     agentClients: { codex: createUninterruptibleClient() },
+    providerOverrides: { codex: { enabled: true } },
   });
   const client = new DaemonClient({ url: `ws://127.0.0.1:${daemon.port}/ws` });
 
@@ -467,6 +473,7 @@ test("DaemonClient rejects Stop when cancellation is not acknowledged", async ()
   const cwd = tmpCwd();
   const daemon = await createTestPaseoDaemon({
     agentClients: { codex: createUninterruptibleClient() },
+    providerOverrides: { codex: { enabled: true } },
   });
   const client = new DaemonClient({ url: `ws://127.0.0.1:${daemon.port}/ws` });
 
@@ -701,6 +708,7 @@ beforeAll(async () => {
       ? { openai: { stt: { apiKey: openaiApiKey }, tts: { apiKey: openaiApiKey } } }
       : {}),
     ...(speechConfig ? { speech: speechConfig } : {}),
+    providerOverrides: { codex: { enabled: true }, claude: { enabled: true } },
   });
 }, 60000);
 
@@ -858,6 +866,7 @@ test("refresh_agent rebuilds a live agent even when it has no persistence handle
     agentClients: {
       claude: client,
     },
+    providerOverrides: { claude: { enabled: true } },
   });
 
   try {
@@ -890,6 +899,7 @@ test("refresh_agent rejects when persisted session resume fails", async () => {
     agentClients: {
       claude: client,
     },
+    providerOverrides: { claude: { enabled: true } },
   });
 
   try {
@@ -948,6 +958,7 @@ test("resume_agent rehydrates the newest private MCP config from a redacted pers
   const provider = new RecordingMcpResumeClient();
   const localCtx = await createDaemonTestContext({
     agentClients: { codex: provider },
+    providerOverrides: { codex: { enabled: true } },
   });
   const bearerA = "durable-resume-bearer-a";
   const bearerB = "durable-resume-bearer-b";
@@ -1012,6 +1023,7 @@ test("resume_agent restores archive state when an MCP-capable provider returns a
   const provider = new RejectingMcpResumeClient();
   const localCtx = await createDaemonTestContext({
     agentClients: { codex: provider },
+    providerOverrides: { codex: { enabled: true } },
   });
 
   try {
@@ -1923,7 +1935,10 @@ test("supports git and file operations", async () => {
   const testFile = path.join(cwd, "test.txt");
   writeFileSync(testFile, "original content\n");
   execSync("git add test.txt", { cwd, stdio: "pipe" });
-  execSync("git -c commit.gpgSign=false commit -m 'Initial commit'", {
+  // execSync runs through cmd.exe on Windows, where single quotes are not a
+  // quoting mechanism -- a message with spaces tokenizes into multiple
+  // positional args instead of one -m value.
+  execFileSync("git", ["-c", "commit.gpgsign=false", "commit", "-m", "Initial commit"], {
     cwd,
     stdio: "pipe",
   });
@@ -1944,7 +1959,9 @@ test("supports git and file operations", async () => {
   const checkoutStatus = await ctx.client.getCheckoutStatus(cwd);
   expect(checkoutStatus.error).toBeNull();
   expect(checkoutStatus.isGit).toBe(true);
-  expect(checkoutStatus.repoRoot).toContain(cwd);
+  // git always emits forward-slash paths (even on Windows); cwd is a
+  // native Windows path here, so compare both in the same convention.
+  expect(checkoutStatus.repoRoot).toContain(cwd.replace(/\\/g, "/"));
 
   const diffResult = await ctx.client.getCheckoutDiff(cwd, { mode: "uncommitted" });
   expect(diffResult.error).toBeNull();

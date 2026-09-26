@@ -68,13 +68,18 @@ export default function contribute(server) {
   } finally {
     await client.close();
     await daemon.close();
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 }, 60_000);
 
 test("plugins observe turns, answer permissions, and observe archive without blocking the agent", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "paseo-turn-hooks-"));
-  const daemon = await createTestPaseoDaemon({ daemonVersion: "0.8.0" });
+  const daemon = await createTestPaseoDaemon({
+    daemonVersion: "0.8.0",
+    providerOverrides: {
+      claude: { enabled: true },
+    },
+  });
   const client = new DaemonClient({ url: `ws://127.0.0.1:${daemon.port}/ws`, appVersion: "0.8.0" });
   try {
     await writeFile(
@@ -160,13 +165,19 @@ export default function contribute(server) {
   } finally {
     await client.close();
     await daemon.close();
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 }, 60_000);
 
 test("agent creation hooks change the provider and environment before the session opens", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "paseo-agent-hooks-"));
-  const daemon = await createTestPaseoDaemon({ daemonVersion: "0.8.0" });
+  const daemon = await createTestPaseoDaemon({
+    daemonVersion: "0.8.0",
+    providerOverrides: {
+      claude: { enabled: true },
+      codex: { enabled: true },
+    },
+  });
   const client = new DaemonClient({ url: `ws://127.0.0.1:${daemon.port}/ws`, appVersion: "0.8.0" });
   try {
     await writeFile(
@@ -223,7 +234,7 @@ export default function contribute(server) {
   } finally {
     await client.close();
     await daemon.close();
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 }, 60_000);
 
@@ -266,6 +277,6 @@ export default function contribute(server) {
   } finally {
     await client.close();
     await daemon.close();
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 }, 60_000);

@@ -8,7 +8,12 @@ import { createTestPaseoDaemon } from "../test-utils/paseo-daemon.js";
 
 test("workspace archive publishes agent archive hooks for both live and closed agents", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "paseo-archive-hooks-"));
-  const daemon = await createTestPaseoDaemon({ daemonVersion: "0.8.0" });
+  const daemon = await createTestPaseoDaemon({
+    daemonVersion: "0.8.0",
+    providerOverrides: {
+      claude: { enabled: true },
+    },
+  });
   const client = new DaemonClient({ url: `ws://127.0.0.1:${daemon.port}/ws`, appVersion: "0.8.0" });
   try {
     await client.connect();
@@ -51,6 +56,6 @@ test("workspace archive publishes agent archive hooks for both live and closed a
   } finally {
     await client.close();
     await daemon.close();
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 }, 60_000);
