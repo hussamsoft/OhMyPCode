@@ -5,11 +5,11 @@ import { describe, expect, test } from "vitest";
 
 import { resolvePaseoHome } from "./paseo-home.js";
 describe("resolvePaseoHome", () => {
-  test("resolves PASEO_HOME without creating it", () => {
+  test("resolves OHMYPCODE_HOME without creating it", () => {
     const parent = mkdtempSync(path.join(tmpdir(), "paseo-home-parent-"));
     const paseoHome = path.join(parent, "home");
     try {
-      expect(resolvePaseoHome({ PASEO_HOME: paseoHome })).toBe(paseoHome);
+      expect(resolvePaseoHome({ OHMYPCODE_HOME: paseoHome })).toBe(paseoHome);
       expect(existsSync(paseoHome)).toBe(false);
     } finally {
       rmSync(parent, { recursive: true, force: true });

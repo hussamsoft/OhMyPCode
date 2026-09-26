@@ -35,7 +35,11 @@ import {
   sendLocalTransportMessage,
   closeLocalTransportSession,
 } from "./local-transport.js";
-import { createNodeEntrypointInvocation, resolveDaemonRunnerEntrypoint } from "./runtime-paths.js";
+import {
+  createNodeEntrypointInvocation,
+  resolveBundledOmpPath,
+  resolveDaemonRunnerEntrypoint,
+} from "./runtime-paths.js";
 import { runExternalCliJsonCommand, runExternalCliTextCommand } from "./cli/external.js";
 import {
   createDesktopSettingsCommandHandlers,
@@ -300,12 +304,20 @@ async function startDaemon(): Promise<DesktopDaemonStatus> {
     args: [],
     baseEnv: process.env,
   });
+  // OMP_COMMAND points the daemon's OMP-runtime resolution at this build's
+  // bundled binary when it ships one; otherwise OMP falls through to PATH,
+  // same as any other host (see services/omp-command.ts on the server side).
+  const bundledOmpPath = resolveBundledOmpPath();
   try {
     await startDaemonInstance({
       home,
       timeoutMs: 30_000,
       ...invocation,
-      env: { ...invocation.env, PASEO_CLI: getBundledCliShimPath() },
+      env: {
+        ...invocation.env,
+        PASEO_CLI: getBundledCliShimPath(),
+        ...(bundledOmpPath ? { OMP_COMMAND: bundledOmpPath } : {}),
+      },
       mode: "managed",
       desktopManaged: true,
       onAcquired: (instance) => {

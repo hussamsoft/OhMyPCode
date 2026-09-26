@@ -17,6 +17,11 @@ import {
 
 const SERVER_PACKAGE_NAME = "@getpaseo/server";
 
+/** `omp` on POSIX; `omp.exe` on Windows -- matches scripts/build-omp-runtime.mjs's binaryName(). */
+function ompBinaryName(): string {
+  return process.platform === "win32" ? "omp.exe" : "omp";
+}
+
 const esmRequire = createRequire(__filename);
 
 function resolveServerPackageInfo(): PackageInfo {
@@ -96,6 +101,32 @@ export function resolveNodeExecPath(): string {
     }
   }
   return process.execPath;
+}
+
+/**
+ * The embedded OMP runtime binary this build ships, or null when none is
+ * present -- daemon startup falls back to PATH resolution in that case.
+ *
+ * Packaged layout matches electron-builder.yml's `extraResources` entries
+ * (`omp/<platform>-<arch>/<binary>` under `resourcesPath`, not the asar).
+ * Dev layout matches scripts/build-omp-runtime.mjs's output directory at the
+ * repository root, four levels up from this file
+ * (packages/desktop/src/daemon).
+ */
+export function resolveBundledOmpPath(): string | null {
+  const binaryName = ompBinaryName();
+  const dir = app.isPackaged
+    ? path.join(process.resourcesPath, "omp", `${process.platform}-${process.arch}`)
+    : path.resolve(
+        path.dirname(__filename),
+        "../../../..",
+        "ohmypcode",
+        "runtime",
+        "omp",
+        `${process.platform}-${process.arch}`,
+      );
+  const binaryPath = path.join(dir, binaryName);
+  return existsSync(binaryPath) ? binaryPath : null;
 }
 
 export function createNodeEntrypointInvocation(input: {
