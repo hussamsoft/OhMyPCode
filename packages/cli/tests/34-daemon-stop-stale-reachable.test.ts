@@ -11,7 +11,11 @@ import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { $ } from "zx";
+import { $, quotePowerShell } from "zx";
+
+if (process.platform === "win32") {
+  $.quote = quotePowerShell;
+}
 import { connectToDaemon } from "../src/utils/client.js";
 import { getAvailablePort } from "./helpers/network.ts";
 

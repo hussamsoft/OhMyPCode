@@ -19,7 +19,11 @@
 
 import assert from "node:assert";
 import { getAvailablePort } from "./helpers/network.ts";
-import { $ } from "zx";
+import { $, quotePowerShell } from "zx";
+
+if (process.platform === "win32") {
+  $.quote = quotePowerShell;
+}
 import { mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";

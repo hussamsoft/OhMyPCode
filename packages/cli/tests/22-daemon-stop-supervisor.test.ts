@@ -10,7 +10,11 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { $ } from "zx";
+import { $, quotePowerShell } from "zx";
+
+if (process.platform === "win32") {
+  $.quote = quotePowerShell;
+}
 import { getAvailablePort } from "./helpers/network.ts";
 
 $.verbose = false;

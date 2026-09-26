@@ -8,7 +8,11 @@
  * - paseo --help shows commands
  */
 
-import { $ } from "zx";
+import { $, quotePowerShell } from "zx";
+
+if (process.platform === "win32") {
+  $.quote = quotePowerShell;
+}
 
 $.verbose = false;
 
