@@ -47,8 +47,8 @@ mac:
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.inherit.plist
   extraResources:
-    - from: bin/paseo
-      to: bin/paseo
+    - from: bin/ompc
+      to: bin/ompc
     - from: ../../ohmypcode/assets/desktop/icon.png
       to: icon.png
     - from: ../../ohmypcode/runtime/omp/darwin-${arch}
@@ -63,8 +63,8 @@ linux:
   maintainer: "OhMyPCode"
   vendor: "OhMyPCode"
   extraResources:
-    - from: bin/paseo
-      to: bin/paseo
+    - from: bin/ompc
+      to: bin/ompc
     - from: ../../ohmypcode/runtime/omp/linux-${arch}
       to: omp/linux-${arch}
   target:
@@ -89,8 +89,8 @@ win:
   artifactName: "OhMyPCode-Setup-${version}-${arch}.${ext}"
   icon: ../../ohmypcode/assets/desktop/icon.ico
   extraResources:
-    - from: bin/paseo.cmd
-      to: bin/paseo.cmd
+    - from: bin/ompc.cmd
+      to: bin/ompc.cmd
     - from: ../../ohmypcode/runtime/omp/win32-${arch}
       to: omp/win32-${arch}
   target:
