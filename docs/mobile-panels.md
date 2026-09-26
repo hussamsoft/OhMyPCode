@@ -80,9 +80,6 @@ definition, no longer eligible to begin.
   `useBlockMobilePanelOpenGestures`. Register only while the conflicting interaction is active and
   unregister when the surface is hidden or unfocused. The blocker never disables gestures that close
   an already-open panel.
-- Keep `SidebarModelProvider` outside `MobileGestureWrapper`. The provider shares sidebar derivation
-  across consumers, while Gesture Handler requires the wrapper's direct child to be a native `View`
-  so its injected `collapsable={false}` reaches Android/Fabric.
 - Mobile sidebars render through `MobilePanelOverlay`; do not duplicate overlay lifecycle or motion
   styles in sidebar components.
 - The desktop left sidebar is retained too. App chrome owns separate mounted and visible decisions:

@@ -615,9 +615,7 @@ function AppContainer({ children, chromeEnabled: chromeEnabledOverride }: AppCon
     </View>
   );
 
-  const content = surface;
-
-  return <CommandCenterProvider>{content}</CommandCenterProvider>;
+  return <CommandCenterProvider>{surface}</CommandCenterProvider>;
 }
 
 function SidebarChrome({
