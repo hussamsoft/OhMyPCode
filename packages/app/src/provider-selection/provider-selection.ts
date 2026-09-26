@@ -23,6 +23,7 @@ export interface ProviderSelectionModelRow {
   modelLabel: string;
   description?: string;
   isDefault?: boolean;
+  model?: AgentModelDefinition;
 }
 
 function buildModelRowKey(provider: string, modelId: string): string {
@@ -67,6 +68,7 @@ function buildModelRows(
     modelLabel: model.label,
     description: model.description ?? model.id,
     isDefault: model.isDefault,
+    model,
   }));
 }
 

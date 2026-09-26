@@ -111,6 +111,10 @@ export const fr: TranslationResources = {
       planModeSearchKeywords: "plan planification mode plan",
       fastModeGroupLabel: "Rapide",
       fastModeSearchKeywords: "rapide vitesse faible latence",
+      vibeGroupLabel: "Vibe",
+      vibeSearchKeywords: "mode Vibe travailleurs",
+      toolsGroupLabel: "Outils",
+      toolsSearchKeywords: "sélection d'outils outils activés",
       settingOn: "Activé",
       settingOff: "Désactivé",
     },
@@ -224,6 +228,43 @@ export const fr: TranslationResources = {
       searchPlaceholder: "Modes de recherche...",
       selectWithValue: "Sélectionnez le mode agent ({{value}})",
     },
+    access: {
+      title: "Accès",
+      hint: "Niveau d'autorisation pour la prochaine session OMP",
+      searchPlaceholder: "Rechercher les niveaux d'accès...",
+      selectWithValue: "Sélectionnez le niveau d'accès ({{value}})",
+      unknown: "Inconnu",
+    },
+    omp: {
+      build: "Build",
+      vibe: "Vibe",
+      selectMode: "Sélectionnez le mode OMP ({{value}})",
+      switching: "Changement de mode OMP",
+      settings: "Paramètres",
+      openSettings: "Ouvrir les paramètres OMP",
+      behavior: "Comportement",
+      startup: "Démarrage",
+      startsNewSession: "Démarre une nouvelle session",
+      tools: "Outils",
+      openTools: "Ouvrir les outils OMP",
+      toolCount: "{{enabled}}/{{total}} outils",
+      toolsUnavailable: "Sélection des outils indisponible",
+      toolsUnavailableSaved: "{{count}} outils enregistrés conservés",
+      toolSource: {
+        native: "Natif",
+        paseo: "OhMyPCode",
+        mcp: "MCP",
+      },
+      searchTools: "Rechercher des outils...",
+      noTools: "Aucun outil ne correspond.",
+      loadingTools: "Chargement des outils...",
+      required: "Requis",
+      toolAccessibleName: "Outil {{label}}",
+      selectFeature: "Sélectionnez {{label}} ({{value}})",
+      default: "Par défaut",
+      on: "Activé",
+      off: "Désactivé",
+    },
     hints: {
       thinking: "Mode réflexion",
       model: "Changer de modèle",
@@ -290,6 +331,63 @@ export const fr: TranslationResources = {
       clearSearch: "Effacer la recherche",
     },
   },
+  usage: {
+    title: "Utilisation",
+    railLabel: "Utilisation OMP",
+    screen: {
+      tabs: {
+        overview: "Aperçu",
+        models: "Modèles",
+        accounts: "Comptes",
+      },
+      requestVolume: "Volume des requêtes",
+      recentActivity: "Activité récente",
+      hourlyWindows: "{{count}} fenêtres horaires",
+      recentActivityChart: "Graphique d'activité récente des requêtes",
+      earlier: "Plus tôt",
+      now: "Maintenant",
+      modelPerformance: "Performance des modèles",
+      allRoutedModels: "Tous les modèles routés",
+      modelCount: "{{count}} modèles",
+      columns: {
+        model: "Modèle",
+        requests: "Requêtes",
+        output: "Sortie",
+        tokensPerSecond: "Tokens/s",
+        errors: "Erreurs",
+        cost: "Coût",
+      },
+      metrics: {
+        requests: "Requêtes",
+        tokensRouted: "Tokens routés",
+        estimatedCost: "Coût estimé",
+        cacheHitRate: "Taux de cache",
+        generationSpeed: "Vitesse de génération",
+      },
+      details: {
+        failed: "{{value}} échouées",
+        generated: "{{value}} générés",
+        unpricedRequests: "{{value}} requêtes non tarifées",
+        estimatedSavings: "{{value}} économies estimées",
+        averageTtft: "TTFT moyen {{value}}",
+      },
+      noHost: {
+        title: "Aucun hôte connecté",
+        description: "Connectez le daemon de bureau pour charger les données d'utilisation OMP.",
+      },
+      loadingStatistics: "Chargement des statistiques OMP...",
+      statisticsUnavailable: "Statistiques indisponibles",
+      loadingAccountLimits: "Chargement des limites du compte...",
+      accountLimitsUnavailable: "Limites du compte indisponibles",
+      noAccountLimits: {
+        title: "Aucune limite de compte OMP",
+        description:
+          "OMP n'a pas renvoyé de limites d'utilisation pour un fournisseur authentifié.",
+      },
+      refresh: "Actualiser",
+      tryAgain: "Réessayer",
+    },
+  },
   agentList: {
     fallbackTitle: "Nouvelle séance",
     dateSections: {
@@ -316,6 +414,25 @@ export const fr: TranslationResources = {
       hostOffline: "Hosthors ligne",
       runningAgent: "Cet agent est toujours en cours d'exécution. L’archiver arrêtera l’agent.",
       archive: "Archive",
+    },
+  },
+  omp: {
+    strip: {
+      providerLabel: "OMP",
+      providerTooltip: "La session active est OhMyPCode",
+      fastOn: "Mode rapide activé",
+      fastOff: "Mode rapide désactivé",
+      tui: "Ouvrir l’interface TUI OMP (modes plan, objectif et vibe)",
+      tuiDisabled: "Runtime OMP indisponible",
+      fastToggleDisabled: "Mode rapide indisponible pour cet agent",
+      rename: "Renommer la session",
+      usage: "Utilisation OMP",
+      collab: "Collaboration OMP",
+      collabDisabled: "Collaboration OMP indisponible",
+      terminals: "Ouvrir le terminal",
+      stateLabel: "état",
+      modelLabel: "modèle",
+      thinkingLabel: "raisonnement",
     },
   },
   message: {
@@ -397,7 +514,7 @@ export const fr: TranslationResources = {
   },
   importSession: {
     chooseHostTitle: en.importSession.chooseHostTitle,
-    title: "Session d'importation",
+    title: "Importer une session OMP",
     searchPlaceholder: "Rechercher des sessions...",
     scope: {
       host: "Sessions sur {{host}}",
@@ -890,7 +1007,7 @@ export const fr: TranslationResources = {
           mergePrNoGithub:
             "La fusionPRn'est pas disponible pour le moment carGitHubn'est pas connecté",
           archiveNotWorktree:
-            "L'archive n'est pas disponible ici car cet espace de travail n'a pas été créé en tant qu'arbre de travailPaseo",
+            "L'archive n'est pas disponible ici car cet espace de travail n'a pas été créé en tant qu'arbre de travailOhMyPCode",
           mergePrNoForge:
             "La fusion {{noun}} n'est pas disponible pour le moment car {{brand}} n'est pas connecté",
           mergePrMissing:
@@ -1190,12 +1307,21 @@ export const fr: TranslationResources = {
       discord: "Discord",
       github: "Créer un ticket GitHub",
       whatsNew: "Nouveautés",
-      appName: "Paseo",
     },
     sections: {
       sessions: "Historique",
       search: "Rechercher",
       schedules: "Planifications",
+    },
+    liveTerminals: {
+      title: "Terminaux actifs",
+      open: "Ouvrir {{name}}, {{status}}",
+      status: {
+        working: "En cours",
+        needsInput: "Intervention requise",
+        finished: "Terminé",
+        idle: "Inactif",
+      },
     },
     worktreeSetup: {
       title: "Configurer les scripts d'arbre de travail",
@@ -1323,6 +1449,7 @@ export const fr: TranslationResources = {
       title: "What to launch",
       chat: "Chat",
       terminal: "Terminal",
+      ompTui: "TUI OMP",
       manageProfiles: "Manage profiles",
       submit: "Launch",
       promptPlaceholder: "Prompt {{name}}",
@@ -1337,7 +1464,7 @@ export const fr: TranslationResources = {
       close: "Fermer la fenêtre",
     },
     quitting: {
-      title: "QuitterPaseo...",
+      title: "QuitterOhMyPCode...",
       detail: "Arrêt du démon local.",
     },
     daemon: {
@@ -1352,20 +1479,20 @@ export const fr: TranslationResources = {
       },
       management: {
         title: "Gérer le démon intégré",
-        hint: "LaissezPaseodémarrer et arrêter le démon intégré",
+        hint: "LaissezOhMyPCodedémarrer et arrêter le démon intégré",
         pauseTitle: "Suspendre le démon intégré",
         pauseMessage:
           "Cela arrêtera immédiatement le démon intégré. Les agents en cours d'exécution et les terminaux connectés au démon intégré seront arrêtés.",
         pauseAndStop: "Pause et arrêt",
         registrationFailed:
-          "Built-in daemon started, but Paseo could not save the localhost connection. Toggle daemon management off and on again, or add localhost manually.",
+          "Built-in daemon started, but OhMyPCode could not save the localhost connection. Toggle daemon management off and on again, or add localhost manually.",
         pausedStopFailed:
-          "La gestion du démon intégré a été suspendue, maisPaseon'a ​​pas pu arrêter le démon.",
+          "La gestion du démon intégré a été suspendue, maisOhMyPCoden'a ​​pas pu arrêter le démon.",
         updateFailed: "Impossible de mettre à jour la gestion des démons intégrés.",
       },
       keepRunning: {
         title: "Laisser le démon fonctionner après avoir quitté",
-        hint: "Daemoncontinue de fonctionner lorsque vous quittezPaseo",
+        hint: "Daemoncontinue de fonctionner lorsque vous quittezOhMyPCode",
       },
       logs: {
         title: "Fichier journal",
@@ -1435,7 +1562,7 @@ export const fr: TranslationResources = {
     },
     rosetta: {
       title: "Téléchargez la versionApple Silicon",
-      runningIntel: "Vous exécutez la versionInteldePaseosousRosettasurApple Silicon.",
+      runningIntel: "Vous exécutez la versionInteldeOhMyPCodesousRosettasurApple Silicon.",
       highCpu:
         "Cela entraîne une utilisation élevée du processeur. Téléchargez la versionApple Siliconpour le réparer.",
       download: "Télécharger",
@@ -1485,7 +1612,7 @@ export const fr: TranslationResources = {
         microphone: "L'état du microphone n'a pas encore été vérifié.",
       },
       testNotification: {
-        title: "Test de notificationPaseo",
+        title: "Test de notificationOhMyPCode",
         body: "Si vous pouvez voir cela, les notifications sur le bureau fonctionnent.",
         notDelivered:
           "La notification n'a pas été délivrée. Vérifiez Paramètres système > Notifications.",
@@ -1495,12 +1622,12 @@ export const fr: TranslationResources = {
     integrations: {
       cli: {
         statusFailed: "Impossible de vérifier l'état de l'installation deCLI.",
-        installFailed: "Impossible d'installer lePaseoCLI.",
+        installFailed: "Impossible d'installer leOhMyPCodeCLI.",
       },
     },
   },
   rootError: {
-    title: "Paseo a rencontré un problème.",
+    title: "OhMyPCode a rencontré un problème.",
     body: "Réessayez pour recharger l'application. Si cela continue, joignez les détails ci-dessous au signalement.",
     details: "Détails",
   },
@@ -1521,18 +1648,19 @@ export const fr: TranslationResources = {
         description: "Ouvrez un dossier sur votre machine",
       },
       importSession: {
-        title: "Session d'importation",
-        description: "Apportez des sessionsCLIexternes récentes",
+        title: "Importer une session OMP",
+        description: "Ouvrez une session OMP que vous avez démarrée dans un terminal",
       },
-      setupProviders: {
-        title: "Fournisseurs d'installation",
-        description: "ConfigurezClaude Code,Codexet plus",
+      connectProviders: {
+        title: "Connecter des fournisseurs",
+        description: "Connectez-vous à Anthropic, OpenAI, OpenRouter et plus encore",
       },
       pairDevice: {
         title: "Associer un appareil",
-        description: "Connectez votre téléphone à ce démon",
+        description: "Associez l’app Paseo pour iPhone à cet hôte",
       },
     },
+    ompGithub: "Oh My Pi sur GitHub",
   },
   projectPicker: {
     placeholder: "Tapez pour rechercher...",
@@ -1596,8 +1724,8 @@ export const fr: TranslationResources = {
     },
   },
   onboarding: {
-    title: "Bienvenue surPaseo",
-    subtitle: "Connectez votre ordinateur pour commencer",
+    title: "Bienvenue sur OhMyPCode",
+    subtitle: "Connectez-vous à l’ordinateur qui exécute OMP",
     actions: {
       settings: "Paramètres",
     },
@@ -1684,7 +1812,7 @@ export const fr: TranslationResources = {
     },
     direct: {
       title: "Connexion directe",
-      helper: "Saisissez l'adresse d'un serveurPaseo.",
+      helper: "Saisissez l'adresse d'un serveurOhMyPCode.",
       fields: {
         host: "Host",
         port: "Port",
@@ -1727,7 +1855,7 @@ export const fr: TranslationResources = {
     },
     remoteSsh: {
       title: "SSH distant",
-      helper: "Connectez-vous à un daemon Paseo sur l’hôte distant.",
+      helper: "Connectez-vous à un daemon OhMyPCode sur l’hôte distant.",
       fields: {
         target: "Hôte SSH",
       },
@@ -1784,13 +1912,13 @@ export const fr: TranslationResources = {
       enableDescription:
         "Le relais permet à cet appareil de se connecter depuis n’importe où. Le trafic de couplage est chiffré de bout en bout.",
       relayDocs: "Fonctionnement du relais",
-      relayDocsAccessibility: "Lire comment fonctionne le relais Paseo",
+      relayDocsAccessibility: "Lire comment fonctionne le relais OhMyPCode",
       enableRelay: "Activer le relais",
       enablingRelay: "Activation...",
       notNow: "Pas maintenant",
       directConnectionHint:
         "Sans relais, connectez-vous directement via TCP, Tailscale ou un autre VPN. Aucun code QR n’est créé.",
-      updateRequired: "Mettez à jour l’hôte pour activer le relais depuis Paseo Desktop.",
+      updateRequired: "Mettez à jour cet hôte pour activer le relais.",
       unavailable: "Offre de jumelage indisponible.",
       hint: "Scannez ce codeQRavecPaseosur votre téléphone ou copiez le lien ci-dessous.",
       securityWarning:
@@ -1827,7 +1955,7 @@ export const fr: TranslationResources = {
   serviceUrl: {
     title: "Service ouvertURL",
     message: "Ouvrir{{url}}?",
-    inPaseo: "DansPaseo",
+    inPaseo: "DansOhMyPCode",
     externalBrowser: "Navigateur externe",
     dontAskAgain: "Ne demande plus",
   },
@@ -1948,8 +2076,8 @@ export const fr: TranslationResources = {
       other: "a utilisé {{count}} autres outils",
     },
     paseoCalls: {
-      one: "a appelé Paseo {{count}} fois",
-      other: "a appelé Paseo {{count}} fois",
+      one: "a appelé OhMyPCode {{count}} fois",
+      other: "a appelé OhMyPCode {{count}} fois",
     },
     and: "et",
   },
@@ -1978,6 +2106,40 @@ export const fr: TranslationResources = {
       cancelAccessibility: "Annuler le commentaire de révision",
       save: "Commentaire",
       saveAccessibility: "Enregistrer le commentaire de l'avis",
+    },
+  },
+  ompProviders: {
+    title: "Fournisseurs LLM",
+    description: "Connectez des fournisseurs de modèles à OMP. Les identifiants restent dans le coffre OMP de cet hôte.",
+    connected: "Connecté",
+    available: "Disponible",
+    connect: "Connecter",
+    reconnect: "Reconnecter",
+    disconnect: "Déconnecter",
+    disconnectConfirm: "Déconnecter {{name}} de OMP ?",
+    disconnectInTui: "Déconnectez-vous avec /logout dans l’interface TUI OMP",
+    stillConnected: "Toujours connecté via une variable d’environnement ou models.yml",
+    updateHost: "Mettez à jour cet hôte pour gérer les fournisseurs de modèles OMP",
+    openSignIn: "Ouvrir la page de connexion",
+    submit: "Envoyer",
+    cancel: "Annuler",
+    retry: "Réessayer",
+    completed: "Connecté",
+    failed: "Échec de la connexion",
+    searchPlaceholder: "Rechercher des fournisseurs",
+    empty: "Aucun fournisseur trouvé",
+    noneConnected: "Connectez un fournisseur de modèles pour commencer à utiliser OMP",
+    yes: "Oui",
+    no: "Non",
+    picker: {
+      connect: "Connecter un fournisseur de modèles",
+    },
+  },
+  ompStatistics: {
+    errors: {
+      hostDisconnected: "L’hôte n’est pas connecté",
+      updateHost: "Mettez à jour l’hôte pour charger les statistiques OMP",
+      unavailable: "Les statistiques OMP ne sont pas disponibles",
     },
   },
   settings: {
@@ -2030,12 +2192,14 @@ export const fr: TranslationResources = {
       send: "Envoyer",
       sending: "Envoi...",
       sentTitle: "Notification de test envoyée",
-      sentDescription: "Paseo a transmis la notification au système d’exploitation.",
+      sentDescription: "OhMyPCode a transmis la notification au système d’exploitation.",
       sendFailedTitle: "Impossible d’envoyer la notification de test",
     },
     hostSections: {
       projects: "Projets",
       connections: "Relations",
+      llmProviders: "Fournisseurs LLM",
+      collaboration: "Collaboration",
       agents: "Agents",
       metadata: "Métadonnées",
       workspaces: "Workspaces",
@@ -2049,14 +2213,14 @@ export const fr: TranslationResources = {
     metadataGeneration: {
       title: "Génération de métadonnées",
       description:
-        "Choisissez le modèle utilisé par Paseo pour les titres d’espaces de travail, les noms de branches, les messages de commit et les brouillons de pull request",
+        "Choisissez le modèle utilisé par OhMyPCode pour les titres d’espaces de travail, les noms de branches, les messages de commit et les brouillons de pull request",
       selection: "Sélection du modèle",
       automatic: "Automatique",
       preferred: "Manuel",
-      automaticHint: "Paseo choisit un modèle rapide disponible",
-      preferredHint: "Choisissez le modèle utilisé par Paseo",
+      automaticHint: "OhMyPCode choisit un modèle rapide disponible",
+      preferredHint: "Choisissez le modèle utilisé par OhMyPCode",
       model: "Modèle",
-      fallbackHint: "S’il est indisponible, Paseo utilise un autre modèle disponible",
+      fallbackHint: "S’il est indisponible, OhMyPCode utilise un autre modèle disponible",
       docs: "Documentation",
       saveError: "Impossible de mettre à jour la génération de métadonnées",
     },
@@ -2066,7 +2230,7 @@ export const fr: TranslationResources = {
         title: "Données du navigateur",
         siteData: "Cookies et données des sites",
         description:
-          "Les onglets du navigateur partagent les connexions et les données des sites dans Paseo.",
+          "Les onglets du navigateur partagent les connexions et les données des sites dans OhMyPCode.",
         clear: "Effacer les données du navigateur",
         clearing: "Effacement...",
         confirmTitle: "Effacer les données du navigateur ?",
@@ -2095,7 +2259,7 @@ export const fr: TranslationResources = {
         description: "Où ouvrir les URL à partir de scripts en cours d'exécution",
         options: {
           ask: "Demander",
-          inApp: "DansPaseo",
+          inApp: "DansOhMyPCode",
           external: "Navigateur externe",
         },
       },
@@ -2181,7 +2345,7 @@ export const fr: TranslationResources = {
         label: "Mises à jour de l'application",
         readyToInstall: "Prêt à installer:{{version}}",
         installTitle: "Installer la mise à jour du bureau",
-        installMessage: "Cela met à jourPaseosur cet ordinateur",
+        installMessage: "Cela met à jourOhMyPCodesur cet ordinateur",
         installConfirm: "Installer la mise à jour",
         update: "Mise à jour",
         updateTo: "Mise à jour vers{{version}}",
@@ -2203,6 +2367,7 @@ export const fr: TranslationResources = {
           midnight: "Minuit",
           claude: "Claude",
           ghostty: "Fantôme",
+          ohMyPCode: "OhMyPCode",
           pureBlack: "Noir pur",
           auto: "Système",
         },
@@ -2413,11 +2578,11 @@ export const fr: TranslationResources = {
         title: "Compétences en orchestration",
         description: "Apprenez à vos agents à orchestrer via leCLI",
         updateAvailable: "Mise à jour disponible",
-        updateTitle: "Mettre à jour les compétencesPaseo?",
+        updateTitle: "Mettre à jour les compétencesOhMyPCode?",
         updateFallback: "Synchronisez les compétences regroupées sur votre machine.",
-        uninstallTitle: "Désinstaller les compétencesPaseo?",
+        uninstallTitle: "Désinstaller les compétencesOhMyPCode?",
         uninstallMessage:
-          "Supprime toutes les compétences d'orchestrationPaseode ~/.agents, ~/.claude, ~/.codex.",
+          "Supprime toutes les compétences d'orchestrationOhMyPCodede ~/.agents, ~/.claude, ~/.codex.",
         choose: "Choisir les compétences",
         chooseAll: "Toutes les compétences",
         chooseAllHint:
@@ -2455,9 +2620,9 @@ export const fr: TranslationResources = {
         title: "Orchestration",
         unavailable: "Connectez-vous à cet hôte pour gérer l'orchestration",
         enableTools: {
-          title: "Activer les outilsPaseo",
+          title: "Activer les outilsOhMyPCode",
           hint: "Les agents pourront gérer les arbres de travail, les agents et les horaires",
-          accessibilityLabel: "Injecter les outilsPaseo",
+          accessibilityLabel: "Injecter les outilsOhMyPCode",
         },
         systemPrompt: {
           title: "Invite système",
@@ -2483,9 +2648,9 @@ export const fr: TranslationResources = {
         editProfile: "Edit profile",
         addProfileTitle: "Add terminal profile",
         editProfileTitle: "Edit terminal profile",
-        namePlaceholder: "Claude Code",
-        commandPlaceholder: "claude",
-        argsPlaceholder: "--dangerously-skip-permissions",
+        namePlaceholder: "OMP",
+        commandPlaceholder: "omp",
+        argsPlaceholder: "--approval-mode=write",
         nameLabel: "Name",
         commandLabel: "Command",
         argsLabel: "Arguments",
@@ -2540,6 +2705,44 @@ export const fr: TranslationResources = {
         moveUp: "Déplacer vers le haut",
         moveDown: "Déplacer vers le bas",
       },
+      ompCollab: {
+        title: "Collaboration OMP",
+        description: "Partagez les hôtes de collaboration OMP actifs ou une session OMP existante.",
+        securityNote:
+          "Les liens sont des identifiants chiffrés fondés sur leur possession. Ils sont copiés directement et ne sont jamais affichés dans l’application.",
+        openUsage: "Ouvrir Utilisation",
+        refreshHosts: "Actualiser les hôtes",
+        hostDisconnected: "L’hôte n’est pas connecté",
+        hostDisconnectedHint: "Connectez-vous à cet hôte pour gérer la collaboration OMP.",
+        updateRequired: "Mise à jour de l’hôte requise",
+        updateRequiredHint:
+          "Mettez à jour cet hôte pour activer la collaboration OMP et le partage chiffré.",
+        listFailed: "Impossible de répertorier les hôtes OMP",
+        listFailedHint: "Essayez d’actualiser à nouveau la liste des hôtes actifs.",
+        activeHosts: "Hôtes de collaboration actifs",
+        refreshPrompt: "Actualisez pour trouver les hôtes de collaboration OMP en cours.",
+        noActiveHosts: "Aucun hôte de collaboration OMP actif n’a été trouvé.",
+        savedSessions: "Sessions OMP enregistrées",
+        savedSessionsHint: "Créez un lien d’instantané chiffré depuis une session OMP existante.",
+        noSavedSessions: "Aucune session OMP avec un identifiant enregistré n’est disponible.",
+        participants: "{{count}} participants",
+        busy: "Occupé",
+        inputRequired: "Saisie requise",
+        reconnecting: "Reconnexion au relais",
+        viewOnly: "Lecture seule",
+        controlAvailable: "Contrôle disponible",
+        viewOnlyHint: "Cet hôte autorise uniquement les liens en lecture seule.",
+        hostFallbackWithPid: "Hôte OMP · PID {{pid}}",
+        hostFallback: "Hôte OMP",
+        copyViewLink: "Copier le lien de lecture",
+        copyControlLink: "Copier le lien de contrôle",
+        sessionFallback: "Session OMP · {{id}}",
+        copyEncryptedShare: "Copier le partage chiffré",
+        viewLinkCopied: "Lien en lecture seule",
+        controlLinkCopied: "Lien de contrôle",
+        encryptedShareCopied: "Lien de session chiffré",
+        shareFailed: "Impossible de créer le lien de partage.",
+      },
       daemon: {
         rename: {
           editLabel: "Modifier l'étiquette",
@@ -2563,16 +2766,16 @@ export const fr: TranslationResources = {
             "Cet hôte n'est pas connecté. Attendez qu'il soit en ligne avant de redémarrer.",
           offlineTitle: "Hosthors ligne",
           offlineMessage:
-            "Cet hôte est hors ligne.Paseose reconnecte automatiquement: attendez qu'il soit de nouveau en ligne avant de redémarrer.",
+            "Cet hôte est hors ligne.OhMyPCodese reconnecte automatiquement: attendez qu'il soit de nouveau en ligne avant de redémarrer.",
           requestFailedTitle: "Erreur",
           requestFailedMessage:
-            "Échec de l'envoi de la demande de redémarrage.Paseose reconnecte automatiquement - réessayez une fois que l'hôte apparaît comme en ligne.",
+            "Échec de l'envoi de la demande de redémarrage.OhMyPCodese reconnecte automatiquement - réessayez une fois que l'hôte apparaît comme en ligne.",
           dialogFailedMessage:
             "Impossible d'ouvrir la boîte de dialogue de confirmation de redémarrage.",
         },
         update: {
           desktopManagedHint:
-            "Ce daemon est géré par Paseo Desktop. Mettez à jour Paseo Desktop sur l’hôte.",
+            "Ce daemon est géré par OhMyPCode Desktop. Mettez à jour OhMyPCode Desktop sur l’hôte.",
           title: "Update daemon",
           hint: "Update the daemon to the latest version and restart it",
           confirm: "Update",
@@ -2733,7 +2936,7 @@ export const fr: TranslationResources = {
         newScript: "Nouveau scénario",
         editScript: "Modifier{{name}}",
         runAsService: "Exécuter en tant que service",
-        serviceHint: "Paseosupervise le processus et attribue un port via $PASEO_PORT",
+        serviceHint: "OhMyPCodesupervise le processus et attribue un port via $PASEO_PORT",
         actions: {
           add: "Ajouter un script",
           edit: "Modifier",
@@ -2742,7 +2945,7 @@ export const fr: TranslationResources = {
       },
       metadata: {
         title: "Génération de métadonnées",
-        info: "Instructions spécifiques au projet injectées dans les invites de l'IA quePaseoutilise pour générer des métadonnées: utilisez-les pour appliquer les conventions de votre équipe telles que la dénomination des branches, le style de validation ou le formatPR.",
+        info: "Instructions spécifiques au projet injectées dans les invites de l'IA queOhMyPCodeutilise pour générer des métadonnées: utilisez-les pour appliquer les conventions de votre équipe telles que la dénomination des branches, le style de validation ou le formatPR.",
         branchName: "Noms des succursales",
         branchNamePlaceholder:
           "Préfixez les branches avec feat/ ou fix/, mb/ pour les branches personnelles",
