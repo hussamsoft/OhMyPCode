@@ -1,3 +1,10 @@
+export function createMetroSpawnCommand({ nodeExecutable, expoCli, expoPort }) {
+  return {
+    command: nodeExecutable,
+    args: [expoCli, "start", "--port", String(expoPort)],
+  };
+}
+
 export function createElectronSpawnOptions({ env, colorEnv, expoDevUrl, devBuildLabel }) {
   return {
     // Electron must stay in the runner's process group. Paseo workspace scripts

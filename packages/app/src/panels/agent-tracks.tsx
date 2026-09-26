@@ -1,4 +1,4 @@
-import { memo, useCallback, type ReactElement } from "react";
+import { memo, useCallback, useMemo, type ReactElement } from "react";
 import { WorkspaceDiffStatPill } from "@/composer/diff-stat-pill";
 import { useWorkspaceHasDiffStat } from "@/composer/workspace-diff-stat";
 import { AgentTaskList } from "@/composer/task-list";
@@ -7,7 +7,7 @@ import { supportsDesktopPaneSplits, useIsCompactFormFactor } from "@/constants/l
 import { usePaneContext } from "@/panels/pane-context";
 import { useSettings } from "@/hooks/use-settings";
 import { PluginComposerPills } from "@/plugins";
-import { useSessionStore } from "@/stores/session-store";
+import { useOmpVibeStore } from "@/omp-vibe/store";
 import {
   type ArchiveFinishedStatus,
   useArchiveSubagent,
@@ -20,6 +20,7 @@ import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { buildWorkspaceTabPersistenceKey } from "@/workspace-tabs/model";
 import { openPreferredWorkspaceTarget } from "@/workspace-tabs/open-beside";
 import { openComposerChanges } from "@/workspace-tabs/open-supporting-view";
+import { VibeStrip } from "@/omp-vibe/vibe-strip";
 
 /**
  * The pane's ambient context — workspace changes, subagents, and tasks — as a row of pills above
@@ -57,6 +58,9 @@ export const AgentTracks = memo(function AgentTracks({
   const workspaceKey = buildWorkspaceTabPersistenceKey({ serverId, workspaceId });
   const canDetachSubagents = useSessionStore(
     (state) => state.sessions[serverId]?.serverInfo?.features?.agentDetach === true,
+  );
+  const hasVibe = useOmpVibeStore(
+    (state) => state.stateByAgent[agentId]?.enabled === true,
   );
   const archiveSubagent = useArchiveSubagent({ serverId });
   const detachSubagent = useDetachSubagent({ serverId });
@@ -114,6 +118,7 @@ export const AgentTracks = memo(function AgentTracks({
 
   if (
     !hasWorkspaceDiffStat &&
+    !hasVibe &&
     !hasAgentTracks({
       subagentRows,
       tasks,
@@ -137,6 +142,7 @@ export const AgentTracks = memo(function AgentTracks({
         archiveFinishedStatus={archiveFinishedStatus}
         onDetachSubagent={canDetachSubagents ? detachSubagent : undefined}
       />
+      <VibeStrip serverId={serverId} agentId={agentId} />
       <PluginComposerPills
         serverId={serverId}
         workspaceId={workspaceId}

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resolveNodeExecPath } from "./runtime-paths";
+import path from "node:path";
+import { resolveBundledOmpPath, resolveNodeExecPath } from "./runtime-paths";
 
 const mocks = vi.hoisted(() => ({
   existsSync: vi.fn(),
@@ -68,5 +69,26 @@ describe("runtime-paths", () => {
     expect(resolveNodeExecPath()).toBe(
       "/Applications/Paseo.app/Contents/Frameworks/Paseo Helper.app/Contents/MacOS/Paseo Helper",
     );
+  });
+
+  it("resolves the development OMP binary at the repository root when present", () => {
+    mocks.app.isPackaged = false;
+    const expectedPath = path.resolve(
+      import.meta.dirname,
+      "../../../..",
+      "ohmypcode",
+      "runtime",
+      "omp",
+      `${process.platform}-${process.arch}`,
+      "omp",
+    );
+    mocks.existsSync.mockImplementation((filePath: string) => filePath === expectedPath);
+    expect(resolveBundledOmpPath()).toBe(expectedPath);
+  });
+
+  it("returns null when the embedded OMP binary is absent", () => {
+    mocks.app.isPackaged = false;
+    mocks.existsSync.mockReturnValue(false);
+    expect(resolveBundledOmpPath()).toBeNull();
   });
 });

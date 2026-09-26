@@ -1,16 +1,24 @@
-import { useHosts, useHostRuntimeLastError } from "@/runtime/host-runtime";
+import { useHostFeature } from "@/runtime/host-features";
+import {
+  useHosts,
+  useHostRuntimeIsConnected,
+  useHostRuntimeLastError,
+} from "@/runtime/host-runtime";
 import { useCallback, useEffect, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { View, Text, Pressable } from "react-native";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { useRouter } from "expo-router";
 import { FolderOpen, Inbox, Plug, Smartphone } from "lucide-react-native";
-import { PaseoLogo } from "@/components/icons/paseo-logo";
+import { OmpLogo } from "@/components/icons/omp-logo";
+import { Alert as InlineAlert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { CommunityLinks } from "@/components/community-links";
 import { MenuHeader } from "@/components/headers/menu-header";
 import { useOpenAddProject } from "@/hooks/use-open-add-project";
 import { useImportSession } from "@/hooks/use-import-session";
 import { useHostChooser } from "@/hosts/host-chooser";
+import { useOmpProviders } from "@/omp-providers/use-omp-providers";
 import { usePanelStore } from "@/stores/panel-store";
 import {
   useIsCompactFormFactor,
@@ -32,6 +40,10 @@ export function OpenProjectScreen() {
   const importSession = useImportSession();
   const chooseHost = useHostChooser();
   const localServerId = useLocalDaemonServerId();
+  const localHostConnected = useHostRuntimeIsConnected(localServerId ?? "");
+  const supportsOmpProviders = useHostFeature(localServerId, "ompProviders");
+  const { providers, isLoading: isLoadingProviders, error: providersError } =
+    useOmpProviders(localServerId);
   const [isPairDeviceOpen, setIsPairDeviceOpen] = useState(false);
 
   const isCompactLayout = useIsCompactFormFactor();
@@ -58,17 +70,42 @@ export function OpenProjectScreen() {
     });
   }, [chooseHost, router]);
 
+  const handleOpenLocalProviders = useCallback(() => {
+    if (!localServerId) return;
+    router.push(buildSettingsHostSectionRoute(localServerId, "providers"));
+  }, [localServerId, router]);
+  const hasNoAuthenticatedProviders =
+    localServerId !== null &&
+    localHostConnected &&
+    supportsOmpProviders &&
+    !isLoadingProviders &&
+    !providersError &&
+    providers.every((provider) => !provider.authenticated);
+
   return (
     <View style={styles.container}>
       <MenuHeader borderless />
       <View style={styles.content}>
         <TitlebarDragRegion />
         <View style={styles.logo}>
-          <PaseoLogo size={52} />
+          <OmpLogo size={52} />
         </View>
         {hosts.map((host) => (
           <HostError key={host.serverId} serverId={host.serverId} label={host.label} />
         ))}
+        {hasNoAuthenticatedProviders ? (
+          <View style={styles.providersAlert}>
+            <InlineAlert
+              variant="info"
+              title={t("ompProviders.title")}
+              description={t("ompProviders.noneConnected")}
+            >
+              <Button size="sm" variant="outline" onPress={handleOpenLocalProviders}>
+                {t("ompProviders.connect")}
+              </Button>
+            </InlineAlert>
+          </View>
+        ) : null}
         <View style={styles.tiles}>
           <HomeTile
             icon={FolderOpen}
@@ -197,6 +234,10 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.base,
     maxWidth: 452,
     textAlign: "center",
+  },
+  providersAlert: {
+    width: "100%",
+    maxWidth: 452,
   },
   tiles: {
     marginTop: { xs: theme.spacing[6], md: theme.spacing[12] },

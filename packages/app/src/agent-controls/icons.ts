@@ -1,8 +1,15 @@
 import type { ComponentType } from "react";
 import {
+  BookOpen,
   Bot,
   Brain,
+  Compass,
+  Expand,
+  Feather,
+  Footprints,
   ListTodo,
+  Map,
+  Monitor,
   Settings2,
   Shield,
   ShieldAlert,
@@ -11,6 +18,8 @@ import {
   ShieldOff,
   ShieldPlus,
   ShieldQuestionMark,
+  Turtle,
+  UserCheck,
   Zap,
 } from "lucide-react-native";
 import { getModeVisuals, type AgentProviderDefinition } from "@getpaseo/protocol/provider-manifest";
@@ -37,8 +46,17 @@ const MODE_ICONS: Record<string, AgentControlIcon> = {
 };
 
 const FEATURE_ICONS: Record<string, AgentControlIcon> = {
+  "book-open": BookOpen,
   "list-todo": ListTodo,
   "shield-check": ShieldCheck,
+  "user-check": UserCheck,
+  compass: Compass,
+  expand: Expand,
+  feather: Feather,
+  footprints: Footprints,
+  map: Map,
+  monitor: Monitor,
+  turtle: Turtle,
   zap: Zap,
 };
 

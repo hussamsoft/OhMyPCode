@@ -13,6 +13,7 @@ const COMPACT_SMALL_ICON_BUTTON_SIZE = 32;
 export interface IconButtonChromeState {
   hovered?: boolean;
   pressed?: boolean;
+  focused?: boolean;
   open?: boolean;
   active?: boolean;
 }
@@ -42,6 +43,7 @@ export function iconButtonChromeStyle({
   return [
     resolveIconButtonFrame(size, compact),
     style,
+    state?.focused ? styles.focused : null,
     highlighted ? styles.highlighted : null,
     disabled ? styles.disabled : null,
   ];
@@ -79,8 +81,9 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    outlineWidth: 0,
+    outlineWidth: 2,
     outlineColor: "transparent",
+    outlineOffset: 1,
   },
   small: {
     width: SMALL_ICON_BUTTON_SIZE,
@@ -90,8 +93,9 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    outlineWidth: 0,
+    outlineWidth: 2,
     outlineColor: "transparent",
+    outlineOffset: 1,
   },
   smallCompact: {
     width: COMPACT_SMALL_ICON_BUTTON_SIZE,
@@ -101,8 +105,13 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    outlineWidth: 0,
+    outlineWidth: 2,
     outlineColor: "transparent",
+    outlineOffset: 1,
+  },
+  focused: {
+    outlineColor: theme.colors.ring,
+    outlineStyle: "solid",
   },
   highlighted: {
     backgroundColor: theme.colors.interactionHighlight,

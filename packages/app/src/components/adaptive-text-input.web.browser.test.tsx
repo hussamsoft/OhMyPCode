@@ -84,4 +84,15 @@ describe("AdaptiveTextInput web IME composition", () => {
     expect(textarea.value).toBe("你");
     expect(changes).toEqual(["你"]);
   });
+
+  it("forwards ordinary web input events to the bound change handler", () => {
+    const changes: string[] = [];
+    const { textarea } = mountSchedulePrompt(changes);
+
+    act(() => {
+      typeFromIme(textarea, "ordinary input");
+    });
+
+    expect(changes).toEqual(["ordinary input"]);
+  });
 });

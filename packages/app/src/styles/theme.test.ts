@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  darkOhMyPCodeTheme,
   darkPureBlackTheme,
   darkTheme,
   FONT_SIZE,
@@ -34,10 +35,25 @@ describe("Theme catalog", () => {
       "midnight",
       "claude",
       "ghostty",
+      "ohMyPCode",
       "pureBlack",
     ]);
     expect(getNextThemePreference("dark")).toBe("auto");
     expect(getNextThemePreference("pureBlack")).toBe("light");
+  });
+});
+
+describe("OhMyPCode theme", () => {
+  it("matches the official ink / paper / signal contract", () => {
+    // #0D0D0D ink, #FAFAFA paper, #F97316 signal — the brand mark reads
+    // against this palette and every other surface derives from these anchors.
+    // Changing any of these is a brand change and needs a release gate.
+    expect(darkOhMyPCodeTheme.colors.surface0).toBe("#0D0D0D");
+    expect(darkOhMyPCodeTheme.colors.foreground).toBe("#FAFAFA");
+    expect(darkOhMyPCodeTheme.colors.accent).toBe("#F97316");
+    expect(darkOhMyPCodeTheme.colors.accentForeground).toBe("#0D0D0D");
+    expect(darkOhMyPCodeTheme.colors.terminal.background).toBe("#0D0D0D");
+    expect(darkOhMyPCodeTheme.colorScheme).toBe("dark");
   });
 });
 

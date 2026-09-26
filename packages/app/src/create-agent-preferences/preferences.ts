@@ -8,6 +8,7 @@ export interface ProviderPreferences {
   mode?: string;
   thinkingByModel?: Record<string, string>;
   featureValues?: Record<string, unknown>;
+  allowedTools?: string[];
 }
 
 export type LaunchTarget = { kind: "chat" } | { kind: "terminal"; profileId: string };
@@ -25,6 +26,7 @@ const providerPreferencesSchema: z.ZodType<ProviderPreferences> = z.strictObject
   mode: z.string().optional(),
   thinkingByModel: z.record(z.string(), z.string()).optional(),
   featureValues: featureValuesSchema.optional(),
+  allowedTools: z.array(z.string()).optional(),
 });
 
 const launchTargetSchema: z.ZodType<LaunchTarget> = z.discriminatedUnion("kind", [
@@ -133,6 +135,9 @@ function applyProviderPreferenceUpdates(
     next.featureValues = nextFeatureValues;
   }
 
+  if (updates.allowedTools !== undefined) {
+    next.allowedTools = [...new Set(updates.allowedTools)].sort();
+  }
   return next;
 }
 

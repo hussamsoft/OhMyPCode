@@ -24,6 +24,7 @@ interface SegmentedControlProps<T extends string> {
   value: T;
   onValueChange: (value: T) => void;
   size?: SegmentedControlSize;
+  accessibilityLabel?: string;
   hideLabels?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -47,6 +48,7 @@ const mutedIconMapping = (theme: Theme) => ({ iconColor: theme.colors.foreground
 export function SegmentedControl<T extends string>({
   options,
   value,
+  accessibilityLabel,
   onValueChange,
   size = "md",
   hideLabels = false,
@@ -69,8 +71,13 @@ export function SegmentedControl<T extends string>({
   );
 
   return (
-    <View style={containerStyle} testID={testID}>
-      {options.map((option) => {
+    <View
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="radiogroup"
+      style={containerStyle}
+      testID={testID}
+    >
+      {options.map((option, optionIndex) => {
         const isSelected = option.value === value;
 
         return (
@@ -80,9 +87,11 @@ export function SegmentedControl<T extends string>({
             isSelected={isSelected}
             iconSize={iconSize}
             hideLabels={hideLabels}
-            segmentSizeStyle={segmentSizeStyle}
-            labelSizeStyle={labelSizeStyle}
+            segmentSizeStyle={sizeStyles.segment}
+            labelSizeStyle={sizeStyles.label}
             currentValue={value}
+            options={options}
+            optionIndex={optionIndex}
             onValueChange={onValueChange}
           />
         );
@@ -99,15 +108,13 @@ function SegmentItem<T extends string>({
   segmentSizeStyle,
   labelSizeStyle,
   currentValue,
+  options,
+  optionIndex,
   onValueChange,
 }: {
-  option: SegmentedControlOption<T>;
-  isSelected: boolean;
-  iconSize: number;
-  hideLabels: boolean;
-  segmentSizeStyle: StyleProp<ViewStyle>;
-  labelSizeStyle: StyleProp<TextStyle>;
   currentValue: T;
+  options: readonly SegmentedControlOption<T>[];
+  optionIndex: number;
   onValueChange: (value: T) => void;
 }) {
   const labelStyle = useMemo(
@@ -119,10 +126,28 @@ function SegmentItem<T extends string>({
       onValueChange(option.value);
     }
   }, [option.disabled, option.value, currentValue, onValueChange]);
+  const handleKeyDown = useCallback(
+    (event: { nativeEvent: { key: string }; preventDefault(): void; stopPropagation(): void }) => {
+      if (option.disabled) return;
+      let nextIndex: number | null = null;
+      if (event.nativeEvent.key === "ArrowRight" || event.nativeEvent.key === "ArrowDown") {
+        nextIndex = (optionIndex + 1) % options.length;
+      } else if (event.nativeEvent.key === "ArrowLeft" || event.nativeEvent.key === "ArrowUp") {
+        nextIndex = (optionIndex - 1 + options.length) % options.length;
+      }
+      if (nextIndex === null) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const next = options[nextIndex];
+      if (next && !next.disabled) onValueChange(next.value);
+    },
+    [onValueChange, option.disabled, optionIndex, options],
+  );
   const pressableStyle = useCallback(
-    ({ hovered, pressed }: PressableStateCallbackType & { hovered?: boolean }) => [
+    ({ focused, hovered, pressed }: PressableStateCallbackType & { focused?: boolean; hovered?: boolean }) => [
       styles.segment,
       segmentSizeStyle,
+      focused && styles.segmentFocused,
       isSelected && styles.segmentSelected,
       Boolean(hovered) && !isSelected && styles.segmentHover,
       pressed && !isSelected && styles.segmentPressed,
@@ -131,15 +156,18 @@ function SegmentItem<T extends string>({
     [isSelected, option.disabled, segmentSizeStyle],
   );
   const accessibilityState = useMemo(
-    () => ({ selected: isSelected, disabled: option.disabled }),
+    () => ({ checked: isSelected, disabled: option.disabled }),
     [isSelected, option.disabled],
   );
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityLabel={option.label}
+      accessibilityRole="radio"
       accessibilityState={accessibilityState}
-      aria-selected={isSelected}
+      aria-checked={isSelected}
       disabled={option.disabled}
+      focusable
+      onKeyDown={handleKeyDown}
       testID={option.testID}
       onPress={handlePress}
       style={pressableStyle}
@@ -207,6 +235,10 @@ const styles = StyleSheet.create((theme) => {
     segmentDisabled: {
       opacity: theme.opacity[50],
     },
+  segmentFocused: {
+    borderWidth: 2,
+    borderColor: theme.colors.ring,
+  },
     iconContainer: {
       alignItems: "center",
       justifyContent: "center",

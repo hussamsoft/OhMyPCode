@@ -12,11 +12,11 @@ const renderDiscordIcon = (color: string) => <DiscordIcon color={color} size={14
 
 export function CommunityLinks() {
   const handleOpenGitHub = useCallback(() => {
-    void openExternalUrl("https://github.com/getpaseo/paseo");
+    void openExternalUrl("https://github.com/can1357/oh-my-pi");
   }, []);
 
   const handleOpenSponsor = useCallback(() => {
-    void openExternalUrl("https://github.com/sponsors/boudra");
+    void openExternalUrl("https://github.com/sponsors/can1357");
   }, []);
 
   const handleOpenDiscord = useCallback(() => {

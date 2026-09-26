@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, type RefCallback } from "react";
 import type { View as NativeView } from "react-native";
+import { useReducedMotion } from "react-native-reanimated";
 import { STATUS_RING_PERIOD_MS } from "@/components/status-ring/geometry";
 
 const STATUS_RING_KEYFRAMES: PropertyIndexedKeyframes = {
@@ -13,6 +14,7 @@ const STATUS_RING_TIMING: KeyframeAnimationOptions = {
 const STATUS_RING_TIMELINE_START_MS = 0;
 
 export function useStatusRingAnimationRef(): RefCallback<NativeView> {
+  const reduceMotion = useReducedMotion();
   const arcElement = useRef<HTMLElement | null>(null);
   const setArcElement = useCallback((instance: NativeView | null) => {
     arcElement.current = instance instanceof HTMLElement ? instance : null;
@@ -20,7 +22,7 @@ export function useStatusRingAnimationRef(): RefCallback<NativeView> {
 
   useLayoutEffect(() => {
     const element = arcElement.current;
-    if (!element) {
+    if (!element || reduceMotion) {
       return;
     }
 
@@ -29,7 +31,7 @@ export function useStatusRingAnimationRef(): RefCallback<NativeView> {
     return () => {
       animation.cancel();
     };
-  }, []);
+  }, [reduceMotion]);
 
   return setArcElement;
 }

@@ -1,10 +1,11 @@
 import { router, usePathname } from "expo-router";
-import { CalendarClock, History, Plus, Search } from "lucide-react-native";
+import { BarChart3, CalendarClock, History, Plus, Search } from "lucide-react-native";
 import { memo, useCallback, useMemo, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { View, type StyleProp, type ViewStyle } from "react-native";
 import { SidebarHeaderRow } from "@/components/sidebar/sidebar-header-row";
 import { useShortcutKeys } from "@/hooks/use-shortcut-keys";
+import { isWeb } from "@/constants/platform";
 import { PluginSidebarItemRow } from "@/plugins/sidebar-items";
 import { canCreateWorktreeForProjectKind } from "@/projects/host-projects";
 import { useHostFeature } from "@/runtime/host-features";
@@ -20,6 +21,7 @@ import { useWorkspace } from "@/stores/session-store-hooks";
 import {
   buildNewWorkspaceRoute,
   buildSchedulesRoute,
+  buildUsageRoute,
   buildSessionsRoute,
 } from "@/utils/host-routes";
 
@@ -40,8 +42,9 @@ interface SidebarNavRowsProps extends SidebarNavRowProps {
 export function SidebarNavRows({ style, onBeforeNavigate }: SidebarNavRowsProps) {
   const { items } = useSidebarNavItems();
   const visibleItems = useMemo(() => items.filter((item) => item.visible), [items]);
+  const showUsage = isWeb;
 
-  if (visibleItems.length === 0) return null;
+  if (visibleItems.length === 0 && !showUsage) return null;
 
   return (
     <View style={style}>
@@ -58,6 +61,7 @@ export function SidebarNavRows({ style, onBeforeNavigate }: SidebarNavRowsProps)
         const Row = BUILTIN_ROWS[item.id];
         return <Row key={item.key} onBeforeNavigate={onBeforeNavigate} />;
       })}
+      {showUsage ? <SidebarUsageRow onBeforeNavigate={onBeforeNavigate} /> : null}
     </View>
   );
 }
@@ -146,6 +150,25 @@ function SidebarSearchRow({ onBeforeNavigate }: SidebarNavRowProps) {
       testID="sidebar-search"
       variant="compact"
       shortcutKeys={shortcutKeys}
+    />
+  );
+}
+
+function SidebarUsageRow({ onBeforeNavigate }: SidebarNavRowProps) {
+  const pathname = usePathname();
+  const handlePress = useCallback(() => {
+    onBeforeNavigate?.();
+    router.push(buildUsageRoute());
+  }, [onBeforeNavigate]);
+
+  return (
+    <SidebarHeaderRow
+      icon={BarChart3}
+      label="Usage"
+      onPress={handlePress}
+      isActive={pathname.includes("/usage")}
+      testID="sidebar-usage"
+      variant="compact"
     />
   );
 }

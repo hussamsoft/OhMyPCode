@@ -13,6 +13,7 @@ import {
 interface HeaderToggleButtonState {
   hovered: boolean;
   pressed: boolean;
+  focused: boolean;
 }
 
 interface HeaderToggleButtonProps extends Omit<PressableProps, "style" | "onPress" | "children"> {
@@ -48,10 +49,10 @@ export function HeaderToggleButton({
 
   const combinedStyle = useMemo(
     () =>
-      ({ hovered, pressed }: { hovered?: boolean; pressed: boolean }) =>
+      ({ focused, hovered, pressed }: HeaderToggleButtonState) =>
         iconButtonChromeStyle({
           size: "large",
-          state: { hovered: Boolean(hovered), pressed },
+          state: { focused, hovered, pressed },
           disabled: Boolean(disabled),
           style,
         }),
