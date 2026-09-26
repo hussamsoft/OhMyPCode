@@ -4,6 +4,12 @@
 
 Execute the OhMyPCode master plan step-by-step, verifying each step before the next. Preserve source and uncommitted work.
 
+## Safety Warning
+
+Do not run a HEAD restore on the modified files. The worktree still holds the user's
+uncommitted work and the OhMyPCode fork's changes on top of the Paseo baseline; a restore
+would delete both.
+
 ## SESSION UPDATE — 2026-09-26 — Phase 5 rename-sweep status
 
 This supersedes the "Renames with no shims" bullet's stale text wherever it appears
@@ -75,12 +81,6 @@ which has no `@` prefix). For the still-deferred IndexedDB pass, enumerate by ST
 MECHANISM (every `indexedDB.open`/`openDB(`/SQLite-open call/`createValidatedPersistStorage`
 call-site/`persist({` call/`AsyncStorage.setItem` key literal, repo-wide) rather than by
 assumed name pattern.
-
-## Safety Warning
-
-Do not run a HEAD restore on the modified files. The worktree still holds the user's
-uncommitted work and the OhMyPCode fork's changes on top of the Paseo baseline; a restore
-would delete both.
 
 ## INCIDENT 2 — uncommitted work lost to `git checkout -- .` (2026-09-25, later)
 

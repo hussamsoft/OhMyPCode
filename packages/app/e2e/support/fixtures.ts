@@ -187,7 +187,7 @@ const test = daemonTest.extend<{
             "@ohmypcode:daemon-registry",
             JSON.stringify([daemon, ...extraHosts]),
           );
-          localStorage.removeItem("@ohmypcode:settings");
+          localStorage.removeItem("@paseo:settings");
           localStorage.setItem("@ohmypcode:create-agent-preferences", JSON.stringify(preferences));
         },
         {

@@ -329,7 +329,7 @@ async function seedBrowserForDaemon(page: Page, input: { serverId: string; port:
     ({ daemon, preferences }) => {
       localStorage.setItem("@ohmypcode:e2e", "1");
       localStorage.setItem("@ohmypcode:daemon-registry", JSON.stringify([daemon]));
-      localStorage.removeItem("@ohmypcode:settings");
+      localStorage.removeItem("@paseo:settings");
       localStorage.setItem("@ohmypcode:create-agent-preferences", JSON.stringify(preferences));
     },
     {
