@@ -3,7 +3,7 @@ import { buildSeededHost } from "./daemon-registry";
 import { startIsolatedHostDaemon } from "./isolated-host-daemon";
 import { seedWorkspace, type SeededWorkspace } from "./seed-client";
 
-const REGISTRY_KEY = "@paseo:daemon-registry";
+const REGISTRY_KEY = "@ohmypcode:daemon-registry";
 const SEED_NONCE_KEY = "@paseo:e2e-seed-nonce";
 const EXTRA_HOSTS_KEY = "@paseo:e2e-extra-hosts";
 export const SECONDARY_MODEL_ID = "one-minute-stream";

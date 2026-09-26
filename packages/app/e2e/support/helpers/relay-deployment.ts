@@ -57,8 +57,8 @@ export async function connectDaemonWebAppOnlyThroughRelay(
   });
   await page.addInitScript(
     ({ storedHost, preferences }) => {
-      localStorage.setItem("@paseo:daemon-registry", JSON.stringify([storedHost]));
-      localStorage.setItem("@paseo:create-agent-preferences", JSON.stringify(preferences));
+      localStorage.setItem("@ohmypcode:daemon-registry", JSON.stringify([storedHost]));
+      localStorage.setItem("@ohmypcode:create-agent-preferences", JSON.stringify(preferences));
     },
     { storedHost: host, preferences: buildCreateAgentPreferences() },
   );

@@ -150,9 +150,12 @@ export async function primeAdditionalPage(page: Page): Promise<void> {
 
       localStorage.setItem("@ohmypcode:e2e", "1");
       localStorage.setItem("@paseo:e2e-seed-nonce", nonce);
-      localStorage.setItem("@paseo:daemon-registry", JSON.stringify([seededDaemon]));
-      localStorage.removeItem("@paseo:settings");
-      localStorage.setItem("@paseo:create-agent-preferences", JSON.stringify(seededPreferences));
+      localStorage.setItem("@ohmypcode:daemon-registry", JSON.stringify([seededDaemon]));
+      localStorage.removeItem("@ohmypcode:settings");
+      localStorage.setItem(
+        "@ohmypcode:create-agent-preferences",
+        JSON.stringify(seededPreferences),
+      );
     },
     { daemon, preferences, seedNonce },
   );
@@ -166,9 +169,12 @@ export async function resetSeededPageState(page: Page): Promise<void> {
     ({ daemon: seededDaemon, preferences: seededPreferences }) => {
       localStorage.clear();
       localStorage.setItem("@ohmypcode:e2e", "1");
-      localStorage.setItem("@paseo:daemon-registry", JSON.stringify([seededDaemon]));
-      localStorage.setItem("@paseo:create-agent-preferences", JSON.stringify(seededPreferences));
-      localStorage.removeItem("@paseo:settings");
+      localStorage.setItem("@ohmypcode:daemon-registry", JSON.stringify([seededDaemon]));
+      localStorage.setItem(
+        "@ohmypcode:create-agent-preferences",
+        JSON.stringify(seededPreferences),
+      );
+      localStorage.removeItem("@ohmypcode:settings");
     },
     { daemon, preferences },
   );

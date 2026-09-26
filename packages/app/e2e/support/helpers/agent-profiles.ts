@@ -54,7 +54,7 @@ export async function stageLegacyFavoritesForHostMigration(
   await gotoAppShell(page);
   await page.evaluate(
     ({ favorites: storedFavorites, serverId: hostId }) => {
-      const preferencesKey = "@paseo:create-agent-preferences";
+      const preferencesKey = "@ohmypcode:create-agent-preferences";
       const raw = localStorage.getItem(preferencesKey);
       const preferences = raw ? JSON.parse(raw) : {};
       localStorage.setItem(

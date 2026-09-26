@@ -4,7 +4,7 @@ import { openSettings } from "./app";
 import { buildSeededHost } from "./daemon-registry";
 import { clickSettingsBackToWorkspace, openHostSection, selectSettingsHost } from "./settings";
 
-const REGISTRY_KEY = "@paseo:daemon-registry";
+const REGISTRY_KEY = "@ohmypcode:daemon-registry";
 const SEED_NONCE_KEY = "@paseo:e2e-seed-nonce";
 const DISABLE_DEFAULT_SEED_ONCE_KEY = "@paseo:e2e-disable-default-seed-once";
 

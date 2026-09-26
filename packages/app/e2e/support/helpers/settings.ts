@@ -10,7 +10,7 @@ import {
 
 const DISABLE_DEFAULT_SEED_ONCE_KEY = "@paseo:e2e-disable-default-seed-once";
 const SEED_NONCE_KEY = "@paseo:e2e-seed-nonce";
-const REGISTRY_KEY = "@paseo:daemon-registry";
+const REGISTRY_KEY = "@ohmypcode:daemon-registry";
 
 interface SavedSettingsHostInput {
   serverId: string;
@@ -143,7 +143,10 @@ export async function seedSavedSettingsHosts(
       }
 
       localStorage.setItem(keys.registry, JSON.stringify(storedRegistry));
-      localStorage.setItem("@paseo:create-agent-preferences", JSON.stringify(storedPreferences));
+      localStorage.setItem(
+        "@ohmypcode:create-agent-preferences",
+        JSON.stringify(storedPreferences),
+      );
       localStorage.setItem(keys.disableDefaultSeedOnce, nonce);
     },
     {

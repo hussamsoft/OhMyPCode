@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, type Locator, type Page } from "@playwright/test";
 
-const APP_SETTINGS_KEY = "@paseo:app-settings";
+const APP_SETTINGS_KEY = "@ohmypcode:app-settings";
 
 export interface ProfileTarget {
   serverId: string;

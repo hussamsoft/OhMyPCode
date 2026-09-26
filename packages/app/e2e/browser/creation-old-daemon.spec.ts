@@ -163,8 +163,8 @@ for (const version of ["0.2.5", "0.7.2", "0.8.0"]) {
       await page.addInitScript(
         ({ seededHost, preferences }) => {
           localStorage.setItem("@ohmypcode:e2e", "1");
-          localStorage.setItem("@paseo:daemon-registry", JSON.stringify([seededHost]));
-          localStorage.setItem("@paseo:create-agent-preferences", JSON.stringify(preferences));
+          localStorage.setItem("@ohmypcode:daemon-registry", JSON.stringify([seededHost]));
+          localStorage.setItem("@ohmypcode:create-agent-preferences", JSON.stringify(preferences));
         },
         { seededHost: host, preferences: buildCreateAgentPreferences() },
       );

@@ -18,7 +18,7 @@ const VISUAL_SCREENSHOT_OPTIONS = {
 };
 async function setOmpTheme(page: Page, theme: "ohMyPCode" | "light"): Promise<void> {
   await page.addInitScript((selectedTheme) => {
-    localStorage.setItem("@paseo:app-settings", JSON.stringify({ theme: selectedTheme }));
+    localStorage.setItem("@ohmypcode:app-settings", JSON.stringify({ theme: selectedTheme }));
   }, theme);
 }
 

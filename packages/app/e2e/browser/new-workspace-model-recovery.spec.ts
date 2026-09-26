@@ -21,7 +21,7 @@ async function rememberModel(page: Page) {
   await page.addInitScript(
     ({ provider, model }) => {
       localStorage.setItem(
-        "@paseo:create-agent-preferences",
+        "@ohmypcode:create-agent-preferences",
         JSON.stringify({
           provider,
           providerPreferences: { [provider]: { model } },

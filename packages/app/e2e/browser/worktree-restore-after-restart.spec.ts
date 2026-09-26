@@ -70,9 +70,9 @@ test.describe("Worktree restore after daemon restart", () => {
     await page.addInitScript(
       ({ host, preferences }) => {
         localStorage.setItem("@ohmypcode:e2e", "1");
-        localStorage.setItem("@paseo:daemon-registry", JSON.stringify([host]));
-        localStorage.removeItem("@paseo:settings");
-        localStorage.setItem("@paseo:create-agent-preferences", JSON.stringify(preferences));
+        localStorage.setItem("@ohmypcode:daemon-registry", JSON.stringify([host]));
+        localStorage.removeItem("@ohmypcode:settings");
+        localStorage.setItem("@ohmypcode:create-agent-preferences", JSON.stringify(preferences));
       },
       {
         host: buildSeededHost({

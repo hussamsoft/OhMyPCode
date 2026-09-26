@@ -183,9 +183,12 @@ const test = daemonTest.extend<{
           const extraHosts = rawExtraHosts ? JSON.parse(rawExtraHosts) : [];
 
           // Hard-reset anything that could point to a developer's real daemon.
-          localStorage.setItem("@paseo:daemon-registry", JSON.stringify([daemon, ...extraHosts]));
-          localStorage.removeItem("@paseo:settings");
-          localStorage.setItem("@paseo:create-agent-preferences", JSON.stringify(preferences));
+          localStorage.setItem(
+            "@ohmypcode:daemon-registry",
+            JSON.stringify([daemon, ...extraHosts]),
+          );
+          localStorage.removeItem("@ohmypcode:settings");
+          localStorage.setItem("@ohmypcode:create-agent-preferences", JSON.stringify(preferences));
         },
         {
           daemon: testDaemon,
