@@ -1841,6 +1841,64 @@ export const OmpVibeStateSchema = z.object({
   workers: z.array(OmpVibeWorkerSchema),
 });
 
+// Extension UI surface (method shapes mirrored from OMP's `extension-ui-controller.ts`
+// at vendor/oh-my-pi/packages/coding-agent/src/modes/controllers/extension-ui-controller.ts).
+// Only `setWidget`, `setStatus`, and `setTitle` are reachable in the current OMP
+// RPC surface -- `setFooter`/`setHeader` are documented vendor no-ops (`() => {}`)
+// and intentionally not represented here.
+//
+// These schemas define the `state` payload carried by `provider_state_updated`
+// (AgentStreamEventPayload variant, stateKey `hookWidget` / `hookStatus` /
+// `hookTitle`) and the `setWidget` / `setStatus` / `setTitle` extensions on the
+// incoming `extension_ui_request` event. They follow the same precedent as the
+// `OmpVibeStateSchema` block: provider-state values are typed Zod schemas rather
+// than opaque JsonWireValue, so server validation and client inference share a
+// single source of truth.
+export const OmpHookWidgetPlacementSchema = z.enum(["aboveEditor", "belowEditor"]);
+
+export const OmpHookWidgetStateSchema = z.object({
+  widgetKey: z.string().min(1),
+  // The RPC surface truncates to MAX_WIDGET_LINES=10 on the vendor side. We
+  // cap here too so a malformed sender can't push arbitrarily long arrays.
+  widgetLines: z.array(z.string()).max(10),
+  widgetPlacement: OmpHookWidgetPlacementSchema.optional(),
+});
+
+export const OmpHookStatusStateSchema = z.object({
+  statusKey: z.string().min(1),
+  // `setStatus(key, undefined)` clears the entry in the vendor; we surface that
+  // by emitting `statusText: null` so the client can drop the row.
+  statusText: z.string().nullable(),
+});
+
+export const OmpHookTitleStateSchema = z.object({
+  title: z.string(),
+});
+
+export const OmpExtensionUiHookWidgetRequestSchema = z.object({
+  type: z.literal("extension_ui_request"),
+  method: z.literal("setWidget"),
+  id: z.string(),
+  widgetKey: z.string().min(1),
+  widgetLines: z.array(z.string()).max(10).optional(),
+  widgetPlacement: OmpHookWidgetPlacementSchema.optional(),
+});
+
+export const OmpExtensionUiHookStatusRequestSchema = z.object({
+  type: z.literal("extension_ui_request"),
+  method: z.literal("setStatus"),
+  id: z.string(),
+  statusKey: z.string().min(1),
+  statusText: z.string().optional(),
+});
+
+export const OmpExtensionUiHookTitleRequestSchema = z.object({
+  type: z.literal("extension_ui_request"),
+  method: z.literal("setTitle"),
+  id: z.string(),
+  title: z.string(),
+});
+
 export const OmpVibeStatusRequestSchema = z.object({
   type: z.literal("omp.vibe.status.request"),
   agentId: z.string(),
@@ -7769,6 +7827,13 @@ export type ProviderUsageListResponseMessage = z.infer<
 >;
 export type OmpVibeWorker = z.infer<typeof OmpVibeWorkerSchema>;
 export type OmpVibeState = z.infer<typeof OmpVibeStateSchema>;
+export type OmpHookWidgetPlacement = z.infer<typeof OmpHookWidgetPlacementSchema>;
+export type OmpHookWidgetState = z.infer<typeof OmpHookWidgetStateSchema>;
+export type OmpHookStatusState = z.infer<typeof OmpHookStatusStateSchema>;
+export type OmpHookTitleState = z.infer<typeof OmpHookTitleStateSchema>;
+export type OmpExtensionUiHookWidgetRequest = z.infer<typeof OmpExtensionUiHookWidgetRequestSchema>;
+export type OmpExtensionUiHookStatusRequest = z.infer<typeof OmpExtensionUiHookStatusRequestSchema>;
+export type OmpExtensionUiHookTitleRequest = z.infer<typeof OmpExtensionUiHookTitleRequestSchema>;
 export type ListProviderToolsRequest = z.infer<typeof ListProviderToolsRequestSchema>;
 export type ListProviderToolsResponse = z.infer<typeof ListProviderToolsResponseSchema>;
 export type ListAgentToolsRequest = z.infer<typeof ListAgentToolsRequestSchema>;

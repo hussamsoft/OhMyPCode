@@ -635,6 +635,16 @@ const OmpExtensionUiRequestSchema = z
     url: z.string().optional(),
     launchUrl: z.string().optional(),
     instructions: z.string().optional(),
+    // OMP extension-UI method payloads (`setWidget`, `setStatus`, `setTitle`).
+    // The vendor truncates `widgetLines` to MAX_WIDGET_LINES=10; we keep the
+    // cap here so an upstream bug can't push arbitrarily long arrays.
+    // `setFooter` / `setHeader` are vendor no-ops (`() => {}` in
+    // extension-ui-controller.ts) and are intentionally not modelled.
+    widgetKey: z.string().optional(),
+    widgetLines: z.array(z.string()).max(10).optional(),
+    widgetPlacement: z.enum(["aboveEditor", "belowEditor"]).optional(),
+    statusKey: z.string().optional(),
+    statusText: z.string().optional(),
   })
   .passthrough();
 const OmpSubagentLifecycleEventSchema = z

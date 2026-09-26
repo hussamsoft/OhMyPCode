@@ -1863,6 +1863,10 @@ export class OmpAgentSession implements AgentSession, OmpVibeSession {
       return;
     }
 
+    if (this.handleExtensionUiHookState(event)) {
+      return;
+    }
+
     if (this.respondToCombinedAskUserFollowUp(event)) {
       return;
     }
@@ -1890,6 +1894,79 @@ export class OmpAgentSession implements AgentSession, OmpVibeSession {
       request,
       turnId: this.currentTurnIdForEvent(),
     });
+  }
+
+  // OMP extensions push position-addressed UI state via
+  // `setWidget` / `setStatus` / `setTitle`. These are *not* timeline items --
+  // the same call fired twice replaces the previous value rather than
+  // appending. We follow the existing `acceptVibeState` /
+  // `provider_state_updated` pattern: the server emits a single
+  // `provider_state_updated` event with a `stateKey` the client keys off of,
+  // and `AgentManager.dispatchProviderStateEvent` projects the value into
+  // `runtimeInfo.extra[stateKey]` so the snapshot pipeline carries it to the
+  // client.
+  //
+  // Returns true when the event was handled here (caller should stop).
+  // `setFooter` / `setHeader` are vendor no-ops (`() => {}` in
+  // extension-ui-controller.ts) and never reach us; we deliberately don't
+  // model them -- adding a dead branch would lie about coverage.
+  private handleExtensionUiHookState(
+    event: Extract<OmpRuntimeEvent, { type: "extension_ui_request" }>,
+  ): boolean {
+    switch (event.method) {
+      case "setWidget": {
+        if (typeof event.widgetKey !== "string" || event.widgetKey.length === 0) {
+          return false;
+        }
+        // `widgetLines: undefined` clears the entry on the vendor side; surface
+        // that as a widget state with an empty body so clients can drop the row.
+        const widgetLines = Array.isArray(event.widgetLines) ? event.widgetLines : [];
+        const state = {
+          widgetKey: event.widgetKey,
+          widgetLines,
+          ...(event.widgetPlacement ? { widgetPlacement: event.widgetPlacement } : {}),
+        };
+        this.emit({
+          type: "provider_state_updated",
+          provider: this.provider,
+          stateKey: "hookWidget",
+          state: state as unknown as JsonValue,
+        });
+        return true;
+      }
+      case "setStatus": {
+        if (typeof event.statusKey !== "string" || event.statusKey.length === 0) {
+          return false;
+        }
+        const state = {
+          statusKey: event.statusKey,
+          // `setStatus(key, undefined)` clears; emit `null` so clients can drop the row.
+          statusText: typeof event.statusText === "string" ? event.statusText : null,
+        };
+        this.emit({
+          type: "provider_state_updated",
+          provider: this.provider,
+          stateKey: "hookStatus",
+          state: state as unknown as JsonValue,
+        });
+        return true;
+      }
+      case "setTitle": {
+        if (typeof event.title !== "string") {
+          return false;
+        }
+        const state = { title: event.title };
+        this.emit({
+          type: "provider_state_updated",
+          provider: this.provider,
+          stateKey: "hookTitle",
+          state: state as unknown as JsonValue,
+        });
+        return true;
+      }
+      default:
+        return false;
+    }
   }
 
   private mapExtensionUiSideEffect(
