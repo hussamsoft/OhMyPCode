@@ -247,7 +247,7 @@ async function waitForGuestSelector(client, browserId) {
   while (Date.now() < deadline) {
     const evaluated = await callBrowserTool(client, "browser_evaluate", {
       browserId,
-      function: "() => Boolean(globalThis.__paseoSelector)",
+      function: "() => Boolean(globalThis.__ompcodeSelector)",
     });
     if (JSON.parse(evaluated.resultJson) === true) {
       return true;
@@ -900,7 +900,7 @@ async function runRegression({
   );
   const selectorDuringLoad = await callBrowserTool(client, "browser_evaluate", {
     browserId,
-    function: "() => Boolean(globalThis.__paseoSelector)",
+    function: "() => Boolean(globalThis.__ompcodeSelector)",
   });
   assert(
     JSON.parse(selectorDuringLoad.resultJson) === false,
@@ -955,7 +955,7 @@ async function runRegression({
   await delay(20_500);
   const selectorAfterPriorTimeout = await callBrowserTool(client, "browser_evaluate", {
     browserId,
-    function: "() => Boolean(globalThis.__paseoSelector)",
+    function: "() => Boolean(globalThis.__ompcodeSelector)",
   });
   if (JSON.parse(selectorAfterPriorTimeout.resultJson) !== true) {
     failures.push("a previous selector timeout does not destroy the current selector session");

@@ -2,15 +2,37 @@ import { useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { readValidatedString } from "@/storage/validated-storage";
+import { readValidatedString, type ValidatedStorage } from "@/storage/validated-storage";
 
 type EditorTargetId = string;
 
-const PREFERRED_EDITOR_STORAGE_KEY = "@paseo:preferred-editor";
+const PREFERRED_EDITOR_STORAGE_KEY = "@ohmypcode:preferred-editor";
+// COMPAT(2026-09): read legacy @paseo:preferred-editor once; remove after a migration window.
+const LEGACY_PREFERRED_EDITOR_STORAGE_KEY = "@paseo:preferred-editor";
 const PREFERRED_EDITOR_QUERY_KEY = ["preferred-editor"];
+const PREFERRED_EDITOR_ID_SCHEMA = z.string().trim().min(1);
+
+/** Exported so the legacy-key fallback can be exercised without the AsyncStorage singleton. */
+export async function readPreferredEditorId(
+  storage: ValidatedStorage,
+): Promise<EditorTargetId | null> {
+  return (
+    (await readValidatedString(
+      storage,
+      PREFERRED_EDITOR_STORAGE_KEY,
+      PREFERRED_EDITOR_ID_SCHEMA,
+    )) ??
+    // COMPAT(2026-09): read legacy @paseo:preferred-editor once; remove after a migration window.
+    (await readValidatedString(
+      storage,
+      LEGACY_PREFERRED_EDITOR_STORAGE_KEY,
+      PREFERRED_EDITOR_ID_SCHEMA,
+    ))
+  );
+}
 
 async function loadPreferredEditor(): Promise<EditorTargetId | null> {
-  return readValidatedString(AsyncStorage, PREFERRED_EDITOR_STORAGE_KEY, z.string().trim().min(1));
+  return readPreferredEditorId(AsyncStorage);
 }
 
 export function resolvePreferredEditorId(

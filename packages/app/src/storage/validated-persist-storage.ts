@@ -1,9 +1,15 @@
 import { z } from "zod";
 import type { PersistStorage, StateStorage } from "zustand/middleware";
 
+/**
+ * `legacyName`, when provided, is read once as a fallback when `name` has no value yet. A legacy
+ * hit is forward-written under `name` immediately so the fallback only ever fires once per
+ * install; `name` is the only key later writes ever touch.
+ */
 export function createValidatedPersistStorage<State>(
   backingStorage: StateStorage,
   stateSchema: z.ZodType<State>,
+  legacyName?: string,
 ): PersistStorage<State> {
   const envelopeSchema = z.strictObject({
     state: stateSchema,
@@ -12,7 +18,13 @@ export function createValidatedPersistStorage<State>(
 
   return {
     getItem: async (name) => {
-      const raw = await backingStorage.getItem(name);
+      let raw = await backingStorage.getItem(name);
+      if (raw === null && legacyName !== undefined) {
+        raw = await backingStorage.getItem(legacyName);
+        if (raw !== null) {
+          await backingStorage.setItem(name, raw);
+        }
+      }
       if (raw === null) return null;
 
       let decoded: unknown;

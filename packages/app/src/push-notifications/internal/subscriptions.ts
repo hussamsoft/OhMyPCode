@@ -6,11 +6,22 @@ import { z } from "zod";
 import { readValidatedString } from "@/storage/validated-storage";
 import type { RevokePushNotificationsInput, StartPushNotificationsInput } from "./types";
 
-const STORAGE_PREFIX = "@paseo:expo-push-token:";
+const STORAGE_PREFIX = "@ohmypcode:expo-push-token:";
+// COMPAT(2026-09-26): legacy @paseo:expo-push-token:<serverId> read, legacy-prefixed keys no
+// longer written. The stored value is a refetchable cache — `resolveToken` calls Expo for a
+// fresh token on every subscription start — so migrating it forward buys nothing. It IS read
+// under the legacy prefix, but only in `revokeSubscription`: without that, a user turning push
+// off would leave their pre-rename token still registered on the daemon. Remove after a
+// migration window.
+const LEGACY_STORAGE_PREFIX = "@paseo:expo-push-token:";
 const ExpoPushTokenSchema = z.string().trim().min(1);
 
 function storageKey(serverId: string): string {
   return `${STORAGE_PREFIX}${serverId}`;
+}
+
+function legacyStorageKey(serverId: string): string {
+  return `${LEGACY_STORAGE_PREFIX}${serverId}`;
 }
 
 function getExpoProjectId(): string | null {
@@ -86,7 +97,15 @@ export function startSubscription(input: StartPushNotificationsInput): () => voi
 
 export async function revokeSubscription(input: RevokePushNotificationsInput): Promise<void> {
   const key = storageKey(input.serverId);
-  const token = await readValidatedString(AsyncStorage, key, ExpoPushTokenSchema);
+  const token =
+    (await readValidatedString(AsyncStorage, key, ExpoPushTokenSchema)) ??
+    // COMPAT(2026-09-26): also revoke a token stored under the pre-rename prefix, else turning
+    // push off would leave the old token registered on the daemon. See LEGACY_STORAGE_PREFIX.
+    (await readValidatedString(
+      AsyncStorage,
+      legacyStorageKey(input.serverId),
+      ExpoPushTokenSchema,
+    ));
   if (
     token &&
     input.client?.isConnected &&
@@ -99,4 +118,6 @@ export async function revokeSubscription(input: RevokePushNotificationsInput): P
     }
   }
   await AsyncStorage.removeItem(key);
+  // COMPAT(2026-09-26): clear the pre-rename key too, so the fallback read retires itself.
+  await AsyncStorage.removeItem(legacyStorageKey(input.serverId));
 }

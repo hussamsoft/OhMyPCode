@@ -4,6 +4,7 @@ import { createInMemoryKeyValueStorage } from "./fakes";
 import {
   CHANGES_PREFERENCES_QUERY_KEY,
   CHANGES_PREFERENCES_STORAGE_KEY,
+  LEGACY_CHANGES_PREFERENCES_STORAGE_KEY,
   DEFAULT_CHANGES_PREFERENCES,
   loadChangesPreferencesFromStorage,
   saveChangesPreferences,
@@ -60,6 +61,31 @@ describe("loadChangesPreferencesFromStorage", () => {
     });
     expect(storage.entries.get(CHANGES_PREFERENCES_STORAGE_KEY)).toBe(persisted);
     expect(storage.entries.size).toBe(1);
+  });
+
+  it("reads preferences stored under the legacy key and re-persists them under the current key", async () => {
+    const storage = createInMemoryKeyValueStorage({
+      [LEGACY_CHANGES_PREFERENCES_STORAGE_KEY]: JSON.stringify({
+        layout: "split",
+        inlineDiff: true,
+      }),
+    });
+
+    const result = await loadChangesPreferencesFromStorage(storage);
+
+    expect(result).toEqual({ ...DEFAULT_CHANGES_PREFERENCES, layout: "split", inlineDiff: true });
+    expect(storage.entries.get(CHANGES_PREFERENCES_STORAGE_KEY)).toBe(JSON.stringify(result));
+  });
+
+  it("prefers the current key over the legacy one", async () => {
+    const storage = createInMemoryKeyValueStorage({
+      [CHANGES_PREFERENCES_STORAGE_KEY]: JSON.stringify({ layout: "unified" }),
+      [LEGACY_CHANGES_PREFERENCES_STORAGE_KEY]: JSON.stringify({ layout: "split" }),
+    });
+
+    const result = await loadChangesPreferencesFromStorage(storage);
+
+    expect(result.layout).toBe("unified");
   });
 });
 

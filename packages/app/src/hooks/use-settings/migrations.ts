@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { readValidatedJson } from "@/storage/validated-storage";
-import { APP_SETTINGS_KEY, SETTINGS_MIGRATIONS_KEY } from "./keys";
+import { APP_SETTINGS_KEY, LEGACY_SETTINGS_MIGRATIONS_KEY, SETTINGS_MIGRATIONS_KEY } from "./keys";
 import type { AppSettings, KeyValueStorage, PersistedAppSettings } from "./storage";
 
 const AppliedMigrationsSchema = z.strictObject({ applied: z.array(z.string()) });
@@ -28,11 +28,10 @@ export async function migrateAppSettings(
   stored?: PersistedAppSettings,
   options: { native?: boolean } = {},
 ): Promise<AppSettings> {
-  const migrationMarker = await readValidatedJson(
-    storage,
-    SETTINGS_MIGRATIONS_KEY,
-    AppliedMigrationsSchema,
-  );
+  const migrationMarker =
+    (await readValidatedJson(storage, SETTINGS_MIGRATIONS_KEY, AppliedMigrationsSchema)) ??
+    // COMPAT(2026-09): read legacy @paseo:settings-migrations once; remove after a migration window.
+    (await readValidatedJson(storage, LEGACY_SETTINGS_MIGRATIONS_KEY, AppliedMigrationsSchema));
   const applied = new Set(migrationMarker?.applied ?? []);
   let addedMigration = false;
 

@@ -62,4 +62,38 @@ describe("createValidatedPersistStorage", () => {
 
     expect(backing.values.has("settings")).toBe(false);
   });
+
+  it("falls back to legacyName once and forward-writes under name", async () => {
+    const backing = new MemoryStorage();
+    backing.values.set("legacy-settings", JSON.stringify({ state: { enabled: true }, version: 1 }));
+    const storage = createValidatedPersistStorage(backing, StateSchema, "legacy-settings");
+
+    await expect(storage.getItem("settings")).resolves.toEqual({
+      state: { enabled: true },
+      version: 1,
+    });
+    expect(backing.values.get("settings")).toBe(backing.values.get("legacy-settings"));
+  });
+
+  it("ignores legacyName once name already holds a value", async () => {
+    const backing = new MemoryStorage();
+    backing.values.set("settings", JSON.stringify({ state: { enabled: true }, version: 1 }));
+    backing.values.set(
+      "legacy-settings",
+      JSON.stringify({ state: { enabled: false }, version: 1 }),
+    );
+    const storage = createValidatedPersistStorage(backing, StateSchema, "legacy-settings");
+
+    await expect(storage.getItem("settings")).resolves.toEqual({
+      state: { enabled: true },
+      version: 1,
+    });
+  });
+
+  it("returns null when neither name nor legacyName holds a value", async () => {
+    const backing = new MemoryStorage();
+    const storage = createValidatedPersistStorage(backing, StateSchema, "legacy-settings");
+
+    await expect(storage.getItem("settings")).resolves.toBeNull();
+  });
 });

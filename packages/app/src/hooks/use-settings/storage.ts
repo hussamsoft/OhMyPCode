@@ -22,7 +22,7 @@ import {
   type ThemePreference,
 } from "@/styles/theme";
 import { z } from "zod";
-import { APP_SETTINGS_KEY, LEGACY_SETTINGS_KEY } from "./keys";
+import { APP_SETTINGS_KEY, LEGACY_APP_SETTINGS_KEY, LEGACY_SETTINGS_KEY } from "./keys";
 import { migrateAppSettings } from "./migrations";
 
 export { APP_SETTINGS_KEY } from "./keys";
@@ -357,8 +357,7 @@ export async function saveAppSettings(input: {
   input.queryClient.setQueryData<AppSettings>(APP_SETTINGS_QUERY_KEY, next);
   await writeAppSettings(
     input.deps.storage,
-    (await readSettingsObject(input.deps.storage, APP_SETTINGS_KEY)) ??
-      StoredAppSettingsSchema.parse({}),
+    (await readAppSettingsBlob(input.deps.storage))?.value ?? StoredAppSettingsSchema.parse({}),
     next,
   );
 }
@@ -378,19 +377,36 @@ export async function loadAppSettingsFromStorage(deps: SettingsDeps): Promise<Ap
 }
 
 /**
+ * Reads the settings blob from the current key, or from the legacy one it was renamed from.
+ * A hit on a legacy key is reported so the caller rewrites it under the current key.
+ */
+async function readAppSettingsBlob(
+  storage: KeyValueStorage,
+): Promise<{ key: string; value: StoredAppSettings } | null> {
+  for (const key of [APP_SETTINGS_KEY, LEGACY_APP_SETTINGS_KEY]) {
+    const value = await readSettingsObject(storage, key);
+    if (value) {
+      return { key, value };
+    }
+  }
+  return null;
+}
+
+/**
  * Reads whichever of the settings blobs exists, without migrating. `needsWrite` covers the reads
  * that produce settings the stored blob does not already spell out.
  */
 async function readAppSettings(
   deps: SettingsDeps,
 ): Promise<{ settings: AppSettings; needsWrite: boolean; stored: StoredAppSettings }> {
-  const stored = await readSettingsObject(deps.storage, APP_SETTINGS_KEY);
-  if (stored) {
+  const blob = await readAppSettingsBlob(deps.storage);
+  if (blob) {
     return {
-      settings: normalizeAppSettings(stored),
+      settings: normalizeAppSettings(blob.value),
       // COMPAT(uiFontSizeScale): persist the converted base size, remove after 2027-08-17.
-      needsWrite: stored.needsWrite,
-      stored,
+      // COMPAT(2026-09): a blob found under the legacy key is re-persisted under the current key.
+      needsWrite: blob.value.needsWrite || blob.key !== APP_SETTINGS_KEY,
+      stored: blob.value,
     };
   }
 
@@ -537,9 +553,9 @@ async function loadLegacyDesktopSettingsFromStorage(storage: KeyValueStorage): P
 async function loadRendererSettingsPayload(
   storage: KeyValueStorage,
 ): Promise<StoredAppSettings | null> {
-  const current = await readSettingsObject(storage, APP_SETTINGS_KEY);
+  const current = await readAppSettingsBlob(storage);
   if (current) {
-    return current;
+    return current.value;
   }
 
   return readSettingsObject(storage, LEGACY_SETTINGS_KEY);

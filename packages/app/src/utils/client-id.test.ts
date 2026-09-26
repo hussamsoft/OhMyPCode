@@ -27,7 +27,7 @@ function inMemoryStorage(initial: Record<string, string> = {}): InMemoryStorage 
 
 describe("clientIdResolver", () => {
   it("returns the stored client id when present and does not regenerate", async () => {
-    const storage = inMemoryStorage({ "@paseo:client-id-v1": "cid_existing" });
+    const storage = inMemoryStorage({ "@ohmypcode:client-id-v1": "cid_existing" });
     const resolver = createClientIdResolver({
       storage,
       generateUuid: () => {
@@ -47,7 +47,9 @@ describe("clientIdResolver", () => {
     });
 
     expect(await resolver.getOrCreate()).toBe("cid_123456781234123412341234567890ab");
-    expect(storage.items.get("@paseo:client-id-v1")).toBe("cid_123456781234123412341234567890ab");
+    expect(storage.items.get("@ohmypcode:client-id-v1")).toBe(
+      "cid_123456781234123412341234567890ab",
+    );
   });
 
   it("dedupes concurrent callers behind a single storage write", async () => {
@@ -70,6 +72,46 @@ describe("clientIdResolver", () => {
   });
 
   it("ignores stored blank strings and treats them as missing", async () => {
+    const storage = inMemoryStorage({ "@ohmypcode:client-id-v1": "   " });
+    const resolver = createClientIdResolver({
+      storage,
+      generateUuid: () => "newuuid",
+    });
+
+    expect(await resolver.getOrCreate()).toBe("cid_newuuid");
+    expect(storage.items.get("@ohmypcode:client-id-v1")).toBe("cid_newuuid");
+  });
+
+  it("returns an id seeded only under the legacy key without minting a replacement", async () => {
+    const storage = inMemoryStorage({ "@paseo:client-id-v1": "cid_legacy" });
+    const resolver = createClientIdResolver({
+      storage,
+      generateUuid: () => {
+        throw new Error("generateUuid must not run when a legacy id is stored");
+      },
+    });
+
+    expect(await resolver.getOrCreate()).toBe("cid_legacy");
+    expect(storage.items.get("@ohmypcode:client-id-v1")).toBe("cid_legacy");
+  });
+
+  it("prefers the current key over the legacy key", async () => {
+    const storage = inMemoryStorage({
+      "@ohmypcode:client-id-v1": "cid_current",
+      "@paseo:client-id-v1": "cid_legacy",
+    });
+    const resolver = createClientIdResolver({
+      storage,
+      generateUuid: () => {
+        throw new Error("generateUuid should not run when an id is stored");
+      },
+    });
+
+    expect(await resolver.getOrCreate()).toBe("cid_current");
+    expect(storage.setCallCount).toBe(0);
+  });
+
+  it("mints a new id when the legacy key holds only a blank value", async () => {
     const storage = inMemoryStorage({ "@paseo:client-id-v1": "   " });
     const resolver = createClientIdResolver({
       storage,
@@ -77,6 +119,17 @@ describe("clientIdResolver", () => {
     });
 
     expect(await resolver.getOrCreate()).toBe("cid_newuuid");
-    expect(storage.items.get("@paseo:client-id-v1")).toBe("cid_newuuid");
+    expect(storage.items.get("@ohmypcode:client-id-v1")).toBe("cid_newuuid");
+  });
+
+  it("mints once when both keys are empty", async () => {
+    const storage = inMemoryStorage();
+    const resolver = createClientIdResolver({
+      storage,
+      generateUuid: () => "fresh",
+    });
+
+    expect(await resolver.getOrCreate()).toBe("cid_fresh");
+    expect(storage.items.has("@paseo:client-id-v1")).toBe(false);
   });
 });

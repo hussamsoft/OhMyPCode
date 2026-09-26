@@ -3,10 +3,17 @@ import { z } from "zod";
 import type { ProviderSnapshotEntry } from "@getpaseo/protocol/agent-types";
 import type { AgentProfile } from "@getpaseo/protocol/messages";
 import { FormPreferencesSchema } from "@/create-agent-preferences/preferences";
+import {
+  CREATE_AGENT_PREFERENCES_STORAGE_KEY,
+  LEGACY_CREATE_AGENT_PREFERENCES_STORAGE_KEY,
+} from "@/create-agent-preferences/storage";
 import { readValidatedJson, readValidatedString } from "@/storage/validated-storage";
 
-const PREFERENCES_KEY = "@paseo:create-agent-preferences";
-const COMPLETION_KEY_PREFIX = "@paseo:legacy-favorites-to-agent-profiles:v1:";
+const COMPLETION_KEY_PREFIX = "@ohmypcode:legacy-favorites-to-agent-profiles:v1:";
+// COMPAT(2026-09): read legacy @paseo:legacy-favorites-to-agent-profiles:v1: markers once; remove
+// after a migration window. Without this an already-migrated host would re-run the import and
+// resurrect profiles the user deliberately deleted.
+const LEGACY_COMPLETION_KEY_PREFIX = "@paseo:legacy-favorites-to-agent-profiles:v1:";
 const CATALOG_LOADING_RETRY_DELAYS_MS = [100, 250, 500, 1_000, 2_000, 4_000] as const;
 
 type LegacyFavorite = NonNullable<z.infer<typeof FormPreferencesSchema>["favoriteModels"]>[number];
@@ -35,6 +42,11 @@ function supportsMigration(host: LegacyFavoriteMigrationHost): boolean {
 
 function completionKey(serverId: string): string {
   return `${COMPLETION_KEY_PREFIX}${serverId}`;
+}
+
+// COMPAT(2026-09): see LEGACY_COMPLETION_KEY_PREFIX.
+function legacyCompletionKey(serverId: string): string {
+  return `${LEGACY_COMPLETION_KEY_PREFIX}${serverId}`;
 }
 
 function favoriteKey(favorite: Pick<LegacyFavorite, "provider" | "modelId">): string {
@@ -183,15 +195,30 @@ export class LegacyFavoriteProfileMigration {
       return;
     }
     const markerKey = completionKey(serverId);
-    if ((await readValidatedString(this.storage, markerKey, z.literal("1"))) === "1") {
+    const alreadyMigrated =
+      (await readValidatedString(this.storage, markerKey, z.literal("1"))) === "1" ||
+      // COMPAT(2026-09): a marker written before the key rename still has to be honoured, or this
+      // host re-imports its favourites on every connect and undoes profile deletions. Remove
+      // after a migration window.
+      (await readValidatedString(this.storage, legacyCompletionKey(serverId), z.literal("1"))) ===
+        "1";
+    if (alreadyMigrated) {
       return;
     }
 
-    const preferences = await readValidatedJson(
-      this.storage,
-      PREFERENCES_KEY,
-      FormPreferencesSchema,
-    );
+    // COMPAT(2026-09): favourites from before the key rename only exist under the legacy key.
+    // Remove after a migration window.
+    const preferences =
+      (await readValidatedJson(
+        this.storage,
+        CREATE_AGENT_PREFERENCES_STORAGE_KEY,
+        FormPreferencesSchema,
+      )) ??
+      (await readValidatedJson(
+        this.storage,
+        LEGACY_CREATE_AGENT_PREFERENCES_STORAGE_KEY,
+        FormPreferencesSchema,
+      ));
     const favorites = preferences?.favoriteModels ?? [];
     if (favorites.length === 0) {
       await this.storage.setItem(markerKey, "1");

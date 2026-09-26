@@ -109,6 +109,48 @@ describe("buildReviewDraftKey", () => {
   });
 });
 
+describe("review draft store legacy key fallback", () => {
+  it("reads a v1 blob persisted under the pre-rename @paseo key and forward-writes it", async () => {
+    const backing = createMemoryStorage();
+    const legacyState = { drafts: { "review:key": [makeComment()] } };
+    backing.values.set(
+      "@paseo:review-draft-store",
+      JSON.stringify({ state: legacyState, version: 2 }),
+    );
+    const storage = createValidatedPersistStorage(
+      backing,
+      SerializedReviewDraftStateSchema,
+      "@paseo:review-draft-store",
+    );
+
+    const stored = await storage.getItem("@ohmypcode:review-draft-store");
+
+    expect(stored?.state).toEqual(legacyState);
+    expect(backing.values.has("@ohmypcode:review-draft-store")).toBe(true);
+  });
+
+  it("prefers the renamed key once it holds a value", async () => {
+    const backing = createMemoryStorage();
+    backing.values.set(
+      "@ohmypcode:review-draft-store",
+      JSON.stringify({ state: { drafts: { current: [makeComment()] } }, version: 2 }),
+    );
+    backing.values.set(
+      "@paseo:review-draft-store",
+      JSON.stringify({ state: { drafts: {} }, version: 2 }),
+    );
+    const storage = createValidatedPersistStorage(
+      backing,
+      SerializedReviewDraftStateSchema,
+      "@paseo:review-draft-store",
+    );
+
+    const stored = await storage.getItem("@ohmypcode:review-draft-store");
+
+    expect(stored?.state.drafts.current).toEqual([makeComment()]);
+  });
+});
+
 describe("normalizePersistedState", () => {
   it("keeps v1 review comments for migration while dropping the legacy mode field", async () => {
     const backing = createMemoryStorage();

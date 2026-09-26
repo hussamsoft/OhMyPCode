@@ -6,9 +6,11 @@ import {
   createShortcutOverrideStore,
   type ShortcutOverrideStore,
 } from "@/keyboard/shortcut-override-store";
-import { readValidatedJson } from "@/storage/validated-storage";
+import { readValidatedJson, type ValidatedStorage } from "@/storage/validated-storage";
 
-const STORAGE_KEY = "@paseo:keyboard-shortcut-overrides";
+const STORAGE_KEY = "@ohmypcode:keyboard-shortcut-overrides";
+// COMPAT(2026-09): read legacy @paseo:keyboard-shortcut-overrides once; remove after a migration window.
+const LEGACY_STORAGE_KEY = "@paseo:keyboard-shortcut-overrides";
 const QUERY_KEY = ["keyboard-shortcut-overrides"];
 
 const EMPTY_OVERRIDES: ShortcutOverrides = {};
@@ -77,12 +79,19 @@ function getStore(queryClient: QueryClient): ShortcutOverrideStore {
   return created;
 }
 
+/** Exported so the legacy-key fallback can be exercised without the AsyncStorage singleton. */
+export async function readShortcutOverrides(storage: ValidatedStorage): Promise<ShortcutOverrides> {
+  return (
+    (await readValidatedJson(storage, STORAGE_KEY, ShortcutOverridesSchema)) ??
+    // COMPAT(2026-09): read legacy @paseo:keyboard-shortcut-overrides once; remove after a migration window.
+    (await readValidatedJson(storage, LEGACY_STORAGE_KEY, ShortcutOverridesSchema)) ??
+    EMPTY_OVERRIDES
+  );
+}
+
 async function loadOverridesFromStorage(): Promise<ShortcutOverrides> {
   try {
-    return (
-      (await readValidatedJson(AsyncStorage, STORAGE_KEY, ShortcutOverridesSchema)) ??
-      EMPTY_OVERRIDES
-    );
+    return await readShortcutOverrides(AsyncStorage);
   } catch (err) {
     console.error("[KeyboardShortcutOverrides] Failed to load overrides:", err);
   }

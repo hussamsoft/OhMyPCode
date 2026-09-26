@@ -2,7 +2,9 @@ import type { QueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { readValidatedJson, readValidatedString } from "@/storage/validated-storage";
 
-export const CHANGES_PREFERENCES_STORAGE_KEY = "@paseo:changes-preferences";
+export const CHANGES_PREFERENCES_STORAGE_KEY = "@ohmypcode:changes-preferences";
+// COMPAT(2026-09): read legacy @paseo:changes-preferences once; remove after a migration window.
+export const LEGACY_CHANGES_PREFERENCES_STORAGE_KEY = "@paseo:changes-preferences";
 export const LEGACY_WRAP_LINES_STORAGE_KEY = "diff-wrap-lines";
 export const CHANGES_PREFERENCES_QUERY_KEY = ["changes-preferences"];
 
@@ -53,18 +55,31 @@ async function loadLegacyWrapLinesPreference(storage: KeyValueStorage): Promise<
 export async function loadChangesPreferencesFromStorage(
   storage: KeyValueStorage,
 ): Promise<ChangesPreferences> {
-  const stored = await readValidatedJson(
+  const current = await readValidatedJson(
     storage,
     CHANGES_PREFERENCES_STORAGE_KEY,
     changesPreferencesSchema,
   );
+  const stored =
+    current ??
+    // COMPAT(2026-09): read legacy @paseo:changes-preferences once; remove after a migration window.
+    (await readValidatedJson(
+      storage,
+      LEGACY_CHANGES_PREFERENCES_STORAGE_KEY,
+      changesPreferencesSchema,
+    ));
   if (stored) {
     const { viewMode, ...currentPreferences } = stored;
-    return {
+    const next = {
       ...DEFAULT_CHANGES_PREFERENCES,
       ...currentPreferences,
       desktopTreeVisible: stored.desktopTreeVisible ?? viewMode === "tree",
-    };
+    } satisfies ChangesPreferences;
+    if (!current) {
+      // A legacy blob is rewritten once under the current key, then never read again.
+      await storage.setItem(CHANGES_PREFERENCES_STORAGE_KEY, JSON.stringify(next));
+    }
+    return next;
   }
 
   const legacyWrapLines = await loadLegacyWrapLinesPreference(storage);

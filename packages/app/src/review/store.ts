@@ -150,9 +150,14 @@ export const useReviewDraftStore = create<ReviewDraftStore>()(
       },
     }),
     {
-      name: "@paseo:review-draft-store",
+      // COMPAT(2026-09): read legacy @paseo:review-draft-store once; remove after a migration window.
+      name: "@ohmypcode:review-draft-store",
       version: STORE_VERSION,
-      storage: createValidatedPersistStorage(AsyncStorage, SerializedReviewDraftStateSchema),
+      storage: createValidatedPersistStorage(
+        AsyncStorage,
+        SerializedReviewDraftStateSchema,
+        "@paseo:review-draft-store",
+      ),
       partialize: (state) => serializeReviewDraftState(state),
       migrate: async (state) => normalizePersistedState(state),
     },

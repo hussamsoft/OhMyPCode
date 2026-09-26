@@ -2,7 +2,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { z } from "zod";
 import { readValidatedString } from "@/storage/validated-storage";
 
-const CLIENT_ID_STORAGE_KEY = "@paseo:client-id-v1";
+const CLIENT_ID_STORAGE_KEY = "@ohmypcode:client-id-v1";
+// COMPAT(2026-09-26): read legacy @paseo:client-id-v1 once; remove after a migration window.
+const LEGACY_CLIENT_ID_STORAGE_KEY = "@paseo:client-id-v1";
 
 export interface ClientIdStorage {
   getItem(key: string): Promise<string | null>;
@@ -39,6 +41,22 @@ export function createClientIdResolver(deps: {
         if (existing) {
           cached = existing;
           return existing;
+        }
+
+        // COMPAT(2026-09-26): the legacy key holds the id the daemon already knows, so it must
+        // count as a cache hit — minting over it would hand the user a new identity. Forward it
+        // to the new key on this same read rather than leaving the fallback to a boot-time copy.
+        if (storageKey === CLIENT_ID_STORAGE_KEY) {
+          const legacy = await readValidatedString(
+            deps.storage,
+            LEGACY_CLIENT_ID_STORAGE_KEY,
+            ClientIdSchema,
+          );
+          if (legacy) {
+            await deps.storage.setItem(storageKey, legacy);
+            cached = legacy;
+            return legacy;
+          }
         }
 
         const next = `cid_${deps.generateUuid()}`;

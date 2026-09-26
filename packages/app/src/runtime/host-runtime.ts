@@ -1311,11 +1311,19 @@ export class HostRuntimeController {
   }
 }
 
-const REGISTRY_STORAGE_KEY = "@paseo:daemon-registry";
+const REGISTRY_STORAGE_KEY = "@ohmypcode:daemon-registry";
+// COMPAT(2026-09-26): read legacy @paseo:daemon-registry once; remove after a migration window.
+// This registry is the user's list of already-paired daemon hosts, so a rename that dropped it
+// would silently disconnect them from hosts they paired.
+const LEGACY_REGISTRY_STORAGE_KEY = "@paseo:daemon-registry";
 const LOCALHOST_FALLBACK_ENDPOINT = "localhost:6767";
 const DEFAULT_LOCALHOST_BOOTSTRAP_TIMEOUT_MS = 2500;
-const E2E_STORAGE_KEY = "@paseo:e2e";
-const INITIAL_DAEMON_CONNECTION_HINT_GLOBAL_KEY = "__PASEO_INITIAL_DAEMON_CONNECTION__";
+// Straight rename, no legacy fallback: only the e2e harness ever writes this flag to mark an
+// automated run, so it is never real user data and no upgrade path depends on it.
+const E2E_STORAGE_KEY = "@ohmypcode:e2e";
+// Straight rename, no legacy fallback: this global is an in-memory page-load bridge injected by
+// the server's inline <script> tag (never persisted), and the injecting build is the reading build.
+const INITIAL_DAEMON_CONNECTION_HINT_GLOBAL_KEY = "__OMPCODE_INITIAL_DAEMON_CONNECTION__";
 
 export interface InitialDaemonConnectionHint {
   listen: string;
@@ -1481,17 +1489,13 @@ export class HostRuntimeStore {
     let shouldPersistHosts = false;
     let profiles: HostProfile[] = [];
     try {
-      const stored = await readValidatedJson(
-        this.storage,
-        REGISTRY_STORAGE_KEY,
-        StoredHostRegistrySchema,
-      );
-      if (stored) {
+      const storedRegistry = await this.readStoredRegistry();
+      if (storedRegistry) {
         const normalizedProfiles: HostProfile[] = [];
-        for (const entry of stored) {
+        for (const entry of storedRegistry.hosts) {
           const profile = normalizeStoredHostProfile(entry);
           if (!profile) {
-            await this.storage.removeItem(REGISTRY_STORAGE_KEY);
+            await this.storage.removeItem(storedRegistry.key);
             normalizedProfiles.length = 0;
             break;
           }
@@ -1524,6 +1528,33 @@ export class HostRuntimeStore {
         );
       }
     }
+  }
+
+  /**
+   * Returns the registry along with the storage key it came from, so a corrupt entry is removed
+   * from the key that actually held it.
+   */
+  private async readStoredRegistry(): Promise<{
+    key: string;
+    hosts: z.infer<typeof StoredHostRegistrySchema>;
+  } | null> {
+    const current = await readValidatedJson(
+      this.storage,
+      REGISTRY_STORAGE_KEY,
+      StoredHostRegistrySchema,
+    );
+    if (current) {
+      return { key: REGISTRY_STORAGE_KEY, hosts: current };
+    }
+    // COMPAT(2026-09-26): read legacy @paseo:daemon-registry once; remove after a migration
+    // window. Writes only ever target the new key, so this read retires itself on the next
+    // host-list change.
+    const legacy = await readValidatedJson(
+      this.storage,
+      LEGACY_REGISTRY_STORAGE_KEY,
+      StoredHostRegistrySchema,
+    );
+    return legacy ? { key: LEGACY_REGISTRY_STORAGE_KEY, hosts: legacy } : null;
   }
 
   private markHostRegistryLoaded(): void {

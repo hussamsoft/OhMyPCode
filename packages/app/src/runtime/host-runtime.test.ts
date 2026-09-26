@@ -238,7 +238,7 @@ class FakeDaemonClient {
 
 afterEach(() => {
   vi.useRealTimers();
-  delete (globalThis as Record<string, unknown>).__PASEO_INITIAL_DAEMON_CONNECTION__;
+  delete (globalThis as Record<string, unknown>).__OMPCODE_INITIAL_DAEMON_CONNECTION__;
   delete (globalThis as { window?: unknown }).window;
 });
 
@@ -1648,8 +1648,8 @@ describe("HostRuntimeStore", () => {
     const host = makeHost({ connections: [makeHost().connections[0]!] });
     const revocation = createDeferred<void>();
     const storage = createMemoryHostRuntimeStorage({
-      "@paseo:daemon-registry": JSON.stringify([host]),
-      "@paseo:e2e": "1",
+      "@ohmypcode:daemon-registry": JSON.stringify([host]),
+      "@ohmypcode:e2e": "1",
     });
     const store = new HostRuntimeStore({
       storage,
@@ -1674,8 +1674,8 @@ describe("HostRuntimeStore", () => {
     const host = makeHost({ connections: [makeHost().connections[0]!] });
     const revokedServerIds: string[] = [];
     const storage = createMemoryHostRuntimeStorage({
-      "@paseo:daemon-registry": JSON.stringify([host]),
-      "@paseo:e2e": "1",
+      "@ohmypcode:daemon-registry": JSON.stringify([host]),
+      "@ohmypcode:e2e": "1",
     });
     const store = new HostRuntimeStore({
       storage,
@@ -1704,8 +1704,8 @@ describe("HostRuntimeStore", () => {
         return backingStore.read(...args);
       },
     };
-    await storage.setItem("@paseo:daemon-registry", JSON.stringify([host]));
-    await storage.setItem("@paseo:e2e", "1");
+    await storage.setItem("@ohmypcode:daemon-registry", JSON.stringify([host]));
+    await storage.setItem("@ohmypcode:e2e", "1");
     const session = useSessionStore.getState();
 
     const store = new HostRuntimeStore({
@@ -1736,6 +1736,45 @@ describe("HostRuntimeStore", () => {
 
     store.syncHosts([]);
     session.clearSession(host.serverId);
+  });
+
+  it("restores the host registry from the legacy storage key", async () => {
+    const host = makeHost();
+    const storage = createMemoryHostRuntimeStorage({
+      "@paseo:daemon-registry": JSON.stringify([host]),
+      "@ohmypcode:e2e": "1",
+    });
+    const store = new HostRuntimeStore({
+      storage,
+      deps: makeDeps({}, []),
+    });
+    await store.boot();
+
+    expect(store.getHosts().map((candidate) => candidate.serverId)).toEqual([host.serverId]);
+
+    await store.renameHost(host.serverId, "Renamed");
+    expect(JSON.parse((await storage.getItem("@ohmypcode:daemon-registry")) ?? "[]")).toMatchObject(
+      [{ serverId: host.serverId, label: "Renamed" }],
+    );
+    expect(await storage.getItem("@paseo:daemon-registry")).toBe(JSON.stringify([host]));
+    store.syncHosts([]);
+  });
+
+  it("prefers the current registry key when both keys hold a host list", async () => {
+    const current = makeHost();
+    const storage = createMemoryHostRuntimeStorage({
+      "@ohmypcode:daemon-registry": JSON.stringify([current]),
+      "@paseo:daemon-registry": JSON.stringify([makeHost({ serverId: "srv_legacy" })]),
+      "@ohmypcode:e2e": "1",
+    });
+    const store = new HostRuntimeStore({
+      storage,
+      deps: makeDeps({}, []),
+    });
+    await store.boot();
+
+    expect(store.getHosts().map((candidate) => candidate.serverId)).toEqual([current.serverId]);
+    store.syncHosts([]);
   });
 
   it("marks the host registry loaded after boot reads storage", async () => {
@@ -1783,7 +1822,7 @@ describe("HostRuntimeStore", () => {
   it("exposes the default appearance for a host stored before the field existed", async () => {
     const storage = createMemoryHostRuntimeStorage();
     await storage.setItem(
-      "@paseo:daemon-registry",
+      "@ohmypcode:daemon-registry",
       JSON.stringify([
         {
           serverId: "srv_legacy",
@@ -1795,7 +1834,7 @@ describe("HostRuntimeStore", () => {
         },
       ]),
     );
-    await storage.setItem("@paseo:e2e", "1");
+    await storage.setItem("@ohmypcode:e2e", "1");
     const store = createAppearanceStore(storage);
 
     const registryLoaded = onceHostListMatches(store, () => store.isHostRegistryLoaded());
@@ -1810,8 +1849,8 @@ describe("HostRuntimeStore", () => {
   it("records a chosen host color and writes it through to storage", async () => {
     const host = makeHost({ serverId: "srv_appearance", updatedAt: new Date(0).toISOString() });
     const storage = createMemoryHostRuntimeStorage();
-    await storage.setItem("@paseo:daemon-registry", JSON.stringify([host]));
-    await storage.setItem("@paseo:e2e", "1");
+    await storage.setItem("@ohmypcode:daemon-registry", JSON.stringify([host]));
+    await storage.setItem("@ohmypcode:e2e", "1");
     const store = createAppearanceStore(storage);
 
     const registryLoaded = onceHostListMatches(store, () => store.isHostRegistryLoaded());
@@ -1829,7 +1868,7 @@ describe("HostRuntimeStore", () => {
     expect(updated?.appearance).toEqual({ color: "teal", badgeDisplay: null });
     expect(updated?.updatedAt).not.toBe(host.updatedAt);
 
-    const persisted = await storage.getItem("@paseo:daemon-registry");
+    const persisted = await storage.getItem("@ohmypcode:daemon-registry");
     expect(JSON.parse(persisted ?? "[]")[0].appearance).toEqual({
       color: "teal",
       badgeDisplay: null,
@@ -1844,8 +1883,8 @@ describe("HostRuntimeStore", () => {
       appearance: { color: "amber", badgeDisplay: null },
     });
     const storage = createMemoryHostRuntimeStorage();
-    await storage.setItem("@paseo:daemon-registry", JSON.stringify([host]));
-    await storage.setItem("@paseo:e2e", "1");
+    await storage.setItem("@ohmypcode:daemon-registry", JSON.stringify([host]));
+    await storage.setItem("@ohmypcode:e2e", "1");
     const store = createAppearanceStore(storage);
 
     const registryLoaded = onceHostListMatches(store, () => store.isHostRegistryLoaded());
@@ -1861,7 +1900,7 @@ describe("HostRuntimeStore", () => {
 
     expect(store.getHosts()[0]?.appearance).toEqual({ color: "amber", badgeDisplay: "icon" });
 
-    const persisted = await storage.getItem("@paseo:daemon-registry");
+    const persisted = await storage.getItem("@ohmypcode:daemon-registry");
     expect(JSON.parse(persisted ?? "[]")[0].appearance).toEqual({
       color: "amber",
       badgeDisplay: "icon",
@@ -1873,8 +1912,8 @@ describe("HostRuntimeStore", () => {
   it("keeps host appearance unchanged when persistence fails", async () => {
     const host = makeHost({ serverId: "srv_appearance" });
     const storage = createMemoryHostRuntimeStorage();
-    await storage.setItem("@paseo:daemon-registry", JSON.stringify([host]));
-    await storage.setItem("@paseo:e2e", "1");
+    await storage.setItem("@ohmypcode:daemon-registry", JSON.stringify([host]));
+    await storage.setItem("@ohmypcode:e2e", "1");
     const store = createAppearanceStore(storage);
 
     const registryLoaded = onceHostListMatches(store, () => store.isHostRegistryLoaded());
@@ -1894,8 +1933,8 @@ describe("HostRuntimeStore", () => {
   it("serializes overlapping host appearance writes", async () => {
     const host = makeHost({ serverId: "srv_appearance" });
     const storage = createMemoryHostRuntimeStorage();
-    await storage.setItem("@paseo:daemon-registry", JSON.stringify([host]));
-    await storage.setItem("@paseo:e2e", "1");
+    await storage.setItem("@ohmypcode:daemon-registry", JSON.stringify([host]));
+    await storage.setItem("@ohmypcode:e2e", "1");
     const store = createAppearanceStore(storage);
 
     const registryLoaded = onceHostListMatches(store, () => store.isHostRegistryLoaded());
@@ -1920,7 +1959,9 @@ describe("HostRuntimeStore", () => {
     await Promise.all([color, display]);
 
     expect(store.getHosts()[0]?.appearance).toEqual({ color: "teal", badgeDisplay: "icon" });
-    const persistedHosts = JSON.parse((await storage.getItem("@paseo:daemon-registry")) ?? "[]");
+    const persistedHosts = JSON.parse(
+      (await storage.getItem("@ohmypcode:daemon-registry")) ?? "[]",
+    );
     expect(persistedHosts[0]?.appearance).toEqual({ color: "teal", badgeDisplay: "icon" });
     store.syncHosts([]);
   });
@@ -3593,7 +3634,7 @@ describe("readInitialDaemonConnectionHint", () => {
   });
 
   it("parses a valid listen-only hint", () => {
-    (globalThis as Record<string, unknown>).__PASEO_INITIAL_DAEMON_CONNECTION__ = {
+    (globalThis as Record<string, unknown>).__OMPCODE_INITIAL_DAEMON_CONNECTION__ = {
       listen: "localhost:6767",
     };
     expect(readInitialDaemonConnectionHint({ isWebRuntime: true })).toEqual({
@@ -3603,7 +3644,7 @@ describe("readInitialDaemonConnectionHint", () => {
   });
 
   it("preserves useTls when explicitly true", () => {
-    (globalThis as Record<string, unknown>).__PASEO_INITIAL_DAEMON_CONNECTION__ = {
+    (globalThis as Record<string, unknown>).__OMPCODE_INITIAL_DAEMON_CONNECTION__ = {
       listen: "paseo.example.com:443",
       useTls: true,
     };
@@ -3614,10 +3655,11 @@ describe("readInitialDaemonConnectionHint", () => {
   });
 
   it("ignores invalid shapes", () => {
-    (globalThis as Record<string, unknown>).__PASEO_INITIAL_DAEMON_CONNECTION__ = "localhost:6767";
+    (globalThis as Record<string, unknown>).__OMPCODE_INITIAL_DAEMON_CONNECTION__ =
+      "localhost:6767";
     expect(readInitialDaemonConnectionHint({ isWebRuntime: true })).toBeNull();
 
-    (globalThis as Record<string, unknown>).__PASEO_INITIAL_DAEMON_CONNECTION__ = {
+    (globalThis as Record<string, unknown>).__OMPCODE_INITIAL_DAEMON_CONNECTION__ = {
       useTls: true,
     };
     expect(readInitialDaemonConnectionHint({ isWebRuntime: true })).toBeNull();

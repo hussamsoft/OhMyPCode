@@ -81,4 +81,55 @@ describe("ProjectIconCache", () => {
     ).not.toHaveProperty("initialData");
     expect(cache.query(other, true, () => null, false)).toHaveProperty("initialData", null);
   });
+
+  it("hydrates from the legacy cache key and rewrites only the current key", async () => {
+    const storage = new MemoryStorage();
+    storage.values.set(
+      "@paseo:project-icon-cache",
+      JSON.stringify({
+        version: 1,
+        entries: [
+          {
+            serverId: target.serverId,
+            projectId: target.projectId,
+            revision: target.iconRevision,
+            icon,
+          },
+        ],
+      }),
+    );
+    const cache = new ProjectIconCache(storage);
+    cache.setHosts([target.serverId]);
+    await cache.restore();
+
+    expect(cache.query(target, true, () => null, false).initialData).toEqual(icon);
+
+    await cache.flush();
+    expect(storage.values.has("@paseo:project-icon-cache")).toBe(true);
+    expect(storage.values.get("@ohmypcode:project-icon-cache")).toBeDefined();
+  });
+
+  it("prefers the current cache key when both keys hold a payload", async () => {
+    const storage = new MemoryStorage();
+    storage.values.set("@ohmypcode:project-icon-cache", "not json");
+    storage.values.set(
+      "@paseo:project-icon-cache",
+      JSON.stringify({
+        version: 1,
+        entries: [
+          {
+            serverId: target.serverId,
+            projectId: target.projectId,
+            revision: target.iconRevision,
+            icon,
+          },
+        ],
+      }),
+    );
+    const cache = new ProjectIconCache(storage);
+    cache.setHosts([target.serverId]);
+    await cache.restore();
+
+    expect(cache.query(target, true, () => null, false)).not.toHaveProperty("initialData");
+  });
 });

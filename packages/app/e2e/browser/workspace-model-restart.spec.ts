@@ -327,7 +327,7 @@ async function seedBrowserForDaemon(page: Page, input: { serverId: string; port:
   });
   await page.evaluate(
     ({ daemon, preferences }) => {
-      localStorage.setItem("@paseo:e2e", "1");
+      localStorage.setItem("@ohmypcode:e2e", "1");
       localStorage.setItem("@paseo:daemon-registry", JSON.stringify([daemon]));
       localStorage.removeItem("@paseo:settings");
       localStorage.setItem("@paseo:create-agent-preferences", JSON.stringify(preferences));

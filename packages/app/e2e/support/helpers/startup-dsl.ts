@@ -6,7 +6,7 @@ import { wsRoutePatternForPort } from "./daemon-port";
 const DISABLE_DEFAULT_SEED_ONCE_KEY = "@paseo:e2e-disable-default-seed-once";
 const SEED_NONCE_KEY = "@paseo:e2e-seed-nonce";
 const REGISTRY_KEY = "@paseo:daemon-registry";
-const E2E_KEY = "@paseo:e2e";
+const E2E_KEY = "@ohmypcode:e2e";
 const STORAGE_SEED_HTML = "<!doctype html><html><body>storage seed</body></html>";
 
 interface SavedHostInput {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createInMemoryKeyValueStorage } from "./fakes";
-import { APP_SETTINGS_KEY, SETTINGS_MIGRATIONS_KEY } from "./keys";
+import { APP_SETTINGS_KEY, LEGACY_SETTINGS_MIGRATIONS_KEY, SETTINGS_MIGRATIONS_KEY } from "./keys";
 import { migrateAppSettings } from "./migrations";
 import { DEFAULT_CLIENT_SETTINGS, type AppSettings, type SendBehavior } from "./storage";
 
@@ -145,5 +145,36 @@ describe("migrateAppSettings", () => {
 
     expect(result.sendBehavior).toBe("steer");
     expect(appliedIds(recovered)).toEqual(["steer-default"]);
+  });
+
+  it("counts a marker written under the legacy key as already applied", async () => {
+    const storage = createInMemoryKeyValueStorage({
+      [LEGACY_SETTINGS_MIGRATIONS_KEY]: JSON.stringify({ applied: ["steer-default"] }),
+    });
+
+    const result = await migrateAppSettings(settingsWith("interrupt"), storage);
+
+    expect(result.sendBehavior).toBe("interrupt");
+    expect(storage.entries.has(APP_SETTINGS_KEY)).toBe(false);
+  });
+
+  it("keeps new markers off the legacy key while a stale one is still there", async () => {
+    const storage = createInMemoryKeyValueStorage({
+      [LEGACY_SETTINGS_MIGRATIONS_KEY]: JSON.stringify({ applied: ["steer-default"] }),
+    });
+
+    await migrateAppSettings(
+      { ...settingsWith("interrupt"), contentFontSize: 15 },
+      storage,
+      undefined,
+      {
+        native: true,
+      },
+    );
+
+    expect(appliedIds(storage)).toEqual(["steer-default", "mobile-content-16"]);
+    expect(storage.entries.get(LEGACY_SETTINGS_MIGRATIONS_KEY)).toBe(
+      JSON.stringify({ applied: ["steer-default"] }),
+    );
   });
 });

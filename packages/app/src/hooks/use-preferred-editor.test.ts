@@ -1,5 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { resolvePreferredEditorId } from "./use-preferred-editor";
+import { readPreferredEditorId, resolvePreferredEditorId } from "./use-preferred-editor";
+
+function createMemoryStorage(initial: Record<string, string>) {
+  const entries = new Map(Object.entries(initial));
+  return {
+    async getItem(key: string) {
+      return entries.get(key) ?? null;
+    },
+    async removeItem(key: string) {
+      entries.delete(key);
+    },
+  };
+}
+
+describe("readPreferredEditorId", () => {
+  it("reads the editor id stored under the legacy key", async () => {
+    const storage = createMemoryStorage({ "@paseo:preferred-editor": "vscode" });
+
+    expect(await readPreferredEditorId(storage)).toBe("vscode");
+  });
+
+  it("prefers the current key over the legacy one", async () => {
+    const storage = createMemoryStorage({
+      "@ohmypcode:preferred-editor": "zed",
+      "@paseo:preferred-editor": "vscode",
+    });
+
+    expect(await readPreferredEditorId(storage)).toBe("zed");
+  });
+
+  it("returns null when neither key holds a value", async () => {
+    expect(await readPreferredEditorId(createMemoryStorage({}))).toBeNull();
+  });
+});
 
 describe("resolvePreferredEditorId", () => {
   it("keeps the stored editor when it is still available", () => {

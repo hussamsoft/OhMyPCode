@@ -148,7 +148,7 @@ export async function primeAdditionalPage(page: Page): Promise<void> {
         }
       }
 
-      localStorage.setItem("@paseo:e2e", "1");
+      localStorage.setItem("@ohmypcode:e2e", "1");
       localStorage.setItem("@paseo:e2e-seed-nonce", nonce);
       localStorage.setItem("@paseo:daemon-registry", JSON.stringify([seededDaemon]));
       localStorage.removeItem("@paseo:settings");
@@ -165,7 +165,7 @@ export async function resetSeededPageState(page: Page): Promise<void> {
   await page.evaluate(
     ({ daemon: seededDaemon, preferences: seededPreferences }) => {
       localStorage.clear();
-      localStorage.setItem("@paseo:e2e", "1");
+      localStorage.setItem("@ohmypcode:e2e", "1");
       localStorage.setItem("@paseo:daemon-registry", JSON.stringify([seededDaemon]));
       localStorage.setItem("@paseo:create-agent-preferences", JSON.stringify(seededPreferences));
       localStorage.removeItem("@paseo:settings");

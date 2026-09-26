@@ -1,8 +1,50 @@
 import { describe, expect, it } from "vitest";
+import { createFakeDesktopBridge, createInMemoryKeyValueStorage } from "./fakes";
+import { APP_SETTINGS_KEY, LEGACY_APP_SETTINGS_KEY } from "./keys";
 import {
   DEFAULT_THEME_PREFERENCE,
+  loadAppSettingsFromStorage,
   resolveDefaultThemePreference,
 } from "@/hooks/use-settings/storage";
+
+describe("app settings storage key", () => {
+  it("reads a blob stored under the legacy key and re-persists it under the current key", async () => {
+    const storage = createInMemoryKeyValueStorage({
+      [LEGACY_APP_SETTINGS_KEY]: JSON.stringify({
+        chatOutlineEnabled: true,
+        sendBehavior: "queue",
+      }),
+    });
+
+    const settings = await loadAppSettingsFromStorage({
+      storage,
+      desktop: createFakeDesktopBridge(),
+    });
+
+    expect(settings.chatOutlineEnabled).toBe(true);
+    expect(settings.sendBehavior).toBe("queue");
+    expect(JSON.parse(storage.entries.get(APP_SETTINGS_KEY) ?? "null")).toMatchObject({
+      chatOutlineEnabled: true,
+      sendBehavior: "queue",
+    });
+  });
+
+  it("prefers the current key over the legacy one", async () => {
+    const settings = await loadAppSettingsFromStorage({
+      storage: createInMemoryKeyValueStorage({
+        [APP_SETTINGS_KEY]: JSON.stringify({ chatOutlineEnabled: true }),
+        [LEGACY_APP_SETTINGS_KEY]: JSON.stringify({
+          chatOutlineEnabled: false,
+          sendBehavior: "queue",
+        }),
+      }),
+      desktop: createFakeDesktopBridge(),
+    });
+
+    expect(settings.chatOutlineEnabled).toBe(true);
+    expect(settings.sendBehavior).not.toBe("queue");
+  });
+});
 
 describe("default theme preference policy", () => {
   it('resolves to "auto" on native so existing iOS / Android behavior is preserved', () => {

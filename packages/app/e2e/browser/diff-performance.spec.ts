@@ -404,9 +404,9 @@ async function configureUnwrappedUnifiedDiff(page: Page): Promise<void> {
   await page.addInitScript(
     ({ preferencesKey }) => {
       const scope = globalThis as typeof globalThis & {
-        __PASEO_DIFF_REACT_STATS__?: { commits: number };
+        __OMPCODE_DIFF_REACT_STATS__?: { commits: number };
       };
-      scope.__PASEO_DIFF_REACT_STATS__ = { commits: 0 };
+      scope.__OMPCODE_DIFF_REACT_STATS__ = { commits: 0 };
       if (!localStorage.getItem(preferencesKey)) {
         localStorage.setItem(
           preferencesKey,
@@ -749,14 +749,14 @@ async function setHorizontalOffset(locator: Locator, offset: number) {
 async function startRendererInstrumentation(page: Page): Promise<void> {
   await page.getByTestId("git-diff-canvas-root").evaluate((root) => {
     const scope = globalThis as typeof globalThis & {
-      __PASEO_DIFF_REACT_STATS__?: { commits: number };
+      __OMPCODE_DIFF_REACT_STATS__?: { commits: number };
       __PASEO_DIFF_RENDERER_STATS__?: {
         initialCommits: number;
         addedElements: number;
         removedElements: number;
       };
     };
-    const reactStats = scope.__PASEO_DIFF_REACT_STATS__ ?? { commits: 0, unmounts: 0 };
+    const reactStats = scope.__OMPCODE_DIFF_REACT_STATS__ ?? { commits: 0, unmounts: 0 };
     const stats = {
       initialCommits: reactStats.commits,
       addedElements: 0,
@@ -783,14 +783,14 @@ async function readRendererInstrumentation(page: Page): Promise<{
 }> {
   return page.evaluate(() => {
     const scope = globalThis as typeof globalThis & {
-      __PASEO_DIFF_REACT_STATS__?: { commits: number };
+      __OMPCODE_DIFF_REACT_STATS__?: { commits: number };
       __PASEO_DIFF_RENDERER_STATS__?: {
         initialCommits: number;
         addedElements: number;
         removedElements: number;
       };
     };
-    const react = scope.__PASEO_DIFF_REACT_STATS__!;
+    const react = scope.__OMPCODE_DIFF_REACT_STATS__!;
     const renderer = scope.__PASEO_DIFF_RENDERER_STATS__!;
     return {
       reactCommits: react.commits - renderer.initialCommits,

@@ -176,7 +176,7 @@ const test = daemonTest.extend<{
             }
           }
 
-          localStorage.setItem("@paseo:e2e", "1");
+          localStorage.setItem("@ohmypcode:e2e", "1");
           localStorage.setItem("@paseo:e2e-seed-nonce", nonce);
 
           const rawExtraHosts = localStorage.getItem(extraHostsKey);

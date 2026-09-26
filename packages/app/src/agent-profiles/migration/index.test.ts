@@ -22,6 +22,10 @@ class MemoryStorage {
   async removeItem(key: string): Promise<void> {
     this.values.delete(key);
   }
+
+  peek(key: string): string | null {
+    return this.values.get(key) ?? null;
+  }
 }
 
 class FakeProfileHost {
@@ -97,7 +101,18 @@ class FakeProfileHost {
   }
 }
 
-const PREFERENCES_KEY = "@paseo:create-agent-preferences";
+const PREFERENCES_KEY = "@ohmypcode:create-agent-preferences";
+const LEGACY_PREFERENCES_KEY = "@paseo:create-agent-preferences";
+const COMPLETION_KEY_PREFIX = "@ohmypcode:legacy-favorites-to-agent-profiles:v1:";
+const LEGACY_COMPLETION_KEY_PREFIX = "@paseo:legacy-favorites-to-agent-profiles:v1:";
+
+function legacyFavoritesStorage() {
+  return new MemoryStorage({
+    [LEGACY_PREFERENCES_KEY]: {
+      favoriteModels: [{ provider: "claude", modelId: "opus" }],
+    },
+  });
+}
 
 function migrationStorage() {
   return new MemoryStorage({
@@ -199,5 +214,57 @@ describe("legacy favourite profile migration", () => {
     await migration.migrateHost("host-a", host);
 
     expect(host.patches[0]?.map((profile) => profile.name)).toEqual(["Opus", "Sonnet"]);
+  });
+
+  it("imports favourites stored only under the pre-rename preferences key", async () => {
+    const storage = legacyFavoritesStorage();
+    const host = new FakeProfileHost();
+    const migration = new LegacyFavoriteProfileMigration(storage);
+
+    await migration.migrateHost("host-a", host);
+
+    expect(host.patches).toEqual([
+      [
+        {
+          id: "legacy_favorite:claude:opus",
+          name: "Opus",
+          provider: "claude",
+          model: "opus",
+        },
+      ],
+    ]);
+    expect(storage.peek(`${COMPLETION_KEY_PREFIX}host-a`)).toBe("1");
+  });
+
+  it("honours a completion marker written under the pre-rename prefix", async () => {
+    const storage = legacyFavoritesStorage();
+    // Completion markers are raw strings, so they cannot ride in the JSON-seeded constructor.
+    await storage.setItem(`${LEGACY_COMPLETION_KEY_PREFIX}host-a`, "1");
+    const migratedHost = new FakeProfileHost();
+    const migration = new LegacyFavoriteProfileMigration(storage);
+
+    await migration.migrateHost("host-a", migratedHost);
+    expect(migratedHost.patches).toHaveLength(0);
+
+    const untouchedHost = new FakeProfileHost();
+    await migration.migrateHost("host-b", untouchedHost);
+    expect(untouchedHost.patches).toHaveLength(1);
+  });
+
+  it("prefers the renamed preferences key over the pre-rename one", async () => {
+    const storage = new MemoryStorage({
+      [PREFERENCES_KEY]: {
+        favoriteModels: [{ provider: "claude", modelId: "sonnet" }],
+      },
+      [LEGACY_PREFERENCES_KEY]: {
+        favoriteModels: [{ provider: "claude", modelId: "opus" }],
+      },
+    });
+    const host = new FakeProfileHost();
+    const migration = new LegacyFavoriteProfileMigration(storage);
+
+    await migration.migrateHost("host-a", host);
+
+    expect(host.patches[0]?.map((profile) => profile.model)).toEqual(["sonnet"]);
   });
 });

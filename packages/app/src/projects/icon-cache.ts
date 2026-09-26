@@ -3,7 +3,11 @@ import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
 import { projectIconCacheStorage } from "./icon-cache-storage";
 import type { ProjectIconTarget } from "./icon-target";
 
-const STORAGE_KEY = "@paseo:project-icon-cache";
+const STORAGE_KEY = "@ohmypcode:project-icon-cache";
+// COMPAT(2026-09-26): read legacy @paseo:project-icon-cache once; remove after a migration window.
+// The cache is rebuildable, but dropping it makes every project icon refetch and flash, so it
+// takes the same fallback as the non-rebuildable keys. Writes only ever target the new key.
+const LEGACY_STORAGE_KEY = "@paseo:project-icon-cache";
 const CACHE_VERSION = 1;
 const PERSIST_DELAY_MS = 250;
 const MAX_ENTRIES = 512;
@@ -83,6 +87,8 @@ export class ProjectIconCache {
     let raw: string | null;
     try {
       raw = await this.storage.getItem(STORAGE_KEY);
+      // COMPAT(2026-09-26): fall back to the legacy key; see LEGACY_STORAGE_KEY.
+      raw ??= await this.storage.getItem(LEGACY_STORAGE_KEY);
     } catch {
       return;
     }

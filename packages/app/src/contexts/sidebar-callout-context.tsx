@@ -34,7 +34,11 @@ export interface SidebarCalloutsApi {
   clear: () => void;
 }
 
-const DISMISSED_CALLOUTS_STORAGE_KEY = "@paseo:sidebar-callout-dismissals";
+const DISMISSED_CALLOUTS_STORAGE_KEY = "@ohmypcode:sidebar-callout-dismissals";
+// COMPAT(2026-09-26): read legacy @paseo:sidebar-callout-dismissals once; remove after a
+// migration window. Low severity (dismissed tips would reappear once) but the same treatment as
+// the other renamed keys keeps a user's callout history intact across the upgrade.
+const LEGACY_DISMISSED_CALLOUTS_STORAGE_KEY = "@paseo:sidebar-callout-dismissals";
 
 const SidebarCalloutApiContext = createContext<SidebarCalloutsApi | null>(null);
 const SidebarCalloutStateContext = createContext<SidebarCalloutEntry | null>(null);
@@ -63,11 +67,18 @@ export function SidebarCalloutProvider({ children }: { children: ReactNode }) {
     async function loadDismissedKeys(): Promise<void> {
       let dismissedKeys: ReadonlySet<string>;
       try {
-        const value = await readValidatedJson(
-          AsyncStorage,
-          DISMISSED_CALLOUTS_STORAGE_KEY,
-          DismissedCalloutKeysSchema,
-        );
+        const value =
+          (await readValidatedJson(
+            AsyncStorage,
+            DISMISSED_CALLOUTS_STORAGE_KEY,
+            DismissedCalloutKeysSchema,
+          )) ??
+          // COMPAT(2026-09-26): fall back to the legacy key; writes only target the new key.
+          (await readValidatedJson(
+            AsyncStorage,
+            LEGACY_DISMISSED_CALLOUTS_STORAGE_KEY,
+            DismissedCalloutKeysSchema,
+          ));
         dismissedKeys = new Set(value ?? []);
       } catch (error) {
         console.error("[SidebarCallouts] Failed to load dismissed callouts", error);

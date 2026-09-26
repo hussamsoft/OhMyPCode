@@ -6,7 +6,9 @@ import {
   type FormPreferences,
 } from "./preferences";
 
-export const CREATE_AGENT_PREFERENCES_STORAGE_KEY = "@paseo:create-agent-preferences";
+export const CREATE_AGENT_PREFERENCES_STORAGE_KEY = "@ohmypcode:create-agent-preferences";
+// COMPAT(2026-09): read legacy @paseo:create-agent-preferences once; remove after a migration window.
+export const LEGACY_CREATE_AGENT_PREFERENCES_STORAGE_KEY = "@paseo:create-agent-preferences";
 
 export interface CreateAgentPreferenceStorage {
   read(): Promise<unknown>;
@@ -15,9 +17,21 @@ export interface CreateAgentPreferenceStorage {
 
 export class AsyncStorageCreateAgentPreferenceStorage implements CreateAgentPreferenceStorage {
   async read(): Promise<unknown> {
-    return readValidatedJson(
+    const stored = await readValidatedJson(
       AsyncStorage,
       CREATE_AGENT_PREFERENCES_STORAGE_KEY,
+      StoredFormPreferencesSchema,
+    );
+    if (stored !== null) {
+      return stored;
+    }
+
+    // COMPAT(2026-09): every existing user's preferences still live under the pre-rename key, so
+    // a miss on the new key falls back to it. Writes only ever target the new key, which shadows
+    // the legacy one from that point on. Remove after a migration window.
+    return readValidatedJson(
+      AsyncStorage,
+      LEGACY_CREATE_AGENT_PREFERENCES_STORAGE_KEY,
       StoredFormPreferencesSchema,
     );
   }
