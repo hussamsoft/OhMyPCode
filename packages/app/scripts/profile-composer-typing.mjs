@@ -497,14 +497,14 @@ async function measureTarget(page, input, target, originalText) {
     () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
   );
   await installTypingProbe(page, target);
-  await page.evaluate(() => globalThis.__PASEO_RESET_RENDER_PROFILE__?.());
+  await page.evaluate(() => globalThis.__OMPCODE_RESET_RENDER_PROFILE__?.());
   const { dispatchedAt, scheduledAt } = await dispatchMeasuredInput(page, measuredInput);
   await waitForMeasurement(page, measuredText.length);
 
   const diagnostics = await page.evaluate(() => ({
     state: globalThis.__PASEO_TYPING_BENCHMARK__,
-    commits: globalThis.__PASEO_RENDER_PROFILE__ ?? [],
-    renderReasons: globalThis.__PASEO_RENDER_PROFILE_REASONS__ ?? {},
+    commits: globalThis.__OMPCODE_RENDER_PROFILE__ ?? [],
+    renderReasons: globalThis.__OMPCODE_RENDER_PROFILE_REASONS__ ?? {},
     value: document.activeElement?.value ?? null,
   }));
   if (diagnostics.value !== `${originalText}${measuredText}`) {

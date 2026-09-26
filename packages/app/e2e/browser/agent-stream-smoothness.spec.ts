@@ -41,7 +41,7 @@ agentStreamPerfDescribe("Agent stream smoothness", () => {
   test("reveals bursty model output at a steady rate", async ({ page }, testInfo) => {
     test.setTimeout(120_000);
     await page.addInitScript(() => {
-      Reflect.set(globalThis, "__PASEO_RENDER_PROFILE_ENABLED__", true);
+      Reflect.set(globalThis, "__OMPCODE_RENDER_PROFILE_ENABLED__", true);
     });
 
     const agent = await startRunningMockAgent(page, {
@@ -52,7 +52,7 @@ agentStreamPerfDescribe("Agent stream smoothness", () => {
     try {
       await awaitAssistantMessage(page);
       await page.evaluate(() => {
-        const reset = Reflect.get(globalThis, "__PASEO_RESET_RENDER_PROFILE__");
+        const reset = Reflect.get(globalThis, "__OMPCODE_RESET_RENDER_PROFILE__");
         if (typeof reset !== "function") {
           throw new Error("Render profiler did not initialize");
         }
@@ -108,7 +108,7 @@ async function readStreamReactCommits(
   page: Parameters<typeof sampleStreamFrames>[0],
 ): Promise<ReactCommit[]> {
   return await page.evaluate(() => {
-    const samples = Reflect.get(globalThis, "__PASEO_RENDER_PROFILE__");
+    const samples = Reflect.get(globalThis, "__OMPCODE_RENDER_PROFILE__");
     if (!Array.isArray(samples)) {
       return [];
     }

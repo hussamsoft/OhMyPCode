@@ -108,7 +108,7 @@ async function waitForProfilerIdle(page) {
   const deadline = Date.now() + 15_000;
 
   while (Date.now() < deadline) {
-    const count = await page.evaluate(() => globalThis.__PASEO_RENDER_PROFILE__?.length ?? 0);
+    const count = await page.evaluate(() => globalThis.__OMPCODE_RENDER_PROFILE__?.length ?? 0);
     if (count !== previousCount) {
       previousCount = count;
       unchangedSince = Date.now();
@@ -166,7 +166,7 @@ async function warmWorkspaces(page, warmDigits, targets) {
 
 async function beginBrowserMeasurements(page, scenarioName) {
   await page.evaluate((name) => {
-    globalThis.__PASEO_RESET_RENDER_PROFILE__?.();
+    globalThis.__OMPCODE_RESET_RENDER_PROFILE__?.();
     globalThis.__PASEO_WORKSPACE_SWITCH_BENCHMARK_CLEANUP__?.();
     globalThis.__PASEO_FOCUS_PROFILE__ = [];
 
@@ -359,8 +359,8 @@ async function runScenario(page, name, scenarioDigits, targets) {
 
   const result = await page.evaluate(() => ({
     measurements: globalThis.__PASEO_WORKSPACE_SWITCH_BENCHMARK__,
-    samples: globalThis.__PASEO_RENDER_PROFILE__ ?? [],
-    reasons: globalThis.__PASEO_RENDER_PROFILE_REASONS__ ?? {},
+    samples: globalThis.__OMPCODE_RENDER_PROFILE__ ?? [],
+    reasons: globalThis.__OMPCODE_RENDER_PROFILE_REASONS__ ?? {},
     focusCalls: globalThis.__PASEO_FOCUS_PROFILE__ ?? [],
   }));
   await page.evaluate(() => globalThis.__PASEO_WORKSPACE_SWITCH_BENCHMARK_CLEANUP__?.());

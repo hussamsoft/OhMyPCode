@@ -38,9 +38,9 @@ class SnapshotFixture implements SnapshotPage {
   }
 
   public async executeJavaScript(code: string): Promise<unknown> {
-    if (code.includes("__PASEO_ARIA_SNAPSHOT__")) {
+    if (code.includes("__OMPCODE_ARIA_SNAPSHOT__")) {
       return JSON.stringify({
-        marker: "__PASEO_ARIA_SNAPSHOT__",
+        marker: "__OMPCODE_ARIA_SNAPSHOT__",
         root: {
           kind: "role",
           role: "document",

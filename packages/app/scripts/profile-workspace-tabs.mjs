@@ -128,7 +128,7 @@ async function main() {
     await clickTab(page, agentTab);
     await clickTab(page, terminalTab);
     await page.waitForTimeout(500);
-    await page.evaluate(() => globalThis.__PASEO_RESET_RENDER_PROFILE__?.());
+    await page.evaluate(() => globalThis.__OMPCODE_RESET_RENDER_PROFILE__?.());
 
     if (idleWaitMs > 0) {
       await page.waitForTimeout(idleWaitMs);
@@ -139,8 +139,8 @@ async function main() {
       await clickTab(page, terminalTab);
     }
 
-    const samples = await page.evaluate(() => globalThis.__PASEO_RENDER_PROFILE__ ?? []);
-    const reasons = await page.evaluate(() => globalThis.__PASEO_RENDER_PROFILE_REASONS__ ?? {});
+    const samples = await page.evaluate(() => globalThis.__OMPCODE_RENDER_PROFILE__ ?? []);
+    const reasons = await page.evaluate(() => globalThis.__OMPCODE_RENDER_PROFILE_REASONS__ ?? {});
     console.log(
       JSON.stringify(
         {

@@ -318,3 +318,51 @@ describe("draft-store migration", () => {
     expect(backing.values.has("paseo-drafts")).toBe(true);
   });
 });
+
+describe("draft store legacy key fallback", () => {
+  it("reads a v4 blob persisted under the pre-rename paseo-drafts key and forward-writes it", async () => {
+    const backing = createMemoryStorage();
+    const legacyState = {
+      drafts: { "draft:unsent": { text: "do not lose this", attachments: [] } },
+      createModalDraft: null,
+    };
+    backing.values.set("paseo-drafts", JSON.stringify({ state: legacyState, version: 4 }));
+    const storage = createValidatedPersistStorage(
+      backing,
+      PersistedDraftStoreSchema,
+      "paseo-drafts",
+    );
+
+    const stored = await storage.getItem("ohmypcode-drafts");
+
+    expect(stored?.state).toEqual(legacyState);
+    expect(backing.values.has("ohmypcode-drafts")).toBe(true);
+  });
+
+  it("prefers the renamed key once it holds a value", async () => {
+    const backing = createMemoryStorage();
+    backing.values.set(
+      "ohmypcode-drafts",
+      JSON.stringify({ state: { drafts: {}, createModalDraft: null }, version: 4 }),
+    );
+    backing.values.set(
+      "paseo-drafts",
+      JSON.stringify({
+        state: {
+          drafts: { "draft:stale": { text: "stale legacy value", attachments: [] } },
+          createModalDraft: null,
+        },
+        version: 4,
+      }),
+    );
+    const storage = createValidatedPersistStorage(
+      backing,
+      PersistedDraftStoreSchema,
+      "paseo-drafts",
+    );
+
+    const stored = await storage.getItem("ohmypcode-drafts");
+
+    expect(stored?.state.drafts).toEqual({});
+  });
+});

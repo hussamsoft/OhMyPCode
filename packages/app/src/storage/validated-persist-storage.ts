@@ -19,11 +19,10 @@ export function createValidatedPersistStorage<State>(
   return {
     getItem: async (name) => {
       let raw = await backingStorage.getItem(name);
+      let fromLegacy = false;
       if (raw === null && legacyName !== undefined) {
         raw = await backingStorage.getItem(legacyName);
-        if (raw !== null) {
-          await backingStorage.setItem(name, raw);
-        }
+        fromLegacy = raw !== null;
       }
       if (raw === null) return null;
 
@@ -40,6 +39,11 @@ export function createValidatedPersistStorage<State>(
         await backingStorage.removeItem(name);
         return null;
       }
+      // Forward-write only a value that already passed validation, so a malformed legacy blob
+      // never gets copied over and then immediately deleted on every launch.
+      if (fromLegacy) {
+        await backingStorage.setItem(name, raw);
+      }
       return result.data;
     },
     setItem: async (name, value) => {
@@ -50,6 +54,11 @@ export function createValidatedPersistStorage<State>(
       }
       await backingStorage.setItem(name, JSON.stringify(result.data));
     },
-    removeItem: (name) => backingStorage.removeItem(name),
+    removeItem: async (name) => {
+      await backingStorage.removeItem(name);
+      if (legacyName !== undefined) {
+        await backingStorage.removeItem(legacyName);
+      }
+    },
   };
 }

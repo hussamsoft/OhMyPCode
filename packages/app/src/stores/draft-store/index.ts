@@ -65,8 +65,10 @@ interface DraftStoreRuntimeState {
 type DraftStore = DraftStoreState & DraftStoreRuntimeState & DraftStoreActions;
 
 let gcScheduled = false;
+// COMPAT(2026-09): read legacy paseo-drafts once; remove after a migration window. Drafts hold
+// unsent user-typed text, so this key needs the same fallback treatment as the @paseo: keys.
 const draftPersistStorage = createDraftPersistStorage(
-  createValidatedPersistStorage(AsyncStorage, PersistedDraftStoreSchema),
+  createValidatedPersistStorage(AsyncStorage, PersistedDraftStoreSchema, "paseo-drafts"),
 );
 
 export function flushDraftPersistStorage(): Promise<void> {
@@ -426,7 +428,7 @@ export const useDraftStore = create<DraftStore>()(
       },
     }),
     {
-      name: "paseo-drafts",
+      name: "ohmypcode-drafts",
       version: DRAFT_STORE_VERSION,
       storage: draftPersistStorage,
       partialize: ({ drafts, createModalDraft }) => ({ drafts, createModalDraft }),

@@ -96,4 +96,25 @@ describe("createValidatedPersistStorage", () => {
 
     await expect(storage.getItem("settings")).resolves.toBeNull();
   });
+
+  it("does not forward-write a malformed legacy value", async () => {
+    const backing = new MemoryStorage();
+    backing.values.set("legacy-settings", "{");
+    const storage = createValidatedPersistStorage(backing, StateSchema, "legacy-settings");
+
+    await expect(storage.getItem("settings")).resolves.toBeNull();
+    expect(backing.values.has("settings")).toBe(false);
+  });
+
+  it("removes both name and legacyName", async () => {
+    const backing = new MemoryStorage();
+    backing.values.set("settings", JSON.stringify({ state: { enabled: true }, version: 1 }));
+    backing.values.set("legacy-settings", JSON.stringify({ state: { enabled: true }, version: 1 }));
+    const storage = createValidatedPersistStorage(backing, StateSchema, "legacy-settings");
+
+    await storage.removeItem?.("settings");
+
+    expect(backing.values.has("settings")).toBe(false);
+    expect(backing.values.has("legacy-settings")).toBe(false);
+  });
 });

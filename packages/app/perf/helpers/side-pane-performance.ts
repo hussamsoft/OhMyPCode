@@ -217,7 +217,7 @@ async function waitForReactIdle(page: Page, quietMs = 250): Promise<void> {
   let unchangedSince = Date.now();
   const deadline = Date.now() + 15_000;
   while (Date.now() < deadline) {
-    const count = await page.evaluate(() => globalThis.__PASEO_RENDER_PROFILE__?.length ?? 0);
+    const count = await page.evaluate(() => globalThis.__OMPCODE_RENDER_PROFILE__?.length ?? 0);
     if (count !== previousCount) {
       previousCount = count;
       unchangedSince = Date.now();
@@ -268,7 +268,7 @@ function summarizeRenders(
 async function beginMeasurement(page: Page, selectors: string[]): Promise<void> {
   await waitForReactIdle(page);
   await page.evaluate((trackedSelectors) => {
-    globalThis.__PASEO_RESET_RENDER_PROFILE__?.();
+    globalThis.__OMPCODE_RESET_RENDER_PROFILE__?.();
     const collectTestIds = (node: Node, output: Set<string>) => {
       if (!(node instanceof Element)) return;
       const ownTestId = node.getAttribute("data-testid");
@@ -320,7 +320,7 @@ async function finishMeasurement(page: Page, name: string): Promise<InteractionM
     const state = window.__PASEO_SIDE_PANE_MEASUREMENT__;
     if (!state) throw new Error("Side-pane performance measurement was not started");
     state.observer?.disconnect();
-    const samples = globalThis.__PASEO_RENDER_PROFILE__ ?? [];
+    const samples = globalThis.__OMPCODE_RENDER_PROFILE__ ?? [];
     return {
       name: measurementName,
       latencyMs: Math.round((performance.now() - state.startedAt) * 100) / 100,
@@ -341,7 +341,7 @@ async function finishMeasurement(page: Page, name: string): Promise<InteractionM
         };
       }),
       samples,
-      reasons: globalThis.__PASEO_RENDER_PROFILE_REASONS__ ?? {},
+      reasons: globalThis.__OMPCODE_RENDER_PROFILE_REASONS__ ?? {},
     };
   }, name);
   return {

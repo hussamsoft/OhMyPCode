@@ -162,7 +162,7 @@ async function installMeasurementProbe(page) {
       state.explorerMounts = 0;
       state.explorerUnmounts = 0;
       state.explorerMounted = readExplorerState() !== "absent";
-      globalThis.__PASEO_RESET_RENDER_PROFILE__?.();
+      globalThis.__OMPCODE_RESET_RENDER_PROFILE__?.();
     };
   });
 }
@@ -176,7 +176,7 @@ async function waitForProfilerIdle(page, quietMs = 500) {
   let unchangedSince = Date.now();
   const deadline = Date.now() + 15_000;
   while (Date.now() < deadline) {
-    const count = await page.evaluate(() => globalThis.__PASEO_RENDER_PROFILE__?.length ?? 0);
+    const count = await page.evaluate(() => globalThis.__OMPCODE_RENDER_PROFILE__?.length ?? 0);
     if (count !== previousCount) {
       previousCount = count;
       unchangedSince = Date.now();
@@ -309,8 +309,8 @@ function summarizeComponents(samples) {
 async function readScenario(page, name) {
   const result = await page.evaluate(() => ({
     measurements: globalThis.__PASEO_EXPLORER_TOGGLE_PROFILE__,
-    samples: globalThis.__PASEO_RENDER_PROFILE__ ?? [],
-    reasons: globalThis.__PASEO_RENDER_PROFILE_REASONS__ ?? {},
+    samples: globalThis.__OMPCODE_RENDER_PROFILE__ ?? [],
+    reasons: globalThis.__OMPCODE_RENDER_PROFILE_REASONS__ ?? {},
   }));
   const events = result.measurements.events;
   const inputToMutation = events.map((event) => event.mutationTime - event.inputTime);
