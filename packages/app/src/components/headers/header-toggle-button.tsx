@@ -72,6 +72,7 @@ export function HeaderToggleButton({
         {...props}
         {...ariaExpandedProps}
         disabled={disabled}
+        tooltipDisabled={false}
         onPress={onPress}
         style={combinedStyle}
       >

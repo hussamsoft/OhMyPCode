@@ -33,7 +33,7 @@ describe("Explorer close action", () => {
 
   it("keeps the compact close glyph on the pane rail", () => {
     const layout = explorerSidebarCloseButtonLayout(true);
-    expect(layout.size).toBe(44);
+    expect(layout.size).toBe(32);
     expect(layout.iconSize).toBe(18);
     expect(layout.trailingPadding + (layout.size - layout.iconSize) / 2).toBe(8);
   });

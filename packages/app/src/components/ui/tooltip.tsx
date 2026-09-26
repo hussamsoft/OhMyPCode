@@ -268,6 +268,13 @@ export function Tooltip({
 export function TooltipTrigger({
   children,
   disabled,
+  /**
+   * Gates whether hover/focus opens the tooltip, independent of `disabled`.
+   * Defaults to `disabled` so every existing caller keeps "disabled means no
+   * tooltip either" for free. A disabled-with-explanation trigger (a button
+   * that still needs to say *why* it's disabled on hover) passes `false`.
+   */
+  tooltipDisabled = disabled,
   onHoverIn,
   onHoverOut,
   onFocus,
@@ -279,6 +286,7 @@ export function TooltipTrigger({
 }: PressableProps & {
   asChild?: boolean;
   triggerRefProp?: string;
+  tooltipDisabled?: boolean | null;
 }): ReactElement {
   const ctx = useTooltipContext("TooltipTrigger");
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -291,7 +299,7 @@ export function TooltipTrigger({
   }, []);
 
   const scheduleOpen = useCallback(() => {
-    if (!ctx.enabled || disabled) return;
+    if (!ctx.enabled || tooltipDisabled) return;
     clearOpenTimer();
     if (ctx.delayDuration <= 0) {
       ctx.setOpen(true);
@@ -301,7 +309,7 @@ export function TooltipTrigger({
       ctx.setOpen(true);
       openTimerRef.current = null;
     }, ctx.delayDuration);
-  }, [clearOpenTimer, ctx, disabled]);
+  }, [clearOpenTimer, ctx, tooltipDisabled]);
 
   const close = useCallback(() => {
     clearOpenTimer();
@@ -333,12 +341,12 @@ export function TooltipTrigger({
   const handleFocus = useCallback(
     (e: unknown) => {
       if (isCallable(onFocus)) onFocus(e);
-      if (!ctx.enabled || disabled) return;
+      if (!ctx.enabled || tooltipDisabled) return;
       if (!shouldOpenOnFocus()) return;
       clearOpenTimer();
       ctx.setOpen(true);
     },
-    [clearOpenTimer, ctx, disabled, onFocus],
+    [clearOpenTimer, ctx, tooltipDisabled, onFocus],
   );
 
   const handleBlur = useCallback(
