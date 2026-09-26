@@ -15,6 +15,12 @@ export interface E2EWorkerOptions {
   injectPaseoTools?: boolean;
   daemonConfig?: Record<string, unknown>;
   environment?: Record<string, string>;
+  /**
+   * Prepare the fake OMP runtime for this worker. The fake daemon reads its
+   * scenario from a file, so the worker seeds an empty one and exports the path
+   * a spec mutates through `configureFakeOmpScenario`.
+   */
+  fakeOmpRuntime?: boolean;
 }
 
 function resolveOptionalHome(value: string | undefined): string | null {
@@ -175,9 +181,14 @@ export async function startE2EWorker(
   const fakeEditorBin = await createFakeEditorBin();
   const editorRecordPath = path.join(paseoHome, "editor-open-records.jsonl");
   const serverId = `srv_e2e_worker_${workerIndex}`;
+  const fakeOmpScenarioPath = path.join(paseoHome, "fake-omp-scenario.json");
 
   try {
     await applyMetadataFork(paseoHome, options.forkProviders ?? []);
+    if (options.fakeOmpRuntime) {
+      await writeFile(fakeOmpScenarioPath, "{}\n", "utf8");
+      process.env.E2E_FAKE_OMP_SCENARIO_PATH = fakeOmpScenarioPath;
+    }
     // Worker-scoped fixture config lets a spec exercise provider discovery without
     // reading the developer's provider state or sharing configuration with other specs.
     if (options.daemonConfig) {

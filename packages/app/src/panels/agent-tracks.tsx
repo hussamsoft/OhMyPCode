@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, type ReactElement } from "react";
+import { memo, useCallback, type ReactElement } from "react";
 import { WorkspaceDiffStatPill } from "@/composer/diff-stat-pill";
 import { useWorkspaceHasDiffStat } from "@/composer/workspace-diff-stat";
 import { AgentTaskList } from "@/composer/task-list";

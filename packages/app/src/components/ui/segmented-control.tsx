@@ -1,6 +1,6 @@
 import { useCallback, useMemo, type ReactNode } from "react";
 import { Pressable, Text, View, type PressableStateCallbackType } from "react-native";
-import type { StyleProp, TextStyle, ViewStyle } from "react-native";
+import type { StyleProp, ViewStyle } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import {
   createControlGeometry,
@@ -88,8 +88,8 @@ export function SegmentedControl<T extends string>({
             isSelected={isSelected}
             iconSize={iconSize}
             hideLabels={hideLabels}
-            segmentSizeStyle={sizeStyles.segment}
-            labelSizeStyle={sizeStyles.label}
+            segmentSizeStyle={segmentSizeStyle}
+            labelSizeStyle={labelSizeStyle}
             currentValue={value}
             options={options}
             optionIndex={optionIndex}

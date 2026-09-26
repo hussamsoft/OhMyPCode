@@ -558,7 +558,6 @@ function OmpToolsSheet({
 }
 
 export function OmpControlDeck({
-  source,
   modelSelector,
   thinkingOptions,
   selectedThinkingId,
@@ -626,8 +625,6 @@ export function OmpControlDeck({
         <AgentModeControl
           {...access}
           surface="toolbar"
-          showToolbarLabel={visibility.access}
-          launchWarning={source === "live" ? t("agentControls.omp.startsNewSession") : undefined}
           onClose={onDropdownClose}
         />
       </View>

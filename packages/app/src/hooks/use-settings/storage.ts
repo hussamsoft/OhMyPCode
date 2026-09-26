@@ -14,6 +14,7 @@ import {
   type SidebarRowItems,
 } from "@/components/sidebar/display-preferences/row-items";
 import { isNative } from "@/constants/platform";
+import { PRODUCT_NAME } from "@/constants/product";
 import {
   FONT_SIZE,
   PLUGIN_THEME_PREFERENCE,
@@ -40,8 +41,26 @@ const ThemePreferenceSchema = z.enum([
   ...THEME_OPTIONS.map((option) => option.name),
   PLUGIN_THEME_PREFERENCE,
 ]);
-/** Where the theme picker lands when the persisted preference cannot be honoured. */
-export const DEFAULT_THEME_PREFERENCE = "auto" satisfies ThemePreference;
+/**
+ * Where the theme picker lands when the persisted preference cannot be honoured.
+ * The branded desktop build opens on its own palette; native builds still follow
+ * the OS. Captured from `isNative` at module load so the constant and the
+ * resolver below can never disagree about which build they are in.
+ */
+export type BuiltInThemePreference = Exclude<ThemePreference, typeof PLUGIN_THEME_PREFERENCE>;
+
+export function resolveDefaultThemePreference(input: {
+  native: boolean;
+  productName: string;
+}): BuiltInThemePreference {
+  if (input.native) return "auto";
+  return input.productName === PRODUCT_NAME ? "ohMyPCode" : "auto";
+}
+
+export const DEFAULT_THEME_PREFERENCE: BuiltInThemePreference = resolveDefaultThemePreference({
+  native: isNative,
+  productName: PRODUCT_NAME,
+});
 export const DEFAULT_TERMINAL_SCROLLBACK_LINES = 10_000;
 export const MIN_TERMINAL_SCROLLBACK_LINES = 0;
 export const MAX_TERMINAL_SCROLLBACK_LINES = 1_000_000;

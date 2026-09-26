@@ -673,6 +673,8 @@ interface CommonTheme {
   desktopShell: {
     navigationRailWidth: number;
     titleBarHeight: number;
+    /** Corner radius for a shell-level pane (the workspace container itself). */
+    radius: { pane: number };
   };
 }
 
@@ -686,7 +688,7 @@ const commonTheme: CommonTheme = {
   borderRadius: BORDER_RADIUS,
   borderWidth: BORDER_WIDTH,
   opacity: OPACITY,
-  desktopShell: { navigationRailWidth: 56, titleBarHeight: 44 },
+  desktopShell: { navigationRailWidth: 56, titleBarHeight: 44, radius: { pane: BORDER_RADIUS.md } },
 };
 
 const darkShadow = {
