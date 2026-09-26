@@ -90,7 +90,7 @@ import { BrowserDataSection } from "@/desktop/browser/settings/browser-data-sect
 import { IntegrationsSection } from "@/desktop/components/integrations-section";
 import { isElectronRuntime } from "@/desktop/host";
 import { useDesktopAppUpdater } from "@/desktop/updates/use-desktop-app-updater";
-import { useOmpRuntimeStatus } from "@/desktop/updates/use-omp-runtime-status";
+import { OmpRuntimeRows } from "@/screens/settings/omp-runtime-section";
 import { formatVersionWithPrefix } from "@/desktop/updates/desktop-updates";
 import { resolveAppVersion } from "@/utils/app-version";
 import { openChangelog } from "@/changelog";
@@ -619,57 +619,6 @@ function AboutSection({ appVersion, appVersionText, isDesktopApp }: AboutSection
       <View style={styles.aboutCommunity}>
         <CommunityLinks />
       </View>
-    </>
-  );
-}
-
-function OmpRuntimeRows() {
-  const { t } = useTranslation();
-  const { status, isLoading } = useOmpRuntimeStatus();
-  if (isLoading || !status) return null;
-
-  let runtimeValueText: string;
-  if (status.kind === "bundled") {
-    runtimeValueText = status.ompVersion
-      ? formatVersionWithPrefix(status.ompVersion)
-      : t("settings.about.ompRuntimeUnavailable");
-  } else if (status.kind === "system") {
-    runtimeValueText = status.ompVersion
-      ? `${t("settings.about.ompRuntimeSystem")} ${formatVersionWithPrefix(status.ompVersion)}`
-      : t("settings.about.ompRuntimeSystem");
-  } else {
-    runtimeValueText = t("settings.about.ompRuntimeUnavailable");
-  }
-
-  const shortSourceCommit = status.sourceCommit ? status.sourceCommit.slice(0, 7) : null;
-
-  return (
-    <>
-      <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
-        <View style={settingsStyles.rowContent}>
-          <Text style={settingsStyles.rowTitle}>{t("settings.about.ompRuntime")}</Text>
-        </View>
-        <Text style={[styles.aboutValue, status.isStale && styles.aboutVersionMismatch]}>
-          {runtimeValueText}
-        </Text>
-      </View>
-      {status.isStale ? (
-        <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
-          <Text style={[settingsStyles.rowHint, styles.aboutVersionMismatch]}>
-            {t("settings.about.ompRuntimeStaleWarning")}
-          </Text>
-        </View>
-      ) : null}
-      {status.kind === "bundled" ? (
-        <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
-          <View style={settingsStyles.rowContent}>
-            <Text style={settingsStyles.rowTitle}>{t("settings.about.ompSource")}</Text>
-          </View>
-          <Text style={styles.aboutValue}>
-            {shortSourceCommit ?? t("settings.about.ompSourceUnavailable")}
-          </Text>
-        </View>
-      ) : null}
     </>
   );
 }
