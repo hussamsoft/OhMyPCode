@@ -718,14 +718,14 @@ export const AgentTimelineItemPayloadSchema: z.ZodType<AgentTimelineItem, unknow
 ]);
 
 export const AgentToolSourceSchema = z.enum(["native", "paseo", "mcp"]);
-export const AgentToolDefinitionSchema = z.object({
+export const AgentToolDefinitionSchema: z.ZodType<AgentToolDefinition> = z.object({
   name: z.string(),
   label: z.string(),
   description: z.string(),
   source: AgentToolSourceSchema,
   enabled: z.boolean(),
   required: z.boolean(),
-}) satisfies z.ZodType<AgentToolDefinition>;
+});
 
 export const AgentStreamEventPayloadSchema = z.discriminatedUnion("type", [
   z.object({
@@ -1889,6 +1889,56 @@ export const OmpVibeKillRequestSchema = z.object({
   type: z.literal("omp.vibe.kill.request"),
   agentId: z.string(),
   workerId: z.string(),
+  requestId: z.string(),
+});
+
+export const OmpGetModesRequestSchema = z.object({
+  type: z.literal("omp.modes.get.request"),
+  agentId: z.string(),
+  requestId: z.string(),
+});
+
+export const OmpSetModeRequestSchema = z.object({
+  type: z.literal("omp.modes.set.request"),
+  agentId: z.string(),
+  mode: z.enum(["plan", "goal", "loop"]),
+  paused: z.boolean().optional(),
+  requestId: z.string(),
+});
+
+export const OmpCommandRunRequestSchema = z.object({
+  type: z.literal("omp.command.run.request"),
+  agentId: z.string(),
+  name: z.string(),
+  args: z.string().optional(),
+  requestId: z.string(),
+});
+
+export const OmpSettingsGetRequestSchema = z.object({
+  type: z.literal("omp.settings.get.request"),
+  agentId: z.string(),
+  requestId: z.string(),
+});
+
+export const OmpSettingsSetRequestSchema = z.object({
+  type: z.literal("omp.settings.set.request"),
+  agentId: z.string(),
+  path: z.string(),
+  value: z.unknown(),
+  requestId: z.string(),
+});
+
+export const OmpKeybindingsGetRequestSchema = z.object({
+  type: z.literal("omp.keybindings.get.request"),
+  agentId: z.string(),
+  requestId: z.string(),
+});
+
+export const OmpKeybindingsSetRequestSchema = z.object({
+  type: z.literal("omp.keybindings.set.request"),
+  agentId: z.string(),
+  id: z.string(),
+  keys: z.string(),
   requestId: z.string(),
 });
 
@@ -3469,6 +3519,13 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   OmpVibeSendRequestSchema,
   OmpVibeWaitRequestSchema,
   OmpVibeKillRequestSchema,
+  OmpGetModesRequestSchema,
+  OmpSetModeRequestSchema,
+  OmpCommandRunRequestSchema,
+  OmpSettingsGetRequestSchema,
+  OmpSettingsSetRequestSchema,
+  OmpKeybindingsGetRequestSchema,
+  OmpKeybindingsSetRequestSchema,
   OmpProvidersListRequestSchema,
   OmpProviderLoginStartRequestSchema,
   OmpProviderLoginRespondRequestSchema,
@@ -3867,6 +3924,12 @@ export const ServerInfoStatusPayloadSchema = z
         ompProviders: z.boolean().optional(),
         ompVibe: z.boolean().optional(),
         ompToolSelection: z.boolean().optional(),
+        ompSlashCommands: z.boolean().optional(),
+        ompSettings: z.boolean().optional(),
+        ompModes: z.boolean().optional(),
+        ompKeybindings: z.boolean().optional(),
+        // Whether this host can launch the OMP CLI (bundled runtime or PATH).
+        ompRuntime: z.boolean().optional(),
         // COMPAT(agentDetach): added in v0.1.98, remove gate after 2026-12-19 once daemon floor >= v0.1.98.
         agentDetach: z.boolean().optional(),
         // COMPAT(agentThinkingUpdate): added in v0.2.4, remove gate after 2027-01-28.
@@ -6523,6 +6586,120 @@ export const OmpVibeExitResponseSchema = z.object({
   }),
 });
 
+export const OmpModesStateSchema = z.object({
+  mode: z.enum(["none", "plan", "plan_paused", "goal", "goal_paused", "loop"]),
+  planModeEnabled: z.boolean(),
+  planModePaused: z.boolean(),
+  goalModeEnabled: z.boolean(),
+  goalModePaused: z.boolean(),
+  loopModeEnabled: z.boolean(),
+  loopModePaused: z.boolean(),
+  planFilePath: z.string().optional(),
+  canEnter: z.boolean(),
+  blockedReason: z.string().optional(),
+});
+
+export const OmpGetModesResponseSchema = z.object({
+  type: z.literal("omp.modes.get.response"),
+  payload: z.object({
+    requestId: z.string(),
+    state: OmpModesStateSchema,
+  }),
+});
+
+export const OmpSetModeResponseSchema = z.object({
+  type: z.literal("omp.modes.set.response"),
+  payload: z.object({
+    requestId: z.string(),
+    state: OmpModesStateSchema.extend({ changed: z.boolean() }),
+  }),
+});
+
+export const OmpCommandRunUiSchema = z.union([
+  z.object({
+    kind: z.literal("overlay"),
+    name: z.string(),
+    params: z.record(z.string(), z.unknown()).optional(),
+  }),
+  z.object({
+    kind: z.literal("editor"),
+    name: z.string(),
+    placeholder: z.string().optional(),
+  }),
+]);
+
+export const OmpCommandRunResponseSchema = z.object({
+  type: z.literal("omp.command.run.response"),
+  payload: z.object({
+    requestId: z.string(),
+    agentInvoked: z.boolean(),
+    output: z.string(),
+    stateChange: z.boolean(),
+    ui: OmpCommandRunUiSchema.optional(),
+  }),
+});
+
+export const OmpSettingEntrySchema = z.object({
+  path: z.string(),
+  type: z.string(),
+  defaultValue: z.unknown().optional(),
+  value: z.unknown().optional(),
+  enumValues: z.array(z.string()).optional(),
+  description: z.string().optional(),
+  credential: z.boolean(),
+  condition: z.unknown().optional(),
+  ui: z
+    .object({
+      tab: z.string(),
+      group: z.string().optional(),
+      label: z.string(),
+      description: z.string().optional(),
+    })
+    .optional(),
+});
+
+export const OmpSettingsGetResponseSchema = z.object({
+  type: z.literal("omp.settings.get.response"),
+  payload: z.object({
+    requestId: z.string(),
+    revision: z.number().int().nonnegative(),
+    settings: z.array(OmpSettingEntrySchema),
+  }),
+});
+
+export const OmpSettingsSetResponseSchema = z.object({
+  type: z.literal("omp.settings.set.response"),
+  payload: z.object({
+    requestId: z.string(),
+    path: z.string(),
+    value: z.unknown(),
+    revision: z.number().int().nonnegative(),
+  }),
+});
+
+export const OmpKeybindingEntrySchema = z.object({
+  id: z.string(),
+  keys: z.string(),
+  description: z.string().optional(),
+  action: z.string(),
+});
+
+export const OmpKeybindingsGetResponseSchema = z.object({
+  type: z.literal("omp.keybindings.get.response"),
+  payload: z.object({
+    requestId: z.string(),
+    keybindings: z.array(OmpKeybindingEntrySchema),
+  }),
+});
+
+export const OmpKeybindingsSetResponseSchema = z.object({
+  type: z.literal("omp.keybindings.set.response"),
+  payload: z.object({
+    requestId: z.string(),
+    keybindings: z.array(OmpKeybindingEntrySchema),
+  }),
+});
+
 export const OmpVibeSpawnResponseSchema = z.object({
   type: z.literal("omp.vibe.spawn.response"),
   payload: z.object({
@@ -7377,6 +7554,13 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   OmpVibeSendResponseSchema,
   OmpVibeWaitResponseSchema,
   OmpVibeKillResponseSchema,
+  OmpGetModesResponseSchema,
+  OmpSetModeResponseSchema,
+  OmpCommandRunResponseSchema,
+  OmpSettingsGetResponseSchema,
+  OmpSettingsSetResponseSchema,
+  OmpKeybindingsGetResponseSchema,
+  OmpKeybindingsSetResponseSchema,
   OmpCollabHostsListResponseSchema,
   OmpCollabLinkCreateResponseSchema,
   OmpCollabSessionShareResponseSchema,
@@ -7604,7 +7788,22 @@ export type OmpVibeSendResponse = z.infer<typeof OmpVibeSendResponseSchema>;
 export type OmpVibeWaitRequest = z.infer<typeof OmpVibeWaitRequestSchema>;
 export type OmpVibeWaitResponse = z.infer<typeof OmpVibeWaitResponseSchema>;
 export type OmpVibeKillRequest = z.infer<typeof OmpVibeKillRequestSchema>;
+export type OmpGetModesRequest = z.infer<typeof OmpGetModesRequestSchema>;
+export type OmpSetModeRequest = z.infer<typeof OmpSetModeRequestSchema>;
+export type OmpModesState = z.infer<typeof OmpModesStateSchema>;
+export type OmpGetModesResponse = z.infer<typeof OmpGetModesResponseSchema>;
+export type OmpSetModeResponse = z.infer<typeof OmpSetModeResponseSchema>;
 export type OmpVibeKillResponse = z.infer<typeof OmpVibeKillResponseSchema>;
+export type OmpCommandRunRequest = z.infer<typeof OmpCommandRunRequestSchema>;
+export type OmpCommandRunResponse = z.infer<typeof OmpCommandRunResponseSchema>;
+export type OmpSettingsGetRequest = z.infer<typeof OmpSettingsGetRequestSchema>;
+export type OmpSettingsGetResponse = z.infer<typeof OmpSettingsGetResponseSchema>;
+export type OmpSettingsSetRequest = z.infer<typeof OmpSettingsSetRequestSchema>;
+export type OmpSettingsSetResponse = z.infer<typeof OmpSettingsSetResponseSchema>;
+export type OmpKeybindingsGetRequest = z.infer<typeof OmpKeybindingsGetRequestSchema>;
+export type OmpKeybindingsGetResponse = z.infer<typeof OmpKeybindingsGetResponseSchema>;
+export type OmpKeybindingsSetRequest = z.infer<typeof OmpKeybindingsSetRequestSchema>;
+export type OmpKeybindingsSetResponse = z.infer<typeof OmpKeybindingsSetResponseSchema>;
 export type ChatCreateResponse = z.infer<typeof ChatCreateResponseSchema>;
 export type ChatListResponse = z.infer<typeof ChatListResponseSchema>;
 export type ChatInspectResponse = z.infer<typeof ChatInspectResponseSchema>;

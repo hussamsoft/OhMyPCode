@@ -199,6 +199,7 @@ export const AGENT_PROVIDER_DEFINITIONS: AgentProviderDefinition[] = [
     id: "claude",
     label: "Claude",
     description: "Anthropic's multi-tool assistant with MCP support, streaming, and deep reasoning",
+    enabledByDefault: false,
     defaultModeId: "auto",
     modes: CLAUDE_MODES,
     voice: {
@@ -211,6 +212,7 @@ export const AGENT_PROVIDER_DEFINITIONS: AgentProviderDefinition[] = [
     id: "codex",
     label: "Codex",
     description: "OpenAI's Codex workspace agent with sandbox controls and optional network access",
+    enabledByDefault: false,
     defaultModeId: "auto-review",
     modes: CODEX_MODES,
     voice: {
@@ -223,6 +225,7 @@ export const AGENT_PROVIDER_DEFINITIONS: AgentProviderDefinition[] = [
     id: "copilot",
     label: "Copilot",
     description: "GitHub Copilot via Agent Client Protocol with dynamic modes and session support",
+    enabledByDefault: false,
     defaultModeId: "https://agentclientprotocol.com/protocol/session-modes#agent",
     modes: COPILOT_MODES,
   },
@@ -230,6 +233,7 @@ export const AGENT_PROVIDER_DEFINITIONS: AgentProviderDefinition[] = [
     id: "opencode",
     label: "OpenCode",
     description: "Open-source coding assistant with multi-provider model support",
+    enabledByDefault: false,
     // No static default: OpenCode users can rename or delete any agent,
     // including "build". Leaving this unset means the daemon and OpenCode
     // itself decide (see normalizeOpenCodeModeId in opencode-agent.ts).
@@ -244,15 +248,16 @@ export const AGENT_PROVIDER_DEFINITIONS: AgentProviderDefinition[] = [
     id: "pi",
     label: "Pi",
     description: "Minimal terminal-based coding agent with multi-provider LLM support",
+    enabledByDefault: false,
     defaultModeId: null,
     modes: [],
   },
   {
     id: "omp",
     label: "Oh My Pi",
-    description: "Multi-provider coding agent with native approvals, host tools, and subagents",
-    enabledByDefault: false,
-    defaultModeId: "full",
+    description: "OhMyPCode default agent",
+    enabledByDefault: true,
+    defaultModeId: "write",
     modes: OMP_MODES,
   },
 ];

@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { setImmediate as waitForImmediate, setTimeout as delay } from "node:timers/promises";
 import type { Logger } from "pino";
 import stripAnsi from "strip-ansi";
+import type { JsonValue } from "@getpaseo/protocol/agent-types";
 
 import {
   type AgentCapabilityFlags,
@@ -14,6 +15,7 @@ import {
   type AgentMode,
   type AgentModelDefinition,
   type AgentPermissionRequest,
+  type AgentToolDefinition,
   type AgentPermissionResponse,
   type AgentProviderNotice,
   type AgentPersistenceHandle,
@@ -33,6 +35,7 @@ import {
   type ImportProviderSessionInput,
   type ListImportableSessionsOptions,
   type ProviderCatalog,
+  type OmpVibeSession,
   type ProviderRefreshContext,
   type ToolCallDetail,
 } from "../../agent-sdk-types.js";
@@ -59,8 +62,10 @@ import {
   formatOmpVersionSupport,
   mergeOmpRuntimeSettings,
   resolveOmpDiagnosticPaths,
+  resolveOmpFeatureLaunch,
   resolveOmpLaunchMode,
   resolveOmpProviderParams,
+  OmpProviderOptionsSchema,
   OMP_MODES,
   type OmpModelRoleParams,
   type OmpRuntimeProviderParams,
@@ -74,14 +79,29 @@ import { materializeProviderImage } from "../provider-image-output.js";
 import { OmpCliRuntime } from "./cli-runtime.js";
 import { listOmpImportableSessions, readOmpImportSessionConfig } from "./session-descriptor.js";
 import type { OmpRuntime, OmpRuntimeSession, OmpStartSessionInput } from "./runtime.js";
-import type {
-  OmpAgentSessionEvent,
-  OmpAgentMessage,
-  OmpImageContent,
-  OmpModel,
-  OmpRuntimeEvent,
-  OmpSessionState,
-  OmpThinkingLevel,
+import {
+  OmpVibeStateSchema,
+  type OmpAgentSessionEvent,
+  type OmpAgentMessage,
+  type OmpImageContent,
+  type OmpModel,
+  type OmpRuntimeEvent,
+  type OmpSessionState,
+  type OmpModesResult,
+  type OmpSetModeResult,
+  type OmpKeybindingsResult,
+  type OmpSetKeybindingResult,
+  type OmpSettingsResult,
+  type OmpSetSettingResult,
+  type OmpSlashCommandResult,
+  type OmpThinkingLevel,
+  type VibeEnterResult,
+  type VibeExitResult,
+  type VibeKillResult,
+  type VibeSendResult,
+  type VibeSpawnResult,
+  type VibeStateResult,
+  type VibeWaitResult,
 } from "./rpc-types.js";
 import {
   parseToolArgs,
@@ -98,7 +118,7 @@ import { mapOmpAdvisorMessageToToolCall } from "./advisor-message.js";
 import {
   clearOmpHostToolState,
   handleOmpHostToolRuntimeEvent,
-  setOmpHostTools,
+  serializeOmpHostTools,
 } from "./host-tools.js";
 import { OmpSubagentIndex } from "./subagent-index.js";
 import { mapOmpToolDetail } from "./tool-call-mapper.js";
@@ -108,6 +128,12 @@ import {
   mapOmpRpcUiPermissionRequest,
 } from "./rpc-ui-permission-mapper.js";
 import { DEFAULT_OMP_THINKING_LEVEL, mapOmpModel } from "./map-omp-model.js";
+import {
+  buildOmpDraftFeatures,
+  buildOmpLiveFeatures,
+  OMP_SLASH_TOGGLES,
+  parseOmpToggleStatus,
+} from "./feature-definitions.js";
 
 const OMP_PROVIDER = "omp";
 const QUESTION_RESPONSE_HEADER = "Response";
@@ -434,6 +460,7 @@ function buildResumeStartInput(input: {
   launchContext: AgentLaunchContext | undefined;
   launchMode: { modeId: string | null; extraArgs?: string[] };
 }): OmpStartSessionInput {
+  const allowedTools = ompAllowedTools(input.resumeConfig.config);
   return {
     cwd: input.resumeConfig.cwd,
     protocolMode: "rpc-ui",
@@ -443,6 +470,7 @@ function buildResumeStartInput(input: {
     thinkingOptionId: normalizeOmpThinkingOption(input.resumeConfig.thinkingOptionId) ?? undefined,
     ...(input.launchMode.modeId ? { modeId: input.launchMode.modeId } : {}),
     ...(input.launchMode.extraArgs ? { extraArgs: input.launchMode.extraArgs } : {}),
+    ...(allowedTools === undefined ? {} : { allowedTools }),
     systemPrompt: composeSystemPromptParts(
       input.resumeConfig.config.systemPrompt,
       input.resumeConfig.config.daemonAppendSystemPrompt,
@@ -458,12 +486,36 @@ function readNativeMessageId(
   }
   return typeof message.entryId === "string" ? message.entryId : undefined;
 }
+function ompAllowedTools(config: AgentSessionConfig): string[] | undefined {
+  return OmpProviderOptionsSchema.parse(config.providerOptions ?? {}).allowedTools;
+}
+
+function parseOmpVibeState(payload: unknown): VibeStateResult | null {
+  const parsed = OmpVibeStateSchema.safeParse(payload);
+  if (!parsed.success) {
+    return null;
+  }
+  const workerIds = new Set<string>();
+  for (const worker of parsed.data.workers) {
+    if (workerIds.has(worker.id)) {
+      return null;
+    }
+    workerIds.add(worker.id);
+  }
+  return parsed.data;
+}
 
 function withOmpCapabilities(): AgentCapabilityFlags {
   return {
     ...OMP_CORE_CAPABILITIES,
     supportsMcpServers: false,
     supportsNativePaseoTools: true,
+    supportsOmpVibe: false,
+    supportsOmpToolSelection: false,
+    supportsOmpSlashCommands: false,
+    supportsOmpSettings: false,
+    supportsOmpModes: false,
+    supportsOmpKeybindings: false,
   };
 }
 
@@ -812,7 +864,6 @@ function buildExtensionUiResponse(
   if (response.behavior === "deny") {
     return { cancelled: true };
   }
-
   const method = optionalString(request.metadata?.extensionUiMethod);
   const answer = firstPermissionAnswer(response.updatedInput);
   if (answer === null) {
@@ -840,10 +891,29 @@ function createRuntime(
   });
 }
 
-export class OmpAgentSession implements AgentSession {
+export class OmpAgentSession implements AgentSession, OmpVibeSession {
   readonly provider: AgentProvider = OMP_PROVIDER;
-  readonly capabilities: AgentCapabilityFlags = withOmpCapabilities();
+  private supportsOmpVibe = false;
+  private supportsOmpToolSelection = false;
+  private supportsOmpModes = false;
+  private supportsOmpSettings = false;
+  private supportsOmpSlashCommands = false;
+  private supportsOmpKeybindings = false;
+  private lastVibeState: VibeStateResult | null = null;
+  private lastVibeRevision = -1;
+  private lastModesState: OmpModesResult | null = null;
 
+  get capabilities(): AgentCapabilityFlags {
+    return {
+      ...withOmpCapabilities(),
+      supportsOmpVibe: this.supportsOmpVibe,
+      supportsOmpToolSelection: this.supportsOmpToolSelection,
+      supportsOmpModes: this.supportsOmpModes,
+      supportsOmpSettings: this.supportsOmpSettings,
+      supportsOmpSlashCommands: this.supportsOmpSlashCommands,
+      supportsOmpKeybindings: this.supportsOmpKeybindings,
+    };
+  }
   private readonly subscribers = new Set<(event: AgentStreamEvent) => void>();
   private readonly activeToolCalls = new Map<string, OmpTrackedToolCall>();
   private readonly pendingExtensionUiRequests = new Map<string, AgentPermissionRequest>();
@@ -876,6 +946,9 @@ export class OmpAgentSession implements AgentSession {
   private readonly usagePoller: OmpUsagePoller;
   private closed = false;
   private live: boolean;
+  private localCommandOutput: string[] | null = null;
+  private localCommandPending = false;
+  private readonly toggleStates = new Map<string, boolean>();
   private readonly emittedUserMessageIds = new Set<string>();
 
   constructor(options: OmpAgentSessionOptions) {
@@ -933,6 +1006,14 @@ export class OmpAgentSession implements AgentSession {
   private readonly config: AgentSessionConfig;
   private readonly logger: Logger;
   private readonly paseoTools?: PaseoToolCatalog;
+
+  get features(): AgentFeature[] {
+    return buildOmpLiveFeatures(
+      this.state.fastModeEnabled === true,
+      this.toggleStates,
+      this.lastModesState,
+    );
+  }
 
   get id(): string | null {
     return this.state.sessionId;
@@ -1054,7 +1135,151 @@ export class OmpAgentSession implements AgentSession {
         this.state.thinkingLevel,
       ),
       modeId: this.currentModeId,
+      ...(this.lastVibeState || this.lastModesState
+        ? {
+            extra: {
+              ...(this.lastVibeState ? { vibe: this.lastVibeState as unknown as JsonValue } : {}),
+              ...(this.lastModesState
+                ? { modes: this.lastModesState as unknown as JsonValue }
+                : {}),
+            },
+          }
+        : {}),
     };
+  }
+
+  async initializeCapabilities(): Promise<void> {
+    const [vibe, tools, modes, settings, keybindings] = await Promise.allSettled([
+      this.runtimeSession.getVibeStatus(),
+      this.runtimeSession.getToolCatalog(),
+      this.runtimeSession.getModes(),
+      this.runtimeSession.getSettings(),
+      this.runtimeSession.getKeybindings(),
+    ]);
+    this.supportsOmpVibe = vibe.status === "fulfilled" && this.acceptVibeState(vibe.value, false);
+    this.supportsOmpToolSelection = tools.status === "fulfilled";
+    this.supportsOmpModes = modes.status === "fulfilled";
+    if (modes.status === "fulfilled") {
+      this.lastModesState = modes.value;
+    }
+    this.supportsOmpSettings = settings.status === "fulfilled";
+    this.supportsOmpSlashCommands = true;
+    this.supportsOmpKeybindings = keybindings.status === "fulfilled";
+  }
+
+  async listTools(): Promise<AgentToolDefinition[]> {
+    const tools = await this.runtimeSession.getToolCatalog();
+    this.supportsOmpToolSelection = true;
+    return tools;
+  }
+
+  async setTools(enabledTools: string[]): Promise<AgentToolDefinition[]> {
+    const tools = await this.runtimeSession.setTools(enabledTools);
+    this.supportsOmpToolSelection = true;
+    this.emit({ type: "tools_updated", provider: this.provider, tools });
+    return tools;
+  }
+
+  async vibeStatus(): Promise<VibeStateResult> {
+    const state = await this.runtimeSession.getVibeStatus();
+    this.acceptVibeState(state, false);
+    this.supportsOmpVibe = this.lastVibeState !== null;
+    return state;
+  }
+
+  async vibeEnter(prompt?: string): Promise<VibeEnterResult> {
+    const result = await this.runtimeSession.enterVibe(prompt);
+    this.supportsOmpVibe = true;
+    return result;
+  }
+
+  async vibeExit(): Promise<VibeExitResult> {
+    const result = await this.runtimeSession.exitVibe();
+    this.supportsOmpVibe = true;
+    return result;
+  }
+
+  async getOmpModes(): Promise<OmpModesResult> {
+    const modes = await this.runtimeSession.getModes();
+    this.supportsOmpModes = true;
+    this.lastModesState = modes;
+    return modes;
+  }
+
+  /**
+   * Drives OMP's plan/goal/loop mode. Distinct from `setMode`, which sets the
+   * agent's approval mode and deliberately refuses to change mid-session.
+   */
+  async setOmpMode(mode: "plan" | "goal" | "loop", paused?: boolean): Promise<OmpSetModeResult> {
+    const result = await this.runtimeSession.setMode(mode, paused);
+    this.supportsOmpModes = true;
+    this.lastModesState = result;
+    this.emit({
+      type: "provider_state_updated",
+      provider: this.provider,
+      stateKey: "modes",
+      state: result as unknown as JsonValue,
+    });
+    return result;
+  }
+
+  async runSlashCommand(command: string, args?: string): Promise<OmpSlashCommandResult> {
+    const result = await this.runtimeSession.runSlashCommand(command, args);
+    this.supportsOmpSlashCommands = true;
+    void this.refreshModes();
+    return result;
+  }
+
+  async getSettings(): Promise<OmpSettingsResult> {
+    const result = await this.runtimeSession.getSettings();
+    this.supportsOmpSettings = true;
+    return result;
+  }
+
+  async setSetting(path: string, value: unknown): Promise<OmpSetSettingResult> {
+    const result = await this.runtimeSession.setSetting(path, value);
+    this.supportsOmpSettings = true;
+    return result;
+  }
+
+  async getKeybindings(): Promise<OmpKeybindingsResult> {
+    const result = await this.runtimeSession.getKeybindings();
+    this.supportsOmpKeybindings = true;
+    return result;
+  }
+
+  async setKeybinding(keybinding: string, keys: string): Promise<OmpSetKeybindingResult> {
+    const result = await this.runtimeSession.setKeybinding(keybinding, keys);
+    this.supportsOmpKeybindings = true;
+    return result;
+  }
+
+  async vibeSpawn(input: {
+    cli: "fast" | "good";
+    name?: string;
+    prompt: string;
+  }): Promise<VibeSpawnResult> {
+    const result = await this.runtimeSession.spawnVibeWorker(input);
+    this.supportsOmpVibe = true;
+    return result;
+  }
+
+  async vibeSend(input: { session: string; message: string }): Promise<VibeSendResult> {
+    const result = await this.runtimeSession.sendVibeWorkerMessage(input.session, input.message);
+    this.supportsOmpVibe = true;
+    return result;
+  }
+
+  async vibeWait(input?: { sessions?: string[]; timeoutMs?: number }): Promise<VibeWaitResult> {
+    const result = await this.runtimeSession.waitForVibeWorkers(input?.sessions, input?.timeoutMs);
+    this.supportsOmpVibe = true;
+    return result;
+  }
+
+  async vibeKill(session: string): Promise<VibeKillResult> {
+    const result = await this.runtimeSession.killVibeWorker(session);
+    this.supportsOmpVibe = true;
+    return result;
   }
 
   async getAvailableModes(): Promise<AgentMode[]> {
@@ -1278,6 +1503,107 @@ export class OmpAgentSession implements AgentSession {
     };
   }
 
+  async setFeature(featureId: string, value: unknown): Promise<void> {
+    if (featureId === "fast_mode") {
+      if (typeof value !== "boolean") {
+        throw new Error("OMP fast mode requires a boolean value");
+      }
+      const fastMode = await this.runtimeSession.setFastMode(value);
+      this.config.featureValues = {
+        ...this.config.featureValues,
+        fast_mode: fastMode.enabled,
+      };
+      this.state = {
+        ...this.state,
+        fastModeEnabled: fastMode.enabled,
+        fastModeActive: fastMode.active,
+      };
+      return;
+    }
+
+    // The three mode toggles drive OMP's own controller rather than a slash
+    // command, so a host and the terminal take the same guarded path.
+    if (featureId === "omp_plan" || featureId === "omp_goal" || featureId === "omp_loop") {
+      if (typeof value !== "boolean") {
+        throw new Error(`OMP ${featureId} requires a boolean value`);
+      }
+      const mode = featureId.slice("omp_".length) as "plan" | "goal" | "loop";
+      const result = await this.runtimeSession.setMode(mode, value ? undefined : false);
+      this.supportsOmpModes = true;
+      this.lastModesState = result;
+      this.emit({
+        type: "provider_state_updated",
+        provider: this.provider,
+        stateKey: "modes",
+        state: result as unknown as JsonValue,
+      });
+      return;
+    }
+    const toggle = OMP_SLASH_TOGGLES.find((candidate) => candidate.featureId === featureId);
+    if (!toggle) {
+      throw new Error(`Unknown OMP feature: ${featureId}`);
+    }
+    if (typeof value !== "boolean") {
+      throw new Error(`OMP ${toggle.label} requires a boolean value`);
+    }
+
+    await this.runLocalCommand(`/${toggle.command} ${value ? "on" : "off"}`);
+    const status = parseOmpToggleStatus(await this.runLocalCommand(`/${toggle.command} status`));
+    if (status !== value) {
+      throw new Error(`OMP did not apply ${toggle.label}`);
+    }
+    this.toggleStates.set(toggle.featureId, status);
+    this.config.featureValues = {
+      ...this.config.featureValues,
+      [toggle.featureId]: value ? "on" : "off",
+    };
+  }
+
+  async initializeSlashToggles(featureValues: Record<string, unknown> | undefined): Promise<void> {
+    for (const toggle of OMP_SLASH_TOGGLES) {
+      try {
+        const value = featureValues?.[toggle.featureId];
+        if (value === "on" || value === true) {
+          await this.runLocalCommand(`/${toggle.command} on`);
+        } else if (value === "off" || value === false) {
+          await this.runLocalCommand(`/${toggle.command} off`);
+        }
+        const status = parseOmpToggleStatus(
+          await this.runLocalCommand(`/${toggle.command} status`),
+        );
+        if (status !== null) {
+          this.toggleStates.set(toggle.featureId, status);
+        }
+      } catch (error) {
+        this.logger.debug({ err: error, command: toggle.command }, "OMP slash toggle unavailable");
+      }
+    }
+  }
+
+  private async runLocalCommand(message: string): Promise<string> {
+    if (this.activeTurnId) {
+      throw new Error("OMP is busy; try again after the current turn");
+    }
+    this.localCommandOutput = [];
+    this.localCommandPending = true;
+    await this.runtimeSession.prompt(message);
+    const output = this.localCommandOutput.join("\n");
+    this.localCommandOutput = null;
+    setTimeout(() => {
+      this.localCommandPending = false;
+    }, 2_000);
+    return output;
+  }
+
+  async setTitle(title: string): Promise<void> {
+    const name = title.trim();
+    if (!name) {
+      throw new Error("OMP session name cannot be empty");
+    }
+    await this.runtimeSession.setSessionName(name);
+    this.state = { ...this.state, sessionName: name };
+  }
+
   private emit(event: AgentStreamEvent): void {
     for (const subscriber of this.subscribers) {
       subscriber(event);
@@ -1323,6 +1649,11 @@ export class OmpAgentSession implements AgentSession {
       this.activeTurnHasUserMessage
     ) {
       return;
+    }
+    try {
+      await this.refreshState();
+    } catch (error) {
+      this.logger.debug({ err: error }, "OMP state unavailable after local command");
     }
     this.emitBufferedNoTurnOutputs(turnId);
     this.completeTurn(turnId, []);
@@ -1624,6 +1955,33 @@ export class OmpAgentSession implements AgentSession {
     });
   }
 
+  private acceptVibeState(payload: unknown, emit: boolean): boolean {
+    const state = parseOmpVibeState(payload);
+    if (!state) {
+      this.logger.debug({ payload }, "Dropped malformed OMP vibe state event");
+      return false;
+    }
+    if (state.revision <= this.lastVibeRevision) {
+      this.logger.debug(
+        { revision: state.revision, lastRevision: this.lastVibeRevision },
+        "Dropped stale OMP vibe state event",
+      );
+      return true;
+    }
+    this.lastVibeRevision = state.revision;
+    this.lastVibeState = state;
+    this.supportsOmpVibe = true;
+    if (emit) {
+      this.emit({
+        type: "provider_state_updated",
+        provider: this.provider,
+        stateKey: "vibe",
+        state: state as unknown as JsonValue,
+      });
+    }
+    return true;
+  }
+
   private handleExtraRuntimeEvent(event: OmpRuntimeEvent): boolean {
     if (
       handleOmpHostToolRuntimeEvent(event, {
@@ -1632,6 +1990,10 @@ export class OmpAgentSession implements AgentSession {
         logger: this.logger,
       })
     ) {
+      return true;
+    }
+    if (event.type === "vibe_state") {
+      this.acceptVibeState(event.payload, true);
       return true;
     }
     if (event.type === "subagent_lifecycle") {
@@ -1726,6 +2088,32 @@ export class OmpAgentSession implements AgentSession {
     this.emit({ type: "timeline", provider: this.provider, turnId, item });
   }
 
+  private handlePromptResultEvent(
+    event: Extract<OmpRuntimeEvent, { type: "prompt_result" }>,
+  ): void {
+    const requestId = optionalString("id" in event ? event.id : undefined);
+    const agentInvoked =
+      "agentInvoked" in event && typeof event.agentInvoked === "boolean"
+        ? event.agentInvoked
+        : undefined;
+    if (
+      requestId &&
+      agentInvoked !== undefined &&
+      (!this.localCommandPending || this.activeTurnId)
+    ) {
+      if (requestId === this.activePromptRequestId && this.activeTurnId) {
+        this.activePromptAgentInvoked = agentInvoked;
+        if (agentInvoked === false) {
+          this.scheduleNoTurnPromptCompletion(this.activeTurnId);
+        } else {
+          this.cancelNoTurnPromptCompletion();
+        }
+      } else if (this.activePromptRequestId === null) {
+        this.pendingPromptResults.set(requestId, agentInvoked);
+      }
+    }
+  }
+
   private handleRuntimeEvent(event: OmpRuntimeEvent): void {
     if (isExtensionUiRequestEvent(event)) {
       this.handleExtensionUiRequest(event);
@@ -1736,27 +2124,15 @@ export class OmpAgentSession implements AgentSession {
       return;
     }
     if (event.type === "command_output") {
+      if (this.localCommandOutput) {
+        this.localCommandOutput.push(event.text ?? "");
+        return;
+      }
       this.handleCommandOutput(event.text);
       return;
     }
     if (event.type === "prompt_result") {
-      const requestId = optionalString("id" in event ? event.id : undefined);
-      const agentInvoked =
-        "agentInvoked" in event && typeof event.agentInvoked === "boolean"
-          ? event.agentInvoked
-          : undefined;
-      if (requestId && agentInvoked !== undefined) {
-        if (requestId === this.activePromptRequestId && this.activeTurnId) {
-          this.activePromptAgentInvoked = agentInvoked;
-          if (agentInvoked === false) {
-            this.scheduleNoTurnPromptCompletion(this.activeTurnId);
-          } else {
-            this.cancelNoTurnPromptCompletion();
-          }
-        } else if (this.activePromptRequestId === null) {
-          this.pendingPromptResults.set(requestId, agentInvoked);
-        }
-      }
+      this.handlePromptResultEvent(event);
       return;
     }
     if (this.handleExtraRuntimeEvent(event)) {
@@ -2176,14 +2552,39 @@ export class OmpAgentSession implements AgentSession {
     this.state = await this.runtimeSession.getState();
   }
 
+  private async refreshModes(): Promise<OmpModesResult | null> {
+    if (!this.supportsOmpModes) return null;
+    try {
+      const modes = await this.runtimeSession.getModes();
+      this.lastModesState = modes;
+      this.emit({
+        type: "provider_state_updated",
+        provider: this.provider,
+        stateKey: "modes",
+        state: modes as unknown as JsonValue,
+      });
+      return modes;
+    } catch {
+      return null;
+    }
+  }
+
   private async refreshAfterTurn(finalUsage: Promise<void>): Promise<void> {
-    await Promise.all([this.refreshState().catch(() => undefined), finalUsage]);
+    await Promise.all([
+      this.refreshState().catch(() => undefined),
+      this.refreshModes().catch(() => undefined),
+      finalUsage,
+    ]);
   }
 }
 
 export class OmpAgentClient implements AgentClient {
   readonly provider: AgentProvider = OMP_PROVIDER;
-  readonly capabilities: AgentCapabilityFlags = withOmpCapabilities();
+  private supportsOmpToolSelection = false;
+  private supportsOmpModes = false;
+  private supportsOmpSettings = false;
+  private supportsOmpSlashCommands = false;
+  private supportsOmpKeybindings = false;
 
   private readonly logger: Logger;
   private readonly runtimeSettings?: ProviderRuntimeSettings;
@@ -2194,6 +2595,36 @@ export class OmpAgentClient implements AgentClient {
   private readonly noTurnScheduler?: OmpNoTurnScheduler;
   private readonly usagePollScheduler?: OmpUsagePollScheduler;
   private readonly runtime: OmpRuntime;
+  private lastCatalogModels: AgentModelDefinition[] = [];
+  get capabilities(): AgentCapabilityFlags {
+    return {
+      ...withOmpCapabilities(),
+      supportsOmpToolSelection: this.supportsOmpToolSelection,
+      supportsOmpModes: this.supportsOmpModes,
+      supportsOmpSettings: this.supportsOmpSettings,
+      supportsOmpSlashCommands: this.supportsOmpSlashCommands,
+      supportsOmpKeybindings: this.supportsOmpKeybindings,
+    };
+  }
+
+  async probeParitySupport(cwd = process.cwd()): Promise<void> {
+    const runtimeSession = await this.runtime.startSession({
+      cwd,
+    });
+    try {
+      const [modes, settings, keybindings] = await Promise.allSettled([
+        runtimeSession.getModes(),
+        runtimeSession.getSettings(),
+        runtimeSession.getKeybindings(),
+      ]);
+      this.supportsOmpModes = modes.status === "fulfilled";
+      this.supportsOmpSettings = settings.status === "fulfilled";
+      this.supportsOmpKeybindings = keybindings.status === "fulfilled";
+      this.supportsOmpSlashCommands = true;
+    } finally {
+      await runtimeSession.close();
+    }
+  }
 
   constructor(options: OmpAgentClientOptions) {
     const { runtimeProviderParams, modelRoleParams } = resolveOmpProviderParams(
@@ -2223,18 +2654,63 @@ export class OmpAgentClient implements AgentClient {
   private async configureNativePaseoTools(
     runtimeSession: OmpRuntimeSession,
     catalog: PaseoToolCatalog | undefined,
+    allowedTools: string[] | undefined,
   ): Promise<void> {
     if (!catalog) {
       return;
     }
-    await setOmpHostTools(runtimeSession, catalog);
+    const definitions = serializeOmpHostTools(catalog);
+    if (!allowedTools) {
+      await runtimeSession.setHostTools(definitions);
+      return;
+    }
+    const allowed = new Set(allowedTools);
+    await runtimeSession.setHostTools(
+      definitions.filter((definition) => allowed.has(definition.name)),
+    );
+  }
+
+  private async configureSessionFeatures(
+    runtimeSession: OmpRuntimeSession,
+    config: AgentSessionConfig,
+  ): Promise<void> {
+    const fastMode = config.featureValues?.fast_mode;
+    if (fastMode === undefined) {
+      return;
+    }
+    if (typeof fastMode !== "boolean") {
+      throw new Error("OMP fast mode requires a boolean value");
+    }
+    await runtimeSession.setFastMode(fastMode);
+  }
+  async listTools(
+    config: AgentSessionConfig,
+    launchContext?: AgentLaunchContext,
+  ): Promise<AgentToolDefinition[]> {
+    const allowedTools = ompAllowedTools(config);
+    const runtimeSession = await this.runtime.startSession({
+      cwd: config.cwd,
+      protocolMode: "rpc-ui",
+      noSession: true,
+      env: launchContext?.env,
+      ...(allowedTools === undefined ? {} : { allowedTools }),
+    });
+    try {
+      await this.configureNativePaseoTools(runtimeSession, launchContext?.paseoTools, allowedTools);
+      const tools = await runtimeSession.getToolCatalog();
+      this.supportsOmpToolSelection = true;
+      return tools;
+    } finally {
+      await runtimeSession.close();
+    }
   }
 
   async createSession(
     config: AgentSessionConfig,
     launchContext?: AgentLaunchContext,
   ): Promise<AgentSession> {
-    const launchMode = this.resolveLaunchMode(config.modeId);
+    const launchMode = this.resolveLaunchMode(config.modeId, config.featureValues);
+    const allowedTools = ompAllowedTools(config);
     const runtimeSession = await this.runtime.startSession({
       cwd: config.cwd,
       protocolMode: "rpc-ui",
@@ -2245,10 +2721,12 @@ export class OmpAgentClient implements AgentClient {
       extraArgs: launchMode.extraArgs,
       systemPrompt: composeSystemPromptParts(config.systemPrompt, config.daemonAppendSystemPrompt),
       env: launchContext?.env,
+      ...(allowedTools === undefined ? {} : { allowedTools }),
     });
     try {
-      await this.configureNativePaseoTools(runtimeSession, launchContext?.paseoTools);
-      return new OmpAgentSession({
+      await this.configureNativePaseoTools(runtimeSession, launchContext?.paseoTools, allowedTools);
+      await this.configureSessionFeatures(runtimeSession, config);
+      const session = new OmpAgentSession({
         runtimeSession,
         config,
         initialState: await runtimeSession.getState(),
@@ -2260,6 +2738,9 @@ export class OmpAgentClient implements AgentClient {
         usagePollScheduler: this.usagePollScheduler,
         paseoTools: launchContext?.paseoTools,
       });
+      await session.initializeCapabilities();
+      await session.initializeSlashToggles(config.featureValues);
+      return session;
     } catch (error) {
       await runtimeSession.close().catch(() => undefined);
       throw error;
@@ -2279,7 +2760,10 @@ export class OmpAgentClient implements AgentClient {
     const persistenceMetadata = parsePersistenceMetadata(handle.metadata);
     const resumeConfig = buildResumeConfig(persistenceMetadata, overrides, this.provider);
 
-    const launchMode = this.resolveLaunchMode(resumeConfig.modeId);
+    const launchMode = this.resolveLaunchMode(
+      resumeConfig.modeId,
+      resumeConfig.config.featureValues,
+    );
     const runtimeSession = await this.runtime.startSession(
       buildResumeStartInput({
         resumeConfig,
@@ -2288,9 +2772,11 @@ export class OmpAgentClient implements AgentClient {
         launchMode,
       }),
     );
+    const allowedTools = ompAllowedTools(resumeConfig.config);
     try {
-      await this.configureNativePaseoTools(runtimeSession, launchContext?.paseoTools);
-      return new OmpAgentSession({
+      await this.configureNativePaseoTools(runtimeSession, launchContext?.paseoTools, allowedTools);
+      await this.configureSessionFeatures(runtimeSession, resumeConfig.config);
+      const session = new OmpAgentSession({
         runtimeSession,
         config: resumeConfig.config,
         initialState: await runtimeSession.getState(),
@@ -2303,6 +2789,9 @@ export class OmpAgentClient implements AgentClient {
         paseoTools: launchContext?.paseoTools,
         live: false,
       });
+      await session.initializeCapabilities();
+      await session.initializeSlashToggles(resumeConfig.config.featureValues);
+      return session;
     } catch (error) {
       await runtimeSession.close().catch(() => undefined);
       throw error;
@@ -2313,7 +2802,7 @@ export class OmpAgentClient implements AgentClient {
     options: FetchCatalogOptions,
     context?: ProviderRefreshContext,
   ): Promise<ProviderCatalog> {
-    const launchMode = this.resolveLaunchMode(undefined);
+    const launchMode = this.resolveLaunchMode(undefined, undefined);
     let runtimeSession: OmpRuntimeSession | undefined;
     let closePromise: Promise<void> | undefined;
     const closeSession = () => {
@@ -2343,6 +2832,7 @@ export class OmpAgentClient implements AgentClient {
           )
         ).map((model) => mapOmpModel(model, this.provider)),
       );
+      this.lastCatalogModels = models;
       return { models, modes: [...OMP_MODES] };
     } finally {
       context?.signal.removeEventListener("abort", handleAbort);
@@ -2350,8 +2840,12 @@ export class OmpAgentClient implements AgentClient {
     }
   }
 
-  async listFeatures(_config: AgentSessionConfig): Promise<AgentFeature[]> {
-    return [];
+  async listFeatures(config: AgentSessionConfig): Promise<AgentFeature[]> {
+    const roleModelOptions = this.lastCatalogModels.map((model) => ({
+      id: model.id,
+      label: String(model.metadata?.modelName ?? model.label),
+    }));
+    return buildOmpDraftFeatures(config.featureValues, roleModelOptions);
   }
 
   async listImportableSessions(
@@ -2434,11 +2928,15 @@ export class OmpAgentClient implements AgentClient {
     }
   }
 
-  private resolveLaunchMode(modeId: string | undefined): {
+  private resolveLaunchMode(
+    modeId: string | undefined,
+    featureValues: Record<string, unknown> | undefined,
+  ): {
     modeId: string;
     extraArgs: string[];
   } {
-    return resolveOmpLaunchMode(modeId, this.modelRoleParams);
+    const { roleOverrides, args } = resolveOmpFeatureLaunch(featureValues);
+    return resolveOmpLaunchMode(modeId, { ...this.modelRoleParams, ...roleOverrides }, args);
   }
 
   private async resolveOmpLaunch(): Promise<ResolvedProviderLaunch> {

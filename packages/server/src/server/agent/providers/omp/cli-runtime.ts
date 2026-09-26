@@ -15,8 +15,10 @@ import {
   OmpBranchMessagesResultSchema,
   OmpBranchResultSchema,
   OmpCommandsResultSchema,
+  OmpFastModeResultSchema,
   OmpHostToolsResultSchema,
   OmpMessagesResultSchema,
+  OmpLoginProvidersResultSchema,
   OmpModelSchema,
   OmpModelsResultSchema,
   OmpPromptAckSchema,
@@ -24,6 +26,22 @@ import {
   OmpRuntimeEventSchema,
   OmpSessionStateSchema,
   OmpSessionStatsSchema,
+  OmpToolCatalogResultSchema,
+  OmpVibeEnterResultSchema,
+  OmpVibeExitResultSchema,
+  OmpVibeListResultSchema,
+  OmpVibeSendResultSchema,
+  OmpVibeStateSchema,
+  OmpModesResultSchema,
+  OmpSetModeResultSchema,
+  OmpKeybindingsResultSchema,
+  OmpSetKeybindingResultSchema,
+  OmpSettingsResultSchema,
+  OmpSetSettingResultSchema,
+  OmpSlashCommandResultSchema,
+  OmpVibeKillResultSchema,
+  OmpVibeWaitResultSchema,
+  OmpVibeSpawnResultSchema,
   type OmpThinkingLevel,
   type OmpAgentMessage,
   type OmpModel,
@@ -37,6 +55,22 @@ import {
   type OmpSessionState,
   type OmpSessionStats,
   type OmpSubagentSubscriptionLevel,
+  type OmpToolCatalogEntry,
+  type OmpVibeEnterResult,
+  type OmpVibeExitResult,
+  type OmpVibeKillResult,
+  type OmpVibeListResult,
+  type OmpVibeSendResult,
+  type OmpVibeSpawnResult,
+  type OmpVibeState,
+  type OmpModesResult,
+  type OmpSetModeResult,
+  type OmpKeybindingsResult,
+  type OmpSetKeybindingResult,
+  type OmpSettingsResult,
+  type OmpSetSettingResult,
+  type OmpSlashCommandResult,
+  type OmpVibeWaitResult,
 } from "./rpc-types.js";
 
 const DEFAULT_OMP_COMMAND: [string, ...string[]] = [process.env.OMP_COMMAND ?? "omp"];
@@ -93,7 +127,7 @@ export class OmpCliRuntime implements OmpRuntime {
         requestTimeoutMs: this.options.requestTimeoutMs,
       });
       input.signal?.throwIfAborted();
-      return new OmpCliRuntimeSession(process, this.commandsRpcName);
+      return new OmpCliRuntimeSession(process, this.commandsRpcName, this.options.logger);
     } catch (error) {
       const startupError = error instanceof Error ? error : new Error(String(error));
       await process.close(startupError);
@@ -111,11 +145,14 @@ class OmpCliRuntimeSession implements OmpRuntimeSession {
   constructor(
     private readonly process: JsonlRpcProcess,
     private readonly commandsRpcName: "get_available_commands",
+    private readonly logger: Logger,
   ) {
     process.onMessage((message) => {
       const event = OmpRuntimeEventSchema.safeParse(message);
       if (event.success) {
         this.emit(event.data);
+      } else {
+        this.logger.debug({ err: event.error }, "Dropped malformed OMP runtime event");
       }
     });
     process.onExit(({ error }) => {
@@ -162,6 +199,10 @@ class OmpCliRuntimeSession implements OmpRuntimeSession {
     return OmpSessionStateSchema.parse(await this.request({ type: "get_state" }));
   }
 
+  async setFastMode(enabled: boolean): Promise<{ enabled: boolean; active: boolean }> {
+    return OmpFastModeResultSchema.parse(await this.request({ type: "set_fast_mode", enabled }));
+  }
+
   async getMessages(): Promise<OmpAgentMessage[]> {
     const data = OmpMessagesResultSchema.parse(await this.request({ type: "get_messages" }));
     return data.messages ?? [];
@@ -172,6 +213,17 @@ class OmpCliRuntimeSession implements OmpRuntimeSession {
       await this.request({ type: "get_available_models" }, timeoutMs),
     );
     return data.models ?? [];
+  }
+
+  async getLoginProviders(): Promise<
+    Array<{ id: string; name: string; available?: boolean; authenticated?: boolean }>
+  > {
+    return OmpLoginProvidersResultSchema.parse(await this.request({ type: "get_login_providers" }))
+      .providers;
+  }
+
+  async login(providerId: string): Promise<void> {
+    await this.request({ type: "login", providerId }, 600_000);
   }
 
   async setModel(provider: string, modelId: string): Promise<OmpModel> {
@@ -227,6 +279,105 @@ class OmpCliRuntimeSession implements OmpRuntimeSession {
     );
     return data.toolNames ?? [];
   }
+  async getVibeStatus(): Promise<OmpVibeState> {
+    return OmpVibeStateSchema.parse(await this.request({ type: "vibe_status" }));
+  }
+
+  async enterVibe(prompt?: string): Promise<OmpVibeEnterResult> {
+    return OmpVibeEnterResultSchema.parse(
+      await this.request({ type: "vibe_enter", ...(prompt === undefined ? {} : { prompt }) }),
+    );
+  }
+
+  async exitVibe(): Promise<OmpVibeExitResult> {
+    return OmpVibeExitResultSchema.parse(await this.request({ type: "vibe_exit" }));
+  }
+
+  async getModes(): Promise<OmpModesResult> {
+    return OmpModesResultSchema.parse(await this.request({ type: "get_modes" }));
+  }
+
+  async setMode(mode: "plan" | "goal" | "loop", paused?: boolean): Promise<OmpSetModeResult> {
+    return OmpSetModeResultSchema.parse(
+      await this.request({ type: "set_mode", mode, ...(paused === undefined ? {} : { paused }) }),
+    );
+  }
+
+  async runSlashCommand(command: string, args?: string): Promise<OmpSlashCommandResult> {
+    return OmpSlashCommandResultSchema.parse(
+      await this.request({
+        type: "run_slash_command",
+        command,
+        ...(args === undefined ? {} : { args }),
+      }),
+    );
+  }
+
+  async getSettings(): Promise<OmpSettingsResult> {
+    return OmpSettingsResultSchema.parse(await this.request({ type: "get_settings" }));
+  }
+
+  async setSetting(path: string, value: unknown): Promise<OmpSetSettingResult> {
+    return OmpSetSettingResultSchema.parse(
+      await this.request({ type: "set_setting", path, value }),
+    );
+  }
+
+  async getKeybindings(): Promise<OmpKeybindingsResult> {
+    return OmpKeybindingsResultSchema.parse(await this.request({ type: "get_keybindings" }));
+  }
+
+  async setKeybinding(keybinding: string, keys: string): Promise<OmpSetKeybindingResult> {
+    return OmpSetKeybindingResultSchema.parse(
+      await this.request({ type: "set_keybinding", keybinding, keys }),
+    );
+  }
+
+  async spawnVibeWorker(input: {
+    cli: "fast" | "good";
+    name?: string;
+    prompt: string;
+  }): Promise<OmpVibeSpawnResult> {
+    return OmpVibeSpawnResultSchema.parse(await this.request({ type: "vibe_spawn", ...input }));
+  }
+
+  async sendVibeWorkerMessage(session: string, message: string): Promise<OmpVibeSendResult> {
+    return OmpVibeSendResultSchema.parse(
+      await this.request({ type: "vibe_send", session, message }),
+    );
+  }
+
+  async waitForVibeWorkers(sessions?: string[], timeoutMs?: number): Promise<OmpVibeWaitResult> {
+    return OmpVibeWaitResultSchema.parse(
+      await this.request({
+        type: "vibe_wait",
+        ...(sessions === undefined ? {} : { sessions }),
+        ...(timeoutMs === undefined ? {} : { timeoutMs }),
+      }),
+    );
+  }
+
+  async killVibeWorker(session: string): Promise<OmpVibeKillResult> {
+    return OmpVibeKillResultSchema.parse(await this.request({ type: "vibe_kill", session }));
+  }
+
+  async listVibeWorkers(): Promise<OmpVibeListResult> {
+    return OmpVibeListResultSchema.parse(await this.request({ type: "vibe_list" }));
+  }
+
+  async getToolCatalog(): Promise<OmpToolCatalogEntry[]> {
+    const result = OmpToolCatalogResultSchema.parse(
+      await this.request({ type: "get_tool_catalog" }),
+    );
+    return result.tools;
+  }
+
+  async setTools(enabledTools: string[]): Promise<OmpToolCatalogEntry[]> {
+    const result = OmpToolCatalogResultSchema.parse(
+      await this.request({ type: "set_tool_selection", enabledTools }),
+    );
+    return result.tools;
+  }
 
   sendHostToolResult(result: OmpRpcHostToolResult): void {
     this.process.send({ ...result });
@@ -271,6 +422,10 @@ class OmpCliRuntimeSession implements OmpRuntimeSession {
       type: "handoff",
       ...(customInstructions ? { customInstructions } : {}),
     });
+  }
+
+  async setSessionName(name: string): Promise<void> {
+    await this.request({ type: "set_session_name", name });
   }
 
   respondToExtensionUiRequest(

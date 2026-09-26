@@ -141,6 +141,19 @@ describe("mapOmpModel thinking options", () => {
     expect(result.provider).toBe("omp");
     expect(result.id).toBe("pioneer/canada-quant/glm-5.2");
     expect(result.label).toBe("pioneer/GLM-5.2");
-    expect(result.metadata).toEqual({ provider: "pioneer", modelId: "canada-quant/glm-5.2" });
+    expect(result.metadata).toEqual({
+      provider: "pioneer",
+      modelId: "canada-quant/glm-5.2",
+      modelName: "GLM-5.2",
+    });
+  });
+
+  test("carries the context window through when the model reports one", () => {
+    expect(mapOmpModel(baseModel({ contextWindow: 200_000 }), "omp").contextWindowMaxTokens).toBe(
+      200_000,
+    );
+    // A model reporting no window must not gain a fabricated one: a host sizing
+    // a gauge from 0 would read it as "no context allowed".
+    expect(mapOmpModel(baseModel(), "omp").contextWindowMaxTokens).toBeUndefined();
   });
 });

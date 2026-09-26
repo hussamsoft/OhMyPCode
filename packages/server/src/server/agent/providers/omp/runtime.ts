@@ -11,6 +11,22 @@ import type {
   OmpSessionStats,
   OmpSubagentSubscriptionLevel,
   OmpThinkingLevel,
+  OmpToolCatalogEntry,
+  OmpVibeEnterResult,
+  OmpVibeExitResult,
+  OmpVibeKillResult,
+  OmpVibeListResult,
+  OmpModesResult,
+  OmpSetModeResult,
+  OmpKeybindingsResult,
+  OmpSetKeybindingResult,
+  OmpSettingsResult,
+  OmpSetSettingResult,
+  OmpSlashCommandResult,
+  OmpVibeSendResult,
+  OmpVibeSpawnResult,
+  OmpVibeState,
+  OmpVibeWaitResult,
 } from "./rpc-types.js";
 import type { ProviderRuntimeSettings } from "../../provider-launch-config.js";
 
@@ -40,6 +56,7 @@ export interface OmpStartSessionInput {
   noSession?: boolean;
   systemPrompt?: string;
   extraArgs?: string[];
+  allowedTools?: string[];
 }
 
 export interface OmpRuntimeSession {
@@ -52,14 +69,40 @@ export interface OmpRuntimeSession {
   setAutoCompaction(enabled: boolean): Promise<void>;
   abort(): Promise<void>;
   getState(): Promise<OmpSessionState>;
+  setFastMode(enabled: boolean): Promise<{ enabled: boolean; active: boolean }>;
   getMessages(): Promise<OmpAgentMessage[]>;
   getAvailableModels(timeoutMs?: number | null): Promise<OmpModel[]>;
+  getLoginProviders(): Promise<
+    Array<{ id: string; name: string; available?: boolean; authenticated?: boolean }>
+  >;
+  login(providerId: string): Promise<void>;
   setModel(provider: string, modelId: string): Promise<OmpModel>;
   setThinkingLevel(level: OmpThinkingLevel): Promise<void>;
   getSessionStats(): Promise<OmpSessionStats>;
   getCommands(): Promise<OmpRpcSlashCommand[]>;
   setSubagentSubscription(level: OmpSubagentSubscriptionLevel): Promise<void>;
   setHostTools(tools: OmpRpcHostToolDefinition[]): Promise<string[]>;
+  getVibeStatus(): Promise<OmpVibeState>;
+  enterVibe(prompt?: string): Promise<OmpVibeEnterResult>;
+  exitVibe(): Promise<OmpVibeExitResult>;
+  spawnVibeWorker(input: {
+    cli: "fast" | "good";
+    name?: string;
+    prompt: string;
+  }): Promise<OmpVibeSpawnResult>;
+  sendVibeWorkerMessage(session: string, message: string): Promise<OmpVibeSendResult>;
+  waitForVibeWorkers(sessions?: string[], timeoutMs?: number): Promise<OmpVibeWaitResult>;
+  killVibeWorker(session: string): Promise<OmpVibeKillResult>;
+  listVibeWorkers(): Promise<OmpVibeListResult>;
+  getToolCatalog(): Promise<OmpToolCatalogEntry[]>;
+  setTools(enabledTools: string[]): Promise<OmpToolCatalogEntry[]>;
+  getModes(): Promise<OmpModesResult>;
+  setMode(mode: "plan" | "goal" | "loop", paused?: boolean): Promise<OmpSetModeResult>;
+  runSlashCommand(command: string, args?: string): Promise<OmpSlashCommandResult>;
+  getSettings(): Promise<OmpSettingsResult>;
+  setSetting(path: string, value: unknown): Promise<OmpSetSettingResult>;
+  getKeybindings(): Promise<OmpKeybindingsResult>;
+  setKeybinding(keybinding: string, keys: string): Promise<OmpSetKeybindingResult>;
   sendHostToolResult(result: OmpRpcHostToolResult): void;
   sendHostToolUpdate(update: OmpRpcHostToolUpdate): void;
   branch(entryId: string): Promise<{ text: string }>;
@@ -71,6 +114,7 @@ export interface OmpRuntimeSession {
     images?: Array<{ type: "image"; data: string; mimeType: string }>,
   ): void;
   handoff(customInstructions?: string): Promise<void>;
+  setSessionName(name: string): Promise<void>;
   respondToExtensionUiRequest(
     id: string,
     response: { value?: string; confirmed?: boolean; cancelled?: boolean },
@@ -141,6 +185,14 @@ function appendOmpLaunchArgs(
     argv.push("--no-session");
   } else if (session.session) {
     argv.push("--session", session.session);
+  }
+  if (session.allowedTools) {
+    const allowedTools = [...new Set(session.allowedTools)].sort();
+    if (allowedTools.length === 0) {
+      argv.push("--no-tools");
+    } else {
+      argv.push("--tools", allowedTools.join(","));
+    }
   }
   if (systemPrompt) {
     argv.push("--append-system-prompt", systemPrompt);

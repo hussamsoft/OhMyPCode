@@ -6435,6 +6435,256 @@ test("sends provider.usage.list.request and resolves provider.usage.list.respons
   });
 });
 
+test("sends omp.statistics.request with refresh intent and resolves the response", async () => {
+  const mock = createMockTransport();
+  const client = new DaemonClient({
+    url: "ws://test",
+    clientId: "clsk_unit_test",
+    logger: createMockLogger(),
+    reconnect: { enabled: false },
+    transportFactory: () => mock.transport,
+  });
+  clients.push(client);
+
+  const connectPromise = client.connect();
+  mock.triggerOpen();
+  await connectPromise;
+
+  const statisticsPromise = client.getOmpStatistics({
+    requestId: "stats-1",
+    forceRefresh: true,
+  });
+
+  expect(JSON.parse(assertStr(mock.sent[0]))).toEqual({
+    type: "session",
+    message: {
+      type: "omp.statistics.request",
+      requestId: "stats-1",
+      forceRefresh: true,
+    },
+  });
+
+  const payload = {
+    requestId: "stats-1",
+    fetchedAt: "2026-06-19T00:00:00.000Z",
+    statistics: {
+      overall: {
+        totalRequests: 1,
+        successfulRequests: 1,
+        failedRequests: 0,
+        errorRate: 0,
+        totalInputTokens: 10,
+        totalOutputTokens: 5,
+        totalCacheReadTokens: 20,
+        totalCacheWriteTokens: 0,
+        cacheRate: 0.5,
+        cacheSavings: 0.25,
+        totalCost: 0.01,
+        unpricedRequests: 0,
+        totalPremiumRequests: 0,
+        avgDuration: 100,
+        avgTtft: 25,
+        avgTokensPerSecond: 10,
+        firstTimestamp: 1,
+        lastTimestamp: 2,
+      },
+      byModel: [],
+      byAgentType: [],
+      timeSeries: [],
+    },
+  };
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "omp.statistics.response",
+      payload,
+    }),
+  );
+
+  await expect(statisticsPromise).resolves.toEqual(payload);
+});
+
+test("sends OMP collaboration RPCs and resolves correlated responses", async () => {
+  const mock = createMockTransport();
+  const client = new DaemonClient({
+    url: "ws://test",
+    clientId: "omp-collab-client",
+    logger: createMockLogger(),
+    reconnect: { enabled: false },
+    transportFactory: () => mock.transport,
+  });
+  clients.push(client);
+
+  const connectPromise = client.connect();
+  mock.triggerOpen();
+  await connectPromise;
+
+  const hostsPromise = client.listOmpCollabHosts({ requestId: "hosts-1" });
+  expect(JSON.parse(assertStr(mock.sent.at(-1)))).toMatchObject({
+    type: "session",
+    message: { type: "omp.collab.hosts.list.request", requestId: "hosts-1" },
+  });
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "omp.collab.hosts.list.response",
+      payload: { requestId: "hosts-1", hosts: [{ instanceId: "host-1", pid: 42 }] },
+    }),
+  );
+  await expect(hostsPromise).resolves.toEqual({
+    requestId: "hosts-1",
+    hosts: [{ instanceId: "host-1", pid: 42 }],
+  });
+
+  const linkPromise = client.createOmpCollabLink("host-1", {
+    viewOnly: true,
+    requestId: "link-1",
+  });
+  expect(JSON.parse(assertStr(mock.sent.at(-1)))).toMatchObject({
+    type: "session",
+    message: {
+      type: "omp.collab.link.create.request",
+      requestId: "link-1",
+      instanceId: "host-1",
+      viewOnly: true,
+    },
+  });
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "omp.collab.link.create.response",
+      payload: { requestId: "link-1", link: "https://relay.example.test/view#key" },
+    }),
+  );
+  await expect(linkPromise).resolves.toEqual({
+    requestId: "link-1",
+    link: "https://relay.example.test/view#key",
+  });
+
+  const sharePromise = client.shareOmpSession("session-1", {
+    gist: true,
+    requestId: "share-1",
+  });
+  expect(JSON.parse(assertStr(mock.sent.at(-1)))).toMatchObject({
+    type: "session",
+    message: {
+      type: "omp.collab.session.share.request",
+      requestId: "share-1",
+      session: "session-1",
+      gist: true,
+    },
+  });
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "omp.collab.session.share.response",
+      payload: { requestId: "share-1", link: "https://share.example.test/session#key" },
+    }),
+  );
+  await expect(sharePromise).resolves.toEqual({
+    requestId: "share-1",
+    link: "https://share.example.test/session#key",
+  });
+});
+
+test("sends OMP provider RPCs and resolves correlated responses", async () => {
+  const mock = createMockTransport();
+  const client = new DaemonClient({
+    url: "ws://test",
+    clientId: "omp-providers-client",
+    logger: createMockLogger(),
+    reconnect: { enabled: false },
+    transportFactory: () => mock.transport,
+  });
+  clients.push(client);
+  const connectPromise = client.connect();
+  mock.triggerOpen();
+  await connectPromise;
+
+  const listPromise = client.listOmpProviders({ requestId: "providers-1" });
+  expect(JSON.parse(assertStr(mock.sent.at(-1)))).toMatchObject({
+    type: "session",
+    message: { type: "omp.providers.list.request", requestId: "providers-1" },
+  });
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "omp.providers.list.response",
+      payload: {
+        requestId: "providers-1",
+        providers: [{ id: "deepseek", name: "DeepSeek", authenticated: true, available: true }],
+      },
+    }),
+  );
+  await expect(listPromise).resolves.toMatchObject({ requestId: "providers-1" });
+
+  const startPromise = client.startOmpProviderLogin("deepseek", { requestId: "login-1" });
+  expect(JSON.parse(assertStr(mock.sent.at(-1)))).toMatchObject({
+    message: {
+      type: "omp.providers.login.start.request",
+      requestId: "login-1",
+      providerId: "deepseek",
+    },
+  });
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "omp.providers.login.start.response",
+      payload: { requestId: "login-1", loginId: "active-1" },
+    }),
+  );
+  await expect(startPromise).resolves.toEqual({ requestId: "login-1", loginId: "active-1" });
+
+  const responsePromise = client.respondOmpProviderLogin(
+    "active-1",
+    "request-1",
+    { confirmed: true },
+    { requestId: "respond-1" },
+  );
+  expect(JSON.parse(assertStr(mock.sent.at(-1)))).toMatchObject({
+    message: {
+      type: "omp.providers.login.respond.request",
+      requestId: "respond-1",
+      loginId: "active-1",
+      uiRequestId: "request-1",
+      confirmed: true,
+    },
+  });
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "omp.providers.login.respond.response",
+      payload: { requestId: "respond-1" },
+    }),
+  );
+  await expect(responsePromise).resolves.toEqual({ requestId: "respond-1" });
+
+  const cancelPromise = client.cancelOmpProviderLogin("active-1", { requestId: "cancel-1" });
+  expect(JSON.parse(assertStr(mock.sent.at(-1)))).toMatchObject({
+    message: {
+      type: "omp.providers.login.cancel.request",
+      requestId: "cancel-1",
+      loginId: "active-1",
+    },
+  });
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "omp.providers.login.cancel.response",
+      payload: { requestId: "cancel-1" },
+    }),
+  );
+  await expect(cancelPromise).resolves.toEqual({ requestId: "cancel-1" });
+
+  const logoutPromise = client.logoutOmpProvider("deepseek", { requestId: "logout-1" });
+  expect(JSON.parse(assertStr(mock.sent.at(-1)))).toMatchObject({
+    message: {
+      type: "omp.providers.logout.request",
+      requestId: "logout-1",
+      providerId: "deepseek",
+    },
+  });
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "omp.providers.logout.response",
+      payload: { requestId: "logout-1" },
+    }),
+  );
+  await expect(logoutPromise).resolves.toEqual({ requestId: "logout-1" });
+});
+
 test("sends close_items_request and resolves close_items_response", async () => {
   const logger = createMockLogger();
   const mock = createMockTransport();
@@ -6897,5 +7147,332 @@ test("reviewed plugin updates gate before requests and preserve exact proposal d
     await expect(applying).resolves.toEqual([
       { id: "review", outcome: "error", error: "changed since review" },
     ]);
+  }
+});
+
+test("agent tools use correlated provider and agent requests", async () => {
+  const mock = createMockTransport();
+  const client = new DaemonClient({
+    url: "ws://test",
+    clientId: "clsk_unit_test",
+    logger: createMockLogger(),
+    reconnect: { enabled: false },
+    transportFactory: () => mock.transport,
+  });
+  clients.push(client);
+  const connectPromise = client.connect();
+  mock.triggerOpen();
+  await connectPromise;
+
+  const tools = [
+    {
+      name: "bash",
+      label: "Bash",
+      description: "Run a shell command",
+      source: "native" as const,
+      enabled: true,
+      required: false,
+    },
+  ];
+  const providerRequest = client.listProviderTools("omp", "/repo", { requestId: "tools-provider" });
+  expect(parseSentFrame(mock.sent[0])).toEqual({
+    type: "list_provider_tools_request",
+    provider: "omp",
+    cwd: "/repo",
+    requestId: "tools-provider",
+  });
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "list_provider_tools_response",
+      payload: { requestId: "wrong", tools },
+    }),
+  );
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "list_provider_tools_response",
+      payload: { requestId: "tools-provider", tools },
+    }),
+  );
+  await expect(providerRequest).resolves.toEqual({ requestId: "tools-provider", tools });
+
+  const agentRequest = client.listAgentTools("agent-1", { requestId: "tools-agent" });
+  const setRequest = client.setAgentTools("agent-1", ["bash"], { requestId: "tools-set" });
+  expect(mock.sent.slice(1, 3).map(parseSentFrame)).toEqual([
+    {
+      type: "list_agent_tools_request",
+      agentId: "agent-1",
+      requestId: "tools-agent",
+    },
+    {
+      type: "set_agent_tools_request",
+      agentId: "agent-1",
+      enabledTools: ["bash"],
+      requestId: "tools-set",
+    },
+  ]);
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "list_agent_tools_response",
+      payload: { requestId: "tools-agent", tools },
+    }),
+  );
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "set_agent_tools_response",
+      payload: { requestId: "tools-set", tools },
+    }),
+  );
+  await expect(agentRequest).resolves.toEqual({ requestId: "tools-agent", tools });
+  await expect(setRequest).resolves.toEqual({ requestId: "tools-set", tools });
+});
+
+test("OMP Vibe actions preserve exact fields and correlated responses", async () => {
+  const mock = createMockTransport();
+  const client = new DaemonClient({
+    url: "ws://test",
+    clientId: "clsk_unit_test",
+    logger: createMockLogger(),
+    reconnect: { enabled: false },
+    transportFactory: () => mock.transport,
+  });
+  clients.push(client);
+  const connectPromise = client.connect();
+  mock.triggerOpen();
+  await connectPromise;
+
+  const worker = {
+    id: "worker-1",
+    cli: "fast" as const,
+    name: "Inspector",
+    state: "running" as const,
+    turnCount: 1,
+    queuedMessages: 0,
+    outputTail: [],
+    lastTurnStatus: "running" as const,
+    createdAt: 1,
+    lastActivityAt: 2,
+  };
+  const state = { revision: 4, enabled: true, workers: [worker] };
+  const calls = [
+    {
+      requestId: "vibe-status",
+      invoke: () => client.getOmpVibeState("agent-1", { requestId: "vibe-status" }),
+      request: { type: "omp.vibe.status.request", agentId: "agent-1" },
+      responseType: "omp.vibe.status.response",
+      payload: { state },
+    },
+    {
+      requestId: "vibe-enter",
+      invoke: () =>
+        client.enterOmpVibe(
+          { agentId: "agent-1", prompt: "Coordinate" },
+          { requestId: "vibe-enter" },
+        ),
+      request: { type: "omp.vibe.enter.request", agentId: "agent-1", prompt: "Coordinate" },
+      responseType: "omp.vibe.enter.response",
+      payload: { state },
+    },
+    {
+      requestId: "vibe-exit",
+      invoke: () => client.exitOmpVibe("agent-1", { requestId: "vibe-exit" }),
+      request: { type: "omp.vibe.exit.request", agentId: "agent-1" },
+      responseType: "omp.vibe.exit.response",
+      payload: { state: { ...state, enabled: false, workers: [] } },
+    },
+    {
+      requestId: "vibe-spawn",
+      invoke: () =>
+        client.spawnOmpVibeWorker(
+          { agentId: "agent-1", tier: "fast", name: "Inspector", prompt: "Inspect" },
+          { requestId: "vibe-spawn" },
+        ),
+      request: {
+        type: "omp.vibe.spawn.request",
+        agentId: "agent-1",
+        tier: "fast",
+        name: "Inspector",
+        prompt: "Inspect",
+      },
+      responseType: "omp.vibe.spawn.response",
+      payload: { worker, state },
+    },
+    {
+      requestId: "vibe-send",
+      invoke: () =>
+        client.sendOmpVibeWorker(
+          { agentId: "agent-1", workerId: "worker-1", message: "Continue" },
+          { requestId: "vibe-send" },
+        ),
+      request: {
+        type: "omp.vibe.send.request",
+        agentId: "agent-1",
+        workerId: "worker-1",
+        message: "Continue",
+      },
+      responseType: "omp.vibe.send.response",
+      payload: { delivery: "steered", state },
+    },
+    {
+      requestId: "vibe-wait",
+      invoke: () =>
+        client.waitOmpVibeWorkers(
+          { agentId: "agent-1", workerIds: ["worker-1"], timeoutMs: 30_000 },
+          { requestId: "vibe-wait" },
+        ),
+      request: {
+        type: "omp.vibe.wait.request",
+        agentId: "agent-1",
+        workerIds: ["worker-1"],
+        timeoutMs: 30_000,
+      },
+      responseType: "omp.vibe.wait.response",
+      payload: { settled: [], stillRunning: ["worker-1"], timedOut: false, state },
+    },
+    {
+      requestId: "vibe-kill",
+      invoke: () =>
+        client.killOmpVibeWorker(
+          { agentId: "agent-1", workerId: "worker-1" },
+          { requestId: "vibe-kill" },
+        ),
+      request: {
+        type: "omp.vibe.kill.request",
+        agentId: "agent-1",
+        workerId: "worker-1",
+      },
+      responseType: "omp.vibe.kill.response",
+      payload: { worker: { ...worker, state: "dead" }, state },
+    },
+  ] as const;
+
+  for (const call of calls) {
+    const response = call.invoke();
+    expect(parseSentFrame(mock.sent.at(-1))).toEqual({
+      ...call.request,
+      requestId: call.requestId,
+    });
+    mock.triggerMessage(
+      wrapSessionMessage({
+        type: call.responseType,
+        payload: { requestId: call.requestId, ...call.payload },
+      }),
+    );
+    await expect(response).resolves.toEqual({ requestId: call.requestId, ...call.payload });
+  }
+});
+
+test("OMP parity actions preserve exact fields and correlated responses", async () => {
+  const mock = createMockTransport();
+  const client = new DaemonClient({
+    url: "ws://test",
+    clientId: "clsk_unit_test",
+    logger: createMockLogger(),
+    reconnect: { enabled: false },
+    transportFactory: () => mock.transport,
+  });
+  clients.push(client);
+  const connectPromise = client.connect();
+  mock.triggerOpen();
+  await connectPromise;
+  const modesState = {
+    mode: "plan" as const,
+    planModeEnabled: true,
+    planModePaused: false,
+    goalModeEnabled: false,
+    goalModePaused: false,
+    loopModeEnabled: false,
+    loopModePaused: false,
+    canEnter: true,
+  };
+  const calls = [
+    {
+      requestId: "cmd-1",
+      invoke: () => client.runOmpSlashCommand("agent-1", "status", "--all", { requestId: "cmd-1" }),
+      request: {
+        type: "omp.command.run.request",
+        agentId: "agent-1",
+        name: "status",
+        args: "--all",
+      },
+      responseType: "omp.command.run.response",
+      payload: { agentInvoked: false, output: "ok", stateChange: false },
+    },
+    {
+      requestId: "set-get-1",
+      invoke: () => client.getOmpSettings("agent-1", { requestId: "set-get-1" }),
+      request: { type: "omp.settings.get.request", agentId: "agent-1" },
+      responseType: "omp.settings.get.response",
+      payload: { revision: 1, settings: [] },
+    },
+    {
+      requestId: "set-set-1",
+      invoke: () =>
+        client.setOmpSetting("agent-1", "retry.baseDelayMs", 250, { requestId: "set-set-1" }),
+      request: {
+        type: "omp.settings.set.request",
+        agentId: "agent-1",
+        path: "retry.baseDelayMs",
+        value: 250,
+      },
+      responseType: "omp.settings.set.response",
+      payload: { path: "retry.baseDelayMs", value: 250, revision: 2 },
+    },
+    {
+      requestId: "mode-get-1",
+      invoke: () => client.getOmpModes("agent-1", { requestId: "mode-get-1" }),
+      request: { type: "omp.modes.get.request", agentId: "agent-1" },
+      responseType: "omp.modes.get.response",
+      payload: { state: modesState },
+    },
+    {
+      requestId: "mode-set-1",
+      invoke: () => client.setOmpMode("agent-1", "plan", true, { requestId: "mode-set-1" }),
+      request: { type: "omp.modes.set.request", agentId: "agent-1", mode: "plan", paused: true },
+      responseType: "omp.modes.set.response",
+      payload: {
+        state: {
+          ...modesState,
+          mode: "plan_paused" as const,
+          planModeEnabled: false,
+          planModePaused: true,
+          changed: true,
+        },
+      },
+    },
+    {
+      requestId: "kb-get-1",
+      invoke: () => client.getOmpKeybindings("agent-1", { requestId: "kb-get-1" }),
+      request: { type: "omp.keybindings.get.request", agentId: "agent-1" },
+      responseType: "omp.keybindings.get.response",
+      payload: { keybindings: [{ id: "app.interrupt", keys: "escape", action: "app.interrupt" }] },
+    },
+    {
+      requestId: "kb-set-1",
+      invoke: () =>
+        client.setOmpKeybinding("agent-1", "app.interrupt", "ctrl+c", { requestId: "kb-set-1" }),
+      request: {
+        type: "omp.keybindings.set.request",
+        agentId: "agent-1",
+        id: "app.interrupt",
+        keys: "ctrl+c",
+      },
+      responseType: "omp.keybindings.set.response",
+      payload: { keybindings: [{ id: "app.interrupt", keys: "ctrl+c", action: "app.interrupt" }] },
+    },
+  ] as const;
+
+  for (const call of calls) {
+    const response = call.invoke();
+    expect(parseSentFrame(mock.sent.at(-1))).toEqual({
+      ...call.request,
+      requestId: call.requestId,
+    });
+    mock.triggerMessage(
+      wrapSessionMessage({
+        type: call.responseType,
+        payload: { requestId: call.requestId, ...call.payload },
+      }),
+    );
+    await expect(response).resolves.toEqual({ requestId: call.requestId, ...call.payload });
   }
 });

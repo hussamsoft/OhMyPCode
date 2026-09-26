@@ -16,7 +16,7 @@ describe("paseo env contract", () => {
     NODE_ENV: "development",
     PATH: "/usr/bin",
     PASEO_AGENT_ID: "agent-123",
-    PASEO_DESKTOP_MANAGED: "1",
+    OHMYPCODE_DESKTOP_MANAGED: "1",
     [PASEO_NODE_ENV]: "production",
     PASEO_SUPERVISED: "1",
     ESBUILD_BINARY_PATH: "/Applications/Paseo.app/Contents/Resources/app.asar.unpacked/esbuild",
@@ -24,7 +24,7 @@ describe("paseo env contract", () => {
   const runtimeControlEnvKeys = [
     "ELECTRON_RUN_AS_NODE",
     "PASEO_NODE_ENV",
-    "PASEO_DESKTOP_MANAGED",
+    "OHMYPCODE_DESKTOP_MANAGED",
     "PASEO_SUPERVISED",
     "ELECTRON_NO_ATTACH_CONSOLE",
     "ESBUILD_BINARY_PATH",
@@ -38,7 +38,7 @@ describe("paseo env contract", () => {
       ELECTRON_NO_ATTACH_CONSOLE: "1",
       NODE_ENV: "development",
       PATH: "/usr/bin",
-      PASEO_DESKTOP_MANAGED: "1",
+      OHMYPCODE_DESKTOP_MANAGED: "1",
       [PASEO_NODE_ENV]: "production",
       PASEO_SUPERVISED: "1",
       PASEO_AGENT_ID: "agent-123",
@@ -50,7 +50,7 @@ describe("paseo env contract", () => {
       ELECTRON_NO_ATTACH_CONSOLE: "1",
       ELECTRON_RUN_AS_NODE: "0",
       EXTRA_VALUE: "from-overlay",
-      PASEO_DESKTOP_MANAGED: "1",
+      OHMYPCODE_DESKTOP_MANAGED: "1",
       PASEO_NODE_ENV: "test",
       PASEO_SUPERVISED: "1",
       PATH: "/custom/bin",
@@ -83,7 +83,7 @@ describe("paseo env contract", () => {
     expect(env.PASEO_AGENT_ID).toBe("agent-123");
     expect(env.PATH).toBe("/usr/bin");
     expect(env.ELECTRON_NO_ATTACH_CONSOLE).toBeUndefined();
-    expect(env.PASEO_DESKTOP_MANAGED).toBeUndefined();
+    expect(env.OHMYPCODE_DESKTOP_MANAGED).toBeUndefined();
     expect(env[PASEO_NODE_ENV]).toBeUndefined();
     expect(env.PASEO_SUPERVISED).toBeUndefined();
   });
@@ -98,7 +98,7 @@ describe("paseo env contract", () => {
     expect(command.env[ELECTRON_RUN_AS_NODE]).toBe("1");
     expect(command.env.CUSTOM).toBe("value");
     expect(command.env.ELECTRON_NO_ATTACH_CONSOLE).toBeUndefined();
-    expect(command.env.PASEO_DESKTOP_MANAGED).toBeUndefined();
+    expect(command.env.OHMYPCODE_DESKTOP_MANAGED).toBeUndefined();
     expect(command.env[PASEO_NODE_ENV]).toBeUndefined();
     expect(command.env.PASEO_SUPERVISED).toBeUndefined();
   });

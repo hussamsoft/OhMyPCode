@@ -235,6 +235,7 @@ import {
 } from "../services/omp-providers/index.js";
 import { OmpProvidersSessionController } from "./session/omp/omp-providers-session-controller.js";
 import { OmpVibeSessionController } from "./session/omp/omp-vibe-session-controller.js";
+import { OmpParitySessionController } from "./session/omp/omp-parity-session-controller.js";
 import {
   resolveWorkspaceRootAgent,
   summarizeFetchWorkspacesEntries,
@@ -290,6 +291,28 @@ type ProviderSubagentManagerEvent = Extract<
 const LEGACY_PROVIDER_IDS = new Set(["claude", "codex", "opencode"]);
 const MIN_VERSION_ALL_PROVIDERS = "0.1.45";
 const MIN_VERSION_EXPLICIT_WORKSPACE_RECOVERY = "0.1.105";
+
+/**
+ * Daemon, hub, diagnostics and project-config request types. Listed so the
+ * agent-config switch can hand them off without a case label each: a label per
+ * type counts against the switch's complexity, and this group is large enough
+ * to push it over on its own.
+ */
+const DAEMON_ADMIN_TYPES: ReadonlySet<SessionInboundMessage["type"]> = new Set([
+  "get_daemon_config_request",
+  "daemon.get_status.request",
+  "daemon.get_pairing_offer.request",
+  "daemon.config.reload.request",
+  "hub.management.daemon.connect.request",
+  "hub.management.daemon.get_status.request",
+  "hub.management.daemon.disconnect.request",
+  "hub.management.daemon.permissions.update.request",
+  "diagnostics.request",
+  "daemon.update.request",
+  "set_daemon_config_request",
+  "read_project_config_request",
+  "write_project_config_request",
+]);
 function errorToFriendlyMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -795,6 +818,7 @@ export class Session {
   private readonly ompCollabService: OmpCollabService;
   private readonly ompProvidersController: OmpProvidersSessionController;
   private readonly ompVibeController: OmpVibeSessionController;
+  private readonly ompParityController: OmpParitySessionController;
   private readonly serviceProxy: ServiceProxySubsystem | null;
   private readonly scriptRuntimeStore: WorkspaceScriptRuntimeStore | null;
   private readonly getDaemonTcpPort: (() => number | null) | null;
@@ -1164,6 +1188,11 @@ export class Session {
       logger: this.sessionLogger,
     });
     this.ompVibeController = new OmpVibeSessionController({
+      agentManager,
+      emit: (message) => this.emit(message),
+      logger: this.sessionLogger,
+    });
+    this.ompParityController = new OmpParitySessionController({
       agentManager,
       emit: (message) => this.emit(message),
       logger: this.sessionLogger,
@@ -2353,15 +2382,33 @@ export class Session {
       this.dispatchCheckoutMessage(msg) ??
       this.dispatchWorkspaceLifecycleMessage(msg) ??
       this.dispatchWorkspaceAndOmpCollabMessage(msg, source) ??
-      this.dispatchOmpVibeMessage(msg) ??
+      this.dispatchOmpProviderMessage(msg) ??
       this.dispatchProviderMessage(msg) ??
       this.dispatchOrchestrationSkillsMessage(msg) ??
-      this.dispatchPluginDirectoryMessage(msg) ??
-      this.dispatchPluginMessage(msg) ??
+      this.dispatchPluginRequestMessage(msg) ??
       this.dispatchTerminalMessage(msg) ??
       this.dispatchScheduleMessage(msg) ??
       this.dispatchMiscMessage(msg);
     if (promise) await promise;
+  }
+
+  /**
+   * The OMP provider families in one place. They are grouped because the
+   * top-level chain is a flat `??` list and every link costs it a point of
+   * complexity, so adding a provider here rather than there keeps the chain
+   * inside its budget.
+   */
+  private dispatchOmpProviderMessage(msg: SessionInboundMessage): Promise<void> | undefined {
+    return (
+      this.dispatchOmpVibeMessage(msg) ??
+      this.dispatchOmpParityMessage(msg) ??
+      this.dispatchOmpProvidersMessage(msg)
+    );
+  }
+
+  /** The plugin surface, so a new plugin request does not lengthen the chain. */
+  private dispatchPluginRequestMessage(msg: SessionInboundMessage): Promise<void> | undefined {
+    return this.dispatchPluginDirectoryMessage(msg) ?? this.dispatchPluginMessage(msg);
   }
 
   private dispatchWorkspaceLifecycleMessage(msg: SessionInboundMessage): Promise<void> | undefined {
@@ -2812,34 +2859,21 @@ export class Session {
     }
   }
 
-  private dispatchAgentConfigMessage(msg: SessionInboundMessage): Promise<void> | undefined {
+  /**
+   * Awaits work and emits the reply, so a request handler reads as one
+   * statement per case instead of a promise chain ending in an empty `.then`.
+   */
+  private async emitAfter<T>(work: Promise<T>, emit: (value: T) => void): Promise<void> {
+    emit(await work);
+  }
+
+  /**
+   * Requests the agent-config surface owns. They are one case here rather than
+   * five so a sixth lands in the agent-config session without growing the
+   * dispatcher.
+   */
+  private dispatchAgentConfigSessionMessage(msg: SessionInboundMessage): Promise<void> | undefined {
     switch (msg.type) {
-      case "list_provider_tools_request":
-        return this.agentManager.listProviderTools(msg.provider, msg.cwd).then((tools) => {
-          this.emit({
-            type: "list_provider_tools_response",
-            payload: { requestId: msg.requestId, tools },
-          });
-        });
-      case "list_agent_tools_request":
-        return this.agentManager.listAgentTools(msg.agentId).then((tools) => {
-          this.emit({
-            type: "list_agent_tools_response",
-            payload: { requestId: msg.requestId, tools },
-          });
-        });
-      case "set_agent_tools_request":
-        return this.agentManager
-          .setAgentTools(msg.agentId, msg.enabledTools)
-          .then((tools) => {
-            this.emit({
-              type: "set_agent_tools_response",
-              payload: { requestId: msg.requestId, tools },
-            });
-          })
-          .catch((error: unknown) => {
-            throw new OmpToolSelectionError(error);
-          });
       case "set_agent_mode_request":
         return this.agentConfigSession.handleSetAgentModeRequest(msg);
       case "set_agent_model_request":
@@ -2850,6 +2884,61 @@ export class Session {
         return this.agentConfigSession.handleSetAgentThinkingRequest(msg);
       case "agent.config.apply.request":
         return this.agentConfigSession.handleAgentConfigApplyRequest(msg);
+      default:
+        return undefined;
+    }
+  }
+
+  private dispatchAgentConfigMessage(msg: SessionInboundMessage): Promise<void> | undefined {
+    switch (msg.type) {
+      case "list_provider_tools_request":
+        return this.emitAfter(
+          this.agentManager.listProviderTools(msg.provider, msg.cwd),
+          (tools) => {
+            this.emit({
+              type: "list_provider_tools_response",
+              payload: { requestId: msg.requestId, tools },
+            });
+          },
+        );
+      case "list_agent_tools_request":
+        return this.emitAfter(this.agentManager.listAgentTools(msg.agentId), (tools) => {
+          this.emit({
+            type: "list_agent_tools_response",
+            payload: { requestId: msg.requestId, tools },
+          });
+        });
+      case "set_agent_tools_request":
+        return this.emitAfter(
+          this.agentManager.setAgentTools(msg.agentId, msg.enabledTools).catch((error: unknown) => {
+            throw new OmpToolSelectionError(error);
+          }),
+          (tools) => {
+            this.emit({
+              type: "set_agent_tools_response",
+              payload: { requestId: msg.requestId, tools },
+            });
+          },
+        );
+      case "set_agent_mode_request":
+      case "set_agent_model_request":
+      case "set_agent_feature_request":
+      case "set_agent_thinking_request":
+      case "agent.config.apply.request":
+        return this.dispatchAgentConfigSessionMessage(msg);
+      default:
+        return DAEMON_ADMIN_TYPES.has(msg.type) ? this.dispatchDaemonAdminMessage(msg) : undefined;
+    }
+  }
+
+  /**
+   * Daemon, hub, diagnostics and project-config administration. Split out of
+   * the agent-config switch so neither half sits on the complexity ceiling, and
+   * so a daemon request does not have to be threaded past agent-config cases to
+   * find its handler.
+   */
+  private dispatchDaemonAdminMessage(msg: SessionInboundMessage): Promise<void> | undefined {
+    switch (msg.type) {
       case "get_daemon_config_request":
         this.emit({
           type: "get_daemon_config_response",
@@ -3105,6 +3194,10 @@ export class Session {
 
   private dispatchOmpVibeMessage(msg: SessionInboundMessage): Promise<void> | undefined {
     return this.ompVibeController.dispatch(msg);
+  }
+
+  private dispatchOmpParityMessage(msg: SessionInboundMessage): Promise<void> | undefined {
+    return this.ompParityController.dispatch(msg);
   }
 
   private async handleOmpCollabHostsListRequest(
@@ -8623,6 +8716,7 @@ export class Session {
     this.providerCatalogSession.dispose();
     this.ompProvidersController.dispose();
     this.ompVibeController.dispose();
+    this.ompParityController.dispose();
 
     this.terminalController.dispose();
 

@@ -7,6 +7,39 @@ import type {
 } from "@getpaseo/protocol/agent-types";
 import type { AgentAttachment } from "@getpaseo/protocol/messages";
 import type { PaseoToolCatalog } from "./tools/types.js";
+import type { ProviderSubagentInputEvent } from "./provider-subagents/store.js";
+import type {
+  OmpModesResult,
+  OmpSetModeResult,
+  OmpKeybindingsResult,
+  OmpSetKeybindingResult,
+  OmpSettingsResult,
+  OmpSetSettingResult,
+  OmpSlashCommandResult,
+  VibeEnterResult,
+  VibeExitResult,
+  VibeKillResult,
+  VibeSendResult,
+  VibeSpawnResult,
+  VibeStateResult,
+  VibeWaitResult,
+} from "./providers/omp/rpc-types.js";
+export type {
+  OmpModesResult,
+  OmpSetModeResult,
+  OmpKeybindingsResult,
+  OmpSetKeybindingResult,
+  OmpSettingsResult,
+  OmpSetSettingResult,
+  OmpSlashCommandResult,
+  VibeEnterResult,
+  VibeExitResult,
+  VibeKillResult,
+  VibeSendResult,
+  VibeSpawnResult,
+  VibeStateResult,
+  VibeWaitResult,
+};
 
 export type { AgentProviderNotice, AgentTaskItem };
 
@@ -179,6 +212,16 @@ export interface AgentFeatureSelect {
 
 export type AgentFeature = AgentFeatureToggle | AgentFeatureSelect;
 
+export type AgentToolSource = "native" | "paseo" | "mcp";
+
+export interface AgentToolDefinition {
+  name: string;
+  label: string;
+  description: string;
+  source: AgentToolSource;
+  enabled: boolean;
+  required: boolean;
+}
 export interface AgentCapabilityFlags {
   [capability: string]: boolean | undefined;
   supportsStreaming: boolean;
@@ -192,6 +235,12 @@ export interface AgentCapabilityFlags {
   supportsRewindConversation?: boolean;
   supportsRewindFiles?: boolean;
   supportsRewindBoth?: boolean;
+  supportsOmpVibe?: boolean;
+  supportsOmpToolSelection?: boolean;
+  supportsOmpSlashCommands?: boolean;
+  supportsOmpSettings?: boolean;
+  supportsOmpModes?: boolean;
+  supportsOmpKeybindings?: boolean;
 }
 
 export interface AgentPersistenceHandle {
@@ -471,7 +520,14 @@ export type AgentStreamEvent =
   | {
       type: "provider_subagent";
       provider: AgentProvider;
-      event: import("./provider-subagents/store.js").ProviderSubagentInputEvent;
+      event: ProviderSubagentInputEvent;
+    }
+  | { type: "tools_updated"; provider: AgentProvider; tools: AgentToolDefinition[] }
+  | {
+      type: "provider_state_updated";
+      provider: AgentProvider;
+      stateKey: string;
+      state: JsonValue;
     };
 
 export function getAgentStreamEventTurnId(event: AgentStreamEvent): string | undefined {
@@ -689,8 +745,11 @@ export interface AgentSession {
   setModel?(modelId: string | null): Promise<void>;
   setThinkingOption?(thinkingOptionId: string | null): Promise<void | AgentProviderNotice>;
   setFeature?(featureId: string, value: unknown): Promise<void>;
+  setTitle?(title: string): Promise<void>;
   revertConversation?(input: { messageId: string }): Promise<void>;
   revertFiles?(input: { messageId: string }): Promise<void>;
+  listTools?(): Promise<AgentToolDefinition[]>;
+  setTools?(enabledTools: string[]): Promise<AgentToolDefinition[]>;
   revertBoth?(input: { messageId: string }): Promise<void>;
   /**
    * Out-of-band prompt handler. When non-null, the manager runs the returned
@@ -704,6 +763,31 @@ export interface AgentSession {
     run(ctx: { emit: (event: AgentStreamEvent) => void }): Promise<void>;
   } | null;
 }
+
+export interface OmpVibeSession {
+  vibeStatus(): Promise<VibeStateResult>;
+  vibeEnter(prompt?: string): Promise<VibeEnterResult>;
+  vibeExit(): Promise<VibeExitResult>;
+  vibeSpawn(input: {
+    cli: "fast" | "good";
+    name?: string;
+    prompt: string;
+  }): Promise<VibeSpawnResult>;
+  vibeSend(input: { session: string; message: string }): Promise<VibeSendResult>;
+  vibeWait(input?: { sessions?: string[]; timeoutMs?: number }): Promise<VibeWaitResult>;
+  vibeKill(session: string): Promise<VibeKillResult>;
+}
+
+export interface OmpParitySession {
+  getOmpModes(): Promise<OmpModesResult>;
+  setOmpMode(mode: "plan" | "goal" | "loop", paused?: boolean): Promise<OmpSetModeResult>;
+  runSlashCommand(name: string, args?: string): Promise<OmpSlashCommandResult>;
+  getSettings(): Promise<OmpSettingsResult>;
+  setSetting(path: string, value: unknown): Promise<OmpSetSettingResult>;
+  getKeybindings(): Promise<OmpKeybindingsResult>;
+  setKeybinding(id: string, keys: string): Promise<OmpSetKeybindingResult>;
+}
+export type OmpModeSession = OmpParitySession;
 
 export type FetchCatalogOptions =
   | {
@@ -770,6 +854,10 @@ export interface AgentClient {
   resolveCreateConfig?(input: ResolveAgentCreateConfigInput): ResolveAgentCreateConfigResult;
   isCreateConfigUnattended?(input: AgentCreateConfigUnattendedInput): boolean;
   listCommands?(config: AgentSessionConfig): Promise<AgentSlashCommand[]>;
+  listTools?(
+    config: AgentSessionConfig,
+    launchContext?: AgentLaunchContext,
+  ): Promise<AgentToolDefinition[]>;
   listFeatures?(config: AgentSessionConfig): Promise<AgentFeature[]>;
   listImportableSessions?(
     options?: ListImportableSessionsOptions,

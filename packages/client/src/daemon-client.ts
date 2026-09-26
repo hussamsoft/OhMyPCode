@@ -94,6 +94,32 @@ import type {
   RefreshProvidersSnapshotResponseMessage,
   ProviderDiagnosticResponseMessage,
   ProviderUsageListResponseMessage,
+  OmpStatisticsResponseMessage,
+  OmpCollabHostsListResponse,
+  OmpCollabLinkCreateResponse,
+  OmpCollabSessionShareResponse,
+  OmpProvidersListResponse,
+  OmpProviderLoginStartResponse,
+  OmpProviderLoginRespondResponse,
+  OmpProviderLoginCancelResponse,
+  OmpProviderLogoutResponse,
+  OmpCommandRunResponse,
+  OmpSettingsGetResponse,
+  OmpSettingsSetResponse,
+  OmpGetModesResponse,
+  OmpSetModeResponse,
+  OmpKeybindingsGetResponse,
+  OmpKeybindingsSetResponse,
+  ListProviderToolsResponseSchema,
+  ListAgentToolsResponseSchema,
+  SetAgentToolsResponseSchema,
+  OmpVibeStatusResponseSchema,
+  OmpVibeEnterResponseSchema,
+  OmpVibeExitResponseSchema,
+  OmpVibeSpawnResponseSchema,
+  OmpVibeSendResponseSchema,
+  OmpVibeWaitResponseSchema,
+  OmpVibeKillResponseSchema,
   DaemonGetStatusResponse,
   DaemonGetPairingOfferResponse,
   DaemonConfigReloadResponse,
@@ -493,8 +519,24 @@ type ListProviderModesPayload = ListProviderModesResponseMessage["payload"];
 type ListAvailableProvidersPayload = ListAvailableProvidersResponse["payload"];
 type GetProvidersSnapshotPayload = GetProvidersSnapshotResponseMessage["payload"];
 type RefreshProvidersSnapshotPayload = RefreshProvidersSnapshotResponseMessage["payload"];
+type OmpCollabHostsListPayload = OmpCollabHostsListResponse["payload"];
+type OmpCollabLinkCreatePayload = OmpCollabLinkCreateResponse["payload"];
+type OmpCollabSessionSharePayload = OmpCollabSessionShareResponse["payload"];
+export type OmpProvidersListPayload = OmpProvidersListResponse["payload"];
+export type OmpProviderLoginStartPayload = OmpProviderLoginStartResponse["payload"];
+export type OmpProviderLoginRespondPayload = OmpProviderLoginRespondResponse["payload"];
+export type OmpProviderLoginCancelPayload = OmpProviderLoginCancelResponse["payload"];
+export type OmpProviderLogoutPayload = OmpProviderLogoutResponse["payload"];
+export type OmpCommandRunPayload = OmpCommandRunResponse["payload"];
+export type OmpSettingsGetPayload = OmpSettingsGetResponse["payload"];
+export type OmpSettingsSetPayload = OmpSettingsSetResponse["payload"];
+export type OmpModesGetPayload = OmpGetModesResponse["payload"];
+export type OmpModesSetPayload = OmpSetModeResponse["payload"];
+export type OmpKeybindingsGetPayload = OmpKeybindingsGetResponse["payload"];
+export type OmpKeybindingsSetPayload = OmpKeybindingsSetResponse["payload"];
 type ProviderDiagnosticPayload = ProviderDiagnosticResponseMessage["payload"];
 type ProviderUsageListPayload = ProviderUsageListResponseMessage["payload"];
+type OmpStatisticsPayload = OmpStatisticsResponseMessage["payload"];
 type DaemonStatusPayload = DaemonGetStatusResponse["payload"];
 type DaemonPairingOfferPayload = DaemonGetPairingOfferResponse["payload"];
 type DiagnosticsPayload = DiagnosticsResponse["payload"];
@@ -3593,6 +3635,124 @@ export class DaemonClient {
     return payload.notice ?? null;
   }
 
+  async listProviderTools(
+    provider: AgentProvider,
+    cwd: string,
+    options?: { requestId?: string },
+  ): Promise<z.infer<typeof ListProviderToolsResponseSchema>["payload"]> {
+    return this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "list_provider_tools_request", provider, cwd },
+      responseType: "list_provider_tools_response",
+    });
+  }
+
+  async listAgentTools(
+    agentId: string,
+    options?: { requestId?: string },
+  ): Promise<z.infer<typeof ListAgentToolsResponseSchema>["payload"]> {
+    return this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "list_agent_tools_request", agentId },
+      responseType: "list_agent_tools_response",
+    });
+  }
+
+  async setAgentTools(
+    agentId: string,
+    enabledTools: string[],
+    options?: { requestId?: string },
+  ): Promise<z.infer<typeof SetAgentToolsResponseSchema>["payload"]> {
+    return this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "set_agent_tools_request", agentId, enabledTools },
+      responseType: "set_agent_tools_response",
+    });
+  }
+
+  async getOmpVibeState(
+    agentId: string,
+    options?: { requestId?: string },
+  ): Promise<z.infer<typeof OmpVibeStatusResponseSchema>["payload"]> {
+    return this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.vibe.status.request", agentId },
+      responseType: "omp.vibe.status.response",
+    });
+  }
+
+  async enterOmpVibe(
+    input: { agentId: string; prompt?: string },
+    options?: { requestId?: string },
+  ): Promise<z.infer<typeof OmpVibeEnterResponseSchema>["payload"]> {
+    return this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.vibe.enter.request", ...input },
+      responseType: "omp.vibe.enter.response",
+    });
+  }
+
+  async exitOmpVibe(
+    agentId: string,
+    options?: { requestId?: string },
+  ): Promise<z.infer<typeof OmpVibeExitResponseSchema>["payload"]> {
+    return this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.vibe.exit.request", agentId },
+      responseType: "omp.vibe.exit.response",
+    });
+  }
+
+  async spawnOmpVibeWorker(
+    input: {
+      agentId: string;
+      tier: "fast" | "good";
+      name?: string;
+      prompt: string;
+    },
+    options?: { requestId?: string },
+  ): Promise<z.infer<typeof OmpVibeSpawnResponseSchema>["payload"]> {
+    return this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.vibe.spawn.request", ...input },
+      responseType: "omp.vibe.spawn.response",
+    });
+  }
+
+  async sendOmpVibeWorker(
+    input: { agentId: string; workerId: string; message: string },
+    options?: { requestId?: string },
+  ): Promise<z.infer<typeof OmpVibeSendResponseSchema>["payload"]> {
+    return this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.vibe.send.request", ...input },
+      responseType: "omp.vibe.send.response",
+    });
+  }
+
+  async waitOmpVibeWorkers(
+    input: { agentId: string; workerIds?: string[]; timeoutMs?: number },
+    options?: { requestId?: string },
+  ): Promise<z.infer<typeof OmpVibeWaitResponseSchema>["payload"]> {
+    return this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.vibe.wait.request", ...input },
+      responseType: "omp.vibe.wait.response",
+      timeout: input.timeoutMs === undefined ? undefined : input.timeoutMs + 5_000,
+    });
+  }
+
+  async killOmpVibeWorker(
+    input: { agentId: string; workerId: string },
+    options?: { requestId?: string },
+  ): Promise<z.infer<typeof OmpVibeKillResponseSchema>["payload"]> {
+    return this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.vibe.kill.request", ...input },
+      responseType: "omp.vibe.kill.response",
+    });
+  }
+
   async restartServer(
     reason?: string,
     requestId?: string,
@@ -5157,6 +5317,195 @@ export class DaemonClient {
       message: {
         type: "provider.usage.list.request",
       },
+    });
+  }
+
+  async getOmpStatistics(options?: {
+    forceRefresh?: boolean;
+    requestId?: string;
+  }): Promise<OmpStatisticsPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: {
+        type: "omp.statistics.request",
+        forceRefresh: options?.forceRefresh,
+      },
+    });
+  }
+  async listOmpCollabHosts(options?: { requestId?: string }): Promise<OmpCollabHostsListPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.collab.hosts.list.request" },
+    });
+  }
+
+  async createOmpCollabLink(
+    instanceId: string,
+    options?: { viewOnly?: boolean; requestId?: string },
+  ): Promise<OmpCollabLinkCreatePayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: {
+        type: "omp.collab.link.create.request",
+        instanceId,
+        viewOnly: options?.viewOnly,
+      },
+    });
+  }
+
+  async shareOmpSession(
+    session: string,
+    options?: { gist?: boolean; requestId?: string },
+  ): Promise<OmpCollabSessionSharePayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: {
+        type: "omp.collab.session.share.request",
+        session,
+        gist: options?.gist,
+      },
+    });
+  }
+
+  async listOmpProviders(options?: { requestId?: string }): Promise<OmpProvidersListPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.providers.list.request" },
+    });
+  }
+
+  async startOmpProviderLogin(
+    providerId: string,
+    options?: { requestId?: string },
+  ): Promise<OmpProviderLoginStartPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.providers.login.start.request", providerId },
+    });
+  }
+
+  async respondOmpProviderLogin(
+    loginId: string,
+    uiRequestId: string,
+    response: { value?: string; confirmed?: boolean; cancelled?: boolean },
+    options?: { requestId?: string },
+  ): Promise<OmpProviderLoginRespondPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: {
+        type: "omp.providers.login.respond.request",
+        loginId,
+        uiRequestId,
+        ...response,
+      },
+    });
+  }
+
+  async cancelOmpProviderLogin(
+    loginId: string,
+    options?: { requestId?: string },
+  ): Promise<OmpProviderLoginCancelPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.providers.login.cancel.request", loginId },
+    });
+  }
+
+  async logoutOmpProvider(
+    providerId: string,
+    options?: { requestId?: string },
+  ): Promise<OmpProviderLogoutPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.providers.logout.request", providerId },
+    });
+  }
+
+  async runOmpSlashCommand(
+    agentId: string,
+    name: string,
+    args?: string,
+    options?: { requestId?: string },
+  ): Promise<OmpCommandRunPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: {
+        type: "omp.command.run.request",
+        agentId,
+        name,
+        ...(args === undefined ? {} : { args }),
+      },
+    });
+  }
+
+  async getOmpSettings(
+    agentId: string,
+    options?: { requestId?: string },
+  ): Promise<OmpSettingsGetPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.settings.get.request", agentId },
+    });
+  }
+
+  async setOmpSetting(
+    agentId: string,
+    path: string,
+    value: unknown,
+    options?: { requestId?: string },
+  ): Promise<OmpSettingsSetPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.settings.set.request", agentId, path, value },
+    });
+  }
+
+  async getOmpModes(
+    agentId: string,
+    options?: { requestId?: string },
+  ): Promise<OmpModesGetPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.modes.get.request", agentId },
+    });
+  }
+
+  async setOmpMode(
+    agentId: string,
+    mode: "plan" | "goal" | "loop",
+    paused?: boolean,
+    options?: { requestId?: string },
+  ): Promise<OmpModesSetPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: {
+        type: "omp.modes.set.request",
+        agentId,
+        mode,
+        ...(paused === undefined ? {} : { paused }),
+      },
+    });
+  }
+
+  async getOmpKeybindings(
+    agentId: string,
+    options?: { requestId?: string },
+  ): Promise<OmpKeybindingsGetPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.keybindings.get.request", agentId },
+    });
+  }
+
+  async setOmpKeybinding(
+    agentId: string,
+    id: string,
+    keys: string,
+    options?: { requestId?: string },
+  ): Promise<OmpKeybindingsSetPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.keybindings.set.request", agentId, id, keys },
     });
   }
 

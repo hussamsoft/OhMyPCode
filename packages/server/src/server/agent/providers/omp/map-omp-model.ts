@@ -47,7 +47,11 @@ export function mapOmpModel(model: OmpModel, provider: AgentProvider): AgentMode
     metadata: {
       provider: model.provider,
       modelId: model.id,
+      modelName: model.name ?? model.id,
     },
+    ...(typeof model.contextWindow === "number"
+      ? { contextWindowMaxTokens: model.contextWindow }
+      : {}),
     thinkingOptions,
     defaultThinkingOptionId,
   };

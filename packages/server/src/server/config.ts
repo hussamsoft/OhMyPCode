@@ -609,7 +609,7 @@ export function resolveConfigFromPersisted(
   return {
     listen,
     paseoHome,
-    desktopManaged: env.PASEO_DESKTOP_MANAGED === "1",
+    desktopManaged: env.OHMYPCODE_DESKTOP_MANAGED === "1",
     worktreesRoot: resolveWorktreesRoot(paseoHome, persisted),
     corsAllowedOrigins: resolveCorsAllowedOrigins(env, persisted),
     hostnames,

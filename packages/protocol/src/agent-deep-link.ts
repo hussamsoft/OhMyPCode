@@ -3,6 +3,8 @@ export interface AgentDeepLinkTarget {
   agentId: string;
 }
 
+const AGENT_DEEP_LINK_SCHEME = "ohmypcode";
+
 function normalizeSegment(value: string): string {
   return value.trim();
 }
@@ -24,7 +26,7 @@ export function buildAgentDeepLinkRoute(
 }
 
 export function buildAgentDeepLink(target: AgentDeepLinkTarget): string {
-  return `paseo:/${buildAgentDeepLinkRoute(target)}`;
+  return `${AGENT_DEEP_LINK_SCHEME}:/${buildAgentDeepLinkRoute(target)}`;
 }
 
 export function parseAgentDeepLink(input: string): AgentDeepLinkTarget | null {
@@ -36,7 +38,7 @@ export function parseAgentDeepLink(input: string): AgentDeepLinkTarget | null {
   }
 
   if (
-    url.protocol !== "paseo:" ||
+    url.protocol !== `${AGENT_DEEP_LINK_SCHEME}:` ||
     url.hostname !== "h" ||
     url.username ||
     url.password ||

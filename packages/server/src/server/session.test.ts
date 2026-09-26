@@ -8,6 +8,7 @@ import { tmpdir } from "os";
 import { join, resolve as resolvePath } from "path";
 import pino from "pino";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { AgentManagerOmpParityError } from "./agent/agent-manager.js";
 
 import {
   assertPullRequestAutoMergeDisableReady,
@@ -5809,4 +5810,313 @@ test("provider snapshots preserve versionless visibility while capabilities upda
     "plugin-provider",
   ]);
   expect(references.compactSnapshot!.entries[0]!.modes![0]!.icon).toBe("ShieldCheck");
+});
+
+describe("omp parity message handling", () => {
+  test("dispatches all seven parity requests with correlated responses", async () => {
+    const messages: SessionOutboundMessage[] = [];
+    const agentManager = {
+      runOmpSlashCommand: vi
+        .fn()
+        .mockResolvedValue({ outcome: "consumed", output: "ok", agentInvoked: false }),
+      getOmpSettings: vi.fn().mockResolvedValue({
+        revision: 1,
+        settings: [
+          {
+            path: "retry.baseDelayMs",
+            type: "number",
+            defaultValue: 500,
+            value: 250,
+            credential: false,
+          },
+        ],
+      }),
+      setOmpSetting: vi
+        .fn()
+        .mockResolvedValue({ path: "retry.baseDelayMs", value: 250, revision: 2 }),
+      getOmpModes: vi.fn().mockResolvedValue({
+        mode: "plan",
+        planModeEnabled: true,
+        planModePaused: false,
+        goalModeEnabled: false,
+        goalModePaused: false,
+        loopModeEnabled: false,
+        loopModePaused: false,
+        canEnter: true,
+      }),
+      setOmpMode: vi.fn().mockResolvedValue({
+        mode: "plan_paused",
+        planModeEnabled: false,
+        planModePaused: true,
+        goalModeEnabled: false,
+        goalModePaused: false,
+        loopModeEnabled: false,
+        loopModePaused: false,
+        canEnter: true,
+        changed: true,
+      }),
+      getOmpKeybindings: vi.fn().mockResolvedValue({
+        keybindings: [
+          {
+            id: "app.interrupt",
+            keys: "escape",
+            action: "app.interrupt",
+            description: "Interrupt agent",
+          },
+        ],
+      }),
+      setOmpKeybinding: vi.fn().mockResolvedValue({
+        keybinding: "app.interrupt",
+        keys: "ctrl+c",
+        persisted: true,
+      }),
+    };
+
+    const session = createSessionForTest({ messages, agentManager });
+
+    await session.handleMessage({
+      type: "omp.command.run.request",
+      agentId: "agent-1",
+      name: "status",
+      requestId: "cmd-1",
+    });
+    expect(messages.find((m) => m.type === "omp.command.run.response")).toEqual({
+      type: "omp.command.run.response",
+      payload: {
+        requestId: "cmd-1",
+        agentInvoked: false,
+        output: "ok",
+        stateChange: false,
+      },
+    });
+
+    await session.handleMessage({
+      type: "omp.settings.get.request",
+      agentId: "agent-1",
+      requestId: "set-get-1",
+    });
+    expect(messages.find((m) => m.type === "omp.settings.get.response")).toEqual({
+      type: "omp.settings.get.response",
+      payload: {
+        requestId: "set-get-1",
+        revision: 1,
+        settings: [
+          {
+            path: "retry.baseDelayMs",
+            type: "number",
+            defaultValue: 500,
+            value: 250,
+            credential: false,
+          },
+        ],
+      },
+    });
+
+    await session.handleMessage({
+      type: "omp.settings.set.request",
+      agentId: "agent-1",
+      path: "retry.baseDelayMs",
+      value: 250,
+      requestId: "set-set-1",
+    });
+    expect(messages.find((m) => m.type === "omp.settings.set.response")).toEqual({
+      type: "omp.settings.set.response",
+      payload: {
+        requestId: "set-set-1",
+        path: "retry.baseDelayMs",
+        value: 250,
+        revision: 2,
+      },
+    });
+
+    await session.handleMessage({
+      type: "omp.modes.get.request",
+      agentId: "agent-1",
+      requestId: "mode-get-1",
+    });
+    expect(messages.find((m) => m.type === "omp.modes.get.response")).toEqual({
+      type: "omp.modes.get.response",
+      payload: {
+        requestId: "mode-get-1",
+        state: {
+          mode: "plan",
+          planModeEnabled: true,
+          planModePaused: false,
+          goalModeEnabled: false,
+          goalModePaused: false,
+          loopModeEnabled: false,
+          loopModePaused: false,
+          canEnter: true,
+        },
+      },
+    });
+
+    await session.handleMessage({
+      type: "omp.modes.set.request",
+      agentId: "agent-1",
+      mode: "plan",
+      paused: true,
+      requestId: "mode-set-1",
+    });
+    expect(messages.find((m) => m.type === "omp.modes.set.response")).toEqual({
+      type: "omp.modes.set.response",
+      payload: {
+        requestId: "mode-set-1",
+        state: {
+          mode: "plan_paused",
+          planModeEnabled: false,
+          planModePaused: true,
+          goalModeEnabled: false,
+          goalModePaused: false,
+          loopModeEnabled: false,
+          loopModePaused: false,
+          canEnter: true,
+          changed: true,
+        },
+      },
+    });
+
+    await session.handleMessage({
+      type: "omp.keybindings.get.request",
+      agentId: "agent-1",
+      requestId: "kb-get-1",
+    });
+    expect(messages.find((m) => m.type === "omp.keybindings.get.response")).toEqual({
+      type: "omp.keybindings.get.response",
+      payload: {
+        requestId: "kb-get-1",
+        keybindings: [
+          {
+            id: "app.interrupt",
+            keys: "escape",
+            action: "app.interrupt",
+            description: "Interrupt agent",
+          },
+        ],
+      },
+    });
+
+    await session.handleMessage({
+      type: "omp.keybindings.set.request",
+      agentId: "agent-1",
+      id: "app.interrupt",
+      keys: "ctrl+c",
+      requestId: "kb-set-1",
+    });
+    expect(messages.find((m) => m.type === "omp.keybindings.set.response")).toEqual({
+      type: "omp.keybindings.set.response",
+      payload: {
+        requestId: "kb-set-1",
+        keybindings: [
+          {
+            id: "app.interrupt",
+            keys: "escape",
+            action: "app.interrupt",
+            description: "Interrupt agent",
+          },
+        ],
+      },
+    });
+  });
+
+  test("emits the code the manager attached, verbatim", async () => {
+    const messages: SessionOutboundMessage[] = [];
+    const agentManager = {
+      getOmpModes: vi.fn(),
+      setOmpMode: vi
+        .fn()
+        .mockRejectedValue(
+          new AgentManagerOmpParityError("omp_mode_conflict", "Exit plan mode first."),
+        ),
+      runOmpSlashCommand: vi.fn(),
+      getOmpSettings: vi.fn(),
+      setOmpSetting: vi.fn(),
+      getOmpKeybindings: vi.fn(),
+      setOmpKeybinding: vi.fn(),
+    };
+    const session = createSessionForTest({ messages, agentManager });
+
+    await session.handleMessage({
+      type: "omp.modes.set.request",
+      agentId: "agent-1",
+      mode: "goal",
+      requestId: "conflict-req",
+    });
+
+    // The message is OMP's own, carried through untouched: a host shows it to
+    // the user, so paraphrasing it would misreport what blocked the transition.
+    expect(messages.find((m) => m.type === "rpc_error")).toEqual({
+      type: "rpc_error",
+      payload: {
+        requestId: "conflict-req",
+        requestType: "omp.modes.set.request",
+        error: "Exit plan mode first.",
+        code: "omp_mode_conflict",
+      },
+    });
+  });
+
+  test("emits omp_parity_unavailable when the agent has no OMP session", async () => {
+    const messages: SessionOutboundMessage[] = [];
+    const agentManager = {
+      getOmpModes: vi
+        .fn()
+        .mockRejectedValue(
+          new AgentManagerOmpParityError(
+            "omp_parity_unavailable",
+            "Agent 'agent-1' has no OMP session",
+          ),
+        ),
+      setOmpMode: vi.fn(),
+      runOmpSlashCommand: vi.fn(),
+      getOmpSettings: vi.fn(),
+      setOmpSetting: vi.fn(),
+      getOmpKeybindings: vi.fn(),
+      setOmpKeybinding: vi.fn(),
+    };
+    const session = createSessionForTest({ messages, agentManager });
+
+    await session.handleMessage({
+      type: "omp.modes.get.request",
+      agentId: "agent-1",
+      requestId: "unavail-req",
+    });
+
+    expect(messages.find((m) => m.type === "rpc_error")).toEqual({
+      type: "rpc_error",
+      payload: {
+        requestId: "unavail-req",
+        requestType: "omp.modes.get.request",
+        error: "Agent 'agent-1' has no OMP session",
+        code: "omp_parity_unavailable",
+      },
+    });
+  });
+
+  test("buckets an error carrying no code by the request's own domain", async () => {
+    const messages: SessionOutboundMessage[] = [];
+    const agentManager = {
+      getOmpModes: vi.fn(),
+      setOmpMode: vi.fn(),
+      // A transport failure, not one the manager classified: it has no code, so
+      // the controller falls back to the domain of the request that failed.
+      runOmpSlashCommand: vi.fn().mockRejectedValue(new Error("socket closed")),
+      getOmpSettings: vi.fn(),
+      setOmpSetting: vi.fn(),
+      getOmpKeybindings: vi.fn(),
+      setOmpKeybinding: vi.fn(),
+    };
+    const session = createSessionForTest({ messages, agentManager });
+
+    await session.handleMessage({
+      type: "omp.command.run.request",
+      agentId: "agent-1",
+      name: "git",
+      requestId: "untyped-req",
+    });
+
+    expect(messages.find((m) => m.type === "rpc_error")).toMatchObject({
+      payload: { requestId: "untyped-req", code: "omp_command_failed", error: "socket closed" },
+    });
+  });
 });

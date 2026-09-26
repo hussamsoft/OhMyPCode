@@ -59,7 +59,7 @@ export const DAEMON_SETTING_ENV_KEYS = [
 
 const CONFIG_CONTEXT_ENV_KEYS = [
   "PASEO_NODE_ENV",
-  "PASEO_DESKTOP_MANAGED",
+  "OHMYPCODE_DESKTOP_MANAGED",
   "OPENAI_API_KEY",
   "OPENAI_BASE_URL",
   "OPENAI_STT_API_KEY",
@@ -83,8 +83,8 @@ export function daemonLaunchEnvironment(input: {
     for (const key of DAEMON_SETTING_ENV_KEYS) delete env[key];
   }
   delete env.PASEO_HOST;
-  delete env.PASEO_DESKTOP_MANAGED;
-  env.PASEO_HOME = input.home;
-  if (input.desktopManaged) env.PASEO_DESKTOP_MANAGED = "1";
+  delete env.OHMYPCODE_DESKTOP_MANAGED;
+  env.OHMYPCODE_HOME = input.home;
+  if (input.desktopManaged) env.OHMYPCODE_DESKTOP_MANAGED = "1";
   return env;
 }

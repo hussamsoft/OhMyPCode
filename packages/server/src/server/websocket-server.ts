@@ -89,6 +89,13 @@ import {
   type WebSocketRuntimeDiagnosticSnapshot,
 } from "./websocket/runtime-metrics.js";
 import { ProviderUsageService } from "../services/quota-fetcher/service.js";
+import { createOmpCollabService, type OmpCollabService } from "../services/omp-collab/index.js";
+import {
+  createOmpProvidersService,
+  type OmpProvidersService,
+} from "../services/omp-providers/index.js";
+import { OmpStatisticsService } from "../services/omp-statistics/service.js";
+import { isOmpRuntimeAvailable } from "../services/omp-command.js";
 import { getProcessMemoryDiagnostics, getProcessUptimeSeconds } from "./process-diagnostics.js";
 import {
   CLIENT_SHUTDOWN_RPC_REASON,
@@ -467,6 +474,8 @@ interface SocketSessionOptions {
   onLifecycleIntent?: (intent: SessionLifecycleIntent) => void;
   hubExecutionAgents?: HubExecutionAgents;
   hubRelationships?: HubRelationshipManagement;
+  ompCollabService: OmpCollabService;
+  ompProvidersService: OmpProvidersService;
 }
 
 interface ClosePhysicalSocketParams {
@@ -549,6 +558,7 @@ export class VoiceAssistantWebSocketServer {
   private readonly pushNotifications: PushNotifications;
   private readonly pushNotificationSender: PushNotificationSender;
   private readonly mcpBaseUrl: string | null;
+  private readonly ompRuntimeAvailable: boolean;
   private speech!: SpeechService | null;
   private terminalManager!: TerminalManager | null;
   private serviceProxy!: ServiceProxySubsystem | null;
@@ -576,9 +586,12 @@ export class VoiceAssistantWebSocketServer {
   private applicationSocketLeaseInterval: ReturnType<typeof setInterval> | null = null;
   private readonly applicationSocketLease = new ApplicationSocketLease<WebSocketLike>();
   private eventLoopDelayMonitor: ReturnType<typeof monitorEventLoopDelay> | null = null;
+  private readonly ompCollabService: OmpCollabService;
+  private readonly ompProvidersService: OmpProvidersService;
   private unsubscribeSpeechReadiness: (() => void) | null = null;
   private unsubscribeDaemonConfigChange: (() => void) | null = null;
   private readonly providerUsageService: ProviderUsageService;
+  private readonly ompStatisticsService: OmpStatisticsService;
   private unsubscribeTerminalActivity: (() => void) | null = null;
   private readonly browserToolsBroker: BrowserToolsBroker | null;
   private readonly hubRelationships: HubRelationshipManagement | null;
@@ -654,6 +667,8 @@ export class VoiceAssistantWebSocketServer {
     pluginRuntime?: SessionOptions["pluginRuntime"],
     orchestrationSkills?: SessionOptions["orchestrationSkills"],
     workspaceLabelService?: WorkspaceLabelService,
+    ompCollabService?: OmpCollabService,
+    ompProvidersService?: OmpProvidersService,
   ) {
     this.logger = logger.child({ module: "websocket-server" });
     this.workspaceSetupRuntime = workspaceSetupRuntime;
@@ -749,12 +764,28 @@ export class VoiceAssistantWebSocketServer {
     this.providerUsageService = new ProviderUsageService({
       logger: this.logger,
     });
+    this.ompRuntimeAvailable = isOmpRuntimeAvailable();
+    const ompServices = this.resolveOmpServices({ ompCollabService, ompProvidersService });
+    this.ompCollabService = ompServices.ompCollabService;
+    this.ompProvidersService = ompServices.ompProvidersService;
+    this.ompStatisticsService = new OmpStatisticsService({ logger: this.logger });
 
     this.wss = this.createWebSocketServer(server, wsConfig, auth);
     this.startRuntimeMetricsInterval();
     this.startApplicationSocketLeaseInterval();
 
     this.logger.info("WebSocket server initialized on /ws");
+  }
+
+  private resolveOmpServices(params: {
+    ompCollabService?: OmpCollabService;
+    ompProvidersService?: OmpProvidersService;
+  }): { ompCollabService: OmpCollabService; ompProvidersService: OmpProvidersService } {
+    return {
+      ompCollabService: params.ompCollabService ?? createOmpCollabService(),
+      ompProvidersService:
+        params.ompProvidersService ?? createOmpProvidersService({ logger: this.logger }),
+    };
   }
 
   private assignOptionalServices(params: {
@@ -1407,6 +1438,8 @@ export class VoiceAssistantWebSocketServer {
       },
       hubExecutionAgents: admission.hubExecutionAgents,
       hubRelationships: this.hubRelationships ?? undefined,
+      ompCollabService: this.ompCollabService,
+      ompProvidersService: this.ompProvidersService,
     });
 
     const base: SessionConnectionBase = {
@@ -1440,6 +1473,8 @@ export class VoiceAssistantWebSocketServer {
       onBinaryMessageToSource: options.onBinaryMessageToSource,
       getTransportBufferedAmount: options.getTransportBufferedAmount,
       onLifecycleIntent: options.onLifecycleIntent,
+      ompCollabService: options.ompCollabService,
+      ompProvidersService: options.ompProvidersService,
       logger: options.connectionLogger.child({ module: "session" }),
       onWorkspaceRecovered: async (workspace) => {
         await Promise.all(
@@ -1475,6 +1510,7 @@ export class VoiceAssistantWebSocketServer {
       terminalManager: this.terminalManager,
       providerSnapshotManager: this.providerSnapshotManager,
       providerUsageService: this.providerUsageService,
+      ompStatisticsService: this.ompStatisticsService,
       hubExecutionAgents: options.hubExecutionAgents,
       hubRelationships: options.hubRelationships,
       serviceProxy: this.serviceProxy ?? undefined,
@@ -1761,6 +1797,20 @@ export class VoiceAssistantWebSocketServer {
         workspaceFileEditing: true,
         // COMPAT(providerUsageList): added in v0.1.98, drop the gate when daemon floor >= v0.1.98.
         providerUsageList: true,
+        // OhMyPCode fork capabilities: stock Paseo daemons never set these, so this gate is permanent.
+        ompStatistics: true,
+        ompProviders: true,
+        // Gated on a launchable OMP: the collab, Vibe, and tool-selection RPCs are
+        // implemented here, but they are unreachable without a runtime to talk
+        // to, so claiming support on a host that cannot spawn omp would only move
+        // the failure from the control surface into the agent.
+        ...(this.ompRuntimeAvailable
+          ? { ompCollab: true, ompVibe: true, ompToolSelection: true }
+          : {}),
+        // Whether this host can launch OMP at all, so clients hide OMP-only
+        // controls (the OMP TUI terminal) instead of offering a command that
+        // cannot run.
+        ompRuntime: this.ompRuntimeAvailable,
         // COMPAT(agentDetach): added in v0.1.98, remove gate after 2026-12-19 once daemon floor >= v0.1.98.
         agentDetach: true,
         // COMPAT(agentThinkingUpdate): added in v0.2.4, remove gate after 2027-01-28.

@@ -12,7 +12,7 @@ const keys = [
   "CUSTOM",
   "ELECTRON_NO_ATTACH_CONSOLE",
   "ELECTRON_RUN_AS_NODE",
-  "PASEO_DESKTOP_MANAGED",
+  "OHMYPCODE_DESKTOP_MANAGED",
   "PASEO_NODE_ENV",
   "PASEO_SUPERVISED",
 ];
@@ -83,7 +83,7 @@ describe("execCommand", () => {
       env: {
         CUSTOM: "from-env",
         ELECTRON_NO_ATTACH_CONSOLE: "1",
-        PASEO_DESKTOP_MANAGED: "1",
+        OHMYPCODE_DESKTOP_MANAGED: "1",
         PASEO_NODE_ENV: "test",
       },
       envOverlay: {
@@ -96,7 +96,7 @@ describe("execCommand", () => {
       CUSTOM: "from-overlay",
       ELECTRON_NO_ATTACH_CONSOLE: null,
       ELECTRON_RUN_AS_NODE: null,
-      PASEO_DESKTOP_MANAGED: null,
+      OHMYPCODE_DESKTOP_MANAGED: null,
       PASEO_NODE_ENV: null,
       PASEO_SUPERVISED: null,
     });
@@ -153,7 +153,7 @@ describe("execCommand", () => {
       CUSTOM: "spawn-overlay",
       ELECTRON_NO_ATTACH_CONSOLE: null,
       ELECTRON_RUN_AS_NODE: null,
-      PASEO_DESKTOP_MANAGED: null,
+      OHMYPCODE_DESKTOP_MANAGED: null,
       PASEO_NODE_ENV: null,
       PASEO_SUPERVISED: null,
     });
@@ -177,7 +177,7 @@ describe("execCommand", () => {
       CUSTOM: "internal",
       ELECTRON_NO_ATTACH_CONSOLE: null,
       ELECTRON_RUN_AS_NODE: "1",
-      PASEO_DESKTOP_MANAGED: null,
+      OHMYPCODE_DESKTOP_MANAGED: null,
       PASEO_NODE_ENV: "production",
       PASEO_SUPERVISED: "1",
     });
@@ -210,7 +210,7 @@ describe("execCommand", () => {
       CUSTOM: "from-helper",
       ELECTRON_NO_ATTACH_CONSOLE: null,
       ELECTRON_RUN_AS_NODE: "1",
-      PASEO_DESKTOP_MANAGED: null,
+      OHMYPCODE_DESKTOP_MANAGED: null,
       PASEO_NODE_ENV: null,
       PASEO_SUPERVISED: null,
     });

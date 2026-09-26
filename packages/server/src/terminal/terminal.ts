@@ -8,6 +8,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { createExternalProcessEnv } from "../server/paseo-env.js";
 import { writePrivateFileAtomicSync } from "../server/private-files.js";
+import { resolveOmpTerminalSpawn } from "../services/omp-command.js";
 import { findExecutable } from "../executable-resolution/executable-resolution.js";
 import type { TerminalCell, TerminalState } from "@getpaseo/protocol/messages";
 import { TerminalInputModeTracker } from "@getpaseo/protocol/terminal-input-mode";
@@ -938,8 +939,12 @@ export async function createTerminal(options: CreateTerminalOptions): Promise<Te
   ensureNodePtySpawnHelperExecutableForCurrentPlatform();
 
   // Create PTY
-  const { command: spawnCommand, args: spawnArgs } = command
-    ? await resolveTerminalSpawnCommand(command, args)
+  // `omp` is requested by name so the client stays runtime-agnostic; remap it to
+  // the desktop-managed bundled runtime when one is configured, and otherwise
+  // leave PATH resolution exactly as it was.
+  const requested = command ? resolveOmpTerminalSpawn(command, args) : null;
+  const { command: spawnCommand, args: spawnArgs } = requested
+    ? await resolveTerminalSpawnCommand(requested.command, requested.args)
     : { command: resolvedShell, args: [] as string[] };
   const ptyProcess = pty.spawn(spawnCommand, spawnArgs, {
     name: "xterm-256color",

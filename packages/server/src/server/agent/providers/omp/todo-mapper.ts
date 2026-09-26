@@ -29,7 +29,12 @@ export function mapOmpTodoState(state: OmpSessionState): AgentTimelineItem[] {
 }
 
 export function mapOmpTodoPhases(phases: readonly OmpTodoPhase[]): AgentTimelineItem | null {
-  const todos = phases.flatMap((phase) => phase.tasks);
+  const todos = phases.flatMap((phase) => {
+    const phaseName = phase.name.trim();
+    return phase.tasks.map((task) =>
+      phaseName.length > 0 ? { ...task, content: `[${phaseName}] ${task.content}` } : task,
+    );
+  });
   return mapOmpTodoItems(todos);
 }
 

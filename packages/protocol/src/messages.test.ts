@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
+import type { AgentCapabilityFlags } from "./agent-types.js";
 import {
   AgentSnapshotPayloadSchema,
   AgentStreamMessageSchema,
@@ -9,6 +10,7 @@ import {
   SessionInboundMessageSchema,
   SessionOutboundMessageSchema,
   WorkspaceProjectDescriptorPayloadSchema,
+  OmpCommandRunResponseSchema,
 } from "./messages.js";
 
 function workspaceDescriptor(overrides: Record<string, unknown> = {}) {
@@ -855,6 +857,185 @@ describe("OMP Vibe message contract", () => {
   });
 });
 
+describe("OMP parity message contract", () => {
+  test("round-trips all seven correlated parity operations", () => {
+    const requests = [
+      {
+        type: "omp.command.run.request",
+        agentId: "agent-1",
+        name: "test-cmd",
+        args: "--flag",
+        requestId: "cmd-1",
+      },
+      {
+        type: "omp.settings.get.request",
+        agentId: "agent-1",
+        requestId: "settings-get-1",
+      },
+      {
+        type: "omp.settings.set.request",
+        agentId: "agent-1",
+        path: "retry.baseDelayMs",
+        value: 500,
+        requestId: "settings-set-1",
+      },
+      {
+        type: "omp.modes.get.request",
+        agentId: "agent-1",
+        requestId: "modes-get-1",
+      },
+      {
+        type: "omp.modes.set.request",
+        agentId: "agent-1",
+        mode: "plan",
+        paused: false,
+        requestId: "modes-set-1",
+      },
+      {
+        type: "omp.keybindings.get.request",
+        agentId: "agent-1",
+        requestId: "kb-get-1",
+      },
+      {
+        type: "omp.keybindings.set.request",
+        agentId: "agent-1",
+        id: "app.interrupt",
+        keys: "ctrl+c",
+        requestId: "kb-set-1",
+      },
+    ];
+    for (const request of requests) {
+      expect(SessionInboundMessageSchema.parse(request)).toEqual(request);
+    }
+
+    const responses = [
+      {
+        type: "omp.command.run.response",
+        payload: {
+          requestId: "cmd-1",
+          agentInvoked: false,
+          output: "Executed",
+          stateChange: true,
+          ui: { kind: "overlay", name: "git", params: { ref: "HEAD" } },
+        },
+      },
+      {
+        type: "omp.command.run.response",
+        payload: {
+          requestId: "cmd-2",
+          agentInvoked: false,
+          output: "",
+          stateChange: false,
+          ui: { kind: "editor", name: "scratch" },
+        },
+      },
+      {
+        type: "omp.settings.get.response",
+        payload: {
+          requestId: "settings-get-1",
+          revision: 42,
+          settings: [
+            {
+              path: "retry.baseDelayMs",
+              type: "number",
+              defaultValue: 500,
+              value: 250,
+              credential: false,
+            },
+          ],
+        },
+      },
+      {
+        type: "omp.settings.set.response",
+        payload: {
+          requestId: "settings-set-1",
+          path: "retry.baseDelayMs",
+          value: 250,
+          revision: 43,
+        },
+      },
+      {
+        type: "omp.modes.get.response",
+        payload: {
+          requestId: "modes-get-1",
+          state: {
+            mode: "plan",
+            planModeEnabled: true,
+            planModePaused: false,
+            goalModeEnabled: false,
+            goalModePaused: false,
+            loopModeEnabled: false,
+            loopModePaused: false,
+            canEnter: true,
+          },
+        },
+      },
+      {
+        type: "omp.modes.set.response",
+        payload: {
+          requestId: "modes-set-1",
+          state: {
+            mode: "plan_paused",
+            planModeEnabled: false,
+            planModePaused: true,
+            goalModeEnabled: false,
+            goalModePaused: false,
+            loopModeEnabled: false,
+            loopModePaused: false,
+            canEnter: true,
+            changed: true,
+          },
+        },
+      },
+      {
+        type: "omp.keybindings.get.response",
+        payload: {
+          requestId: "kb-get-1",
+          keybindings: [
+            {
+              id: "app.interrupt",
+              keys: "escape",
+              action: "app.interrupt",
+              description: "Interrupt agent",
+            },
+          ],
+        },
+      },
+      {
+        type: "omp.keybindings.set.response",
+        payload: {
+          requestId: "kb-set-1",
+          keybindings: [
+            {
+              id: "app.interrupt",
+              keys: "ctrl+c",
+              action: "app.interrupt",
+            },
+          ],
+        },
+      },
+    ];
+    for (const response of responses) {
+      expect(SessionOutboundMessageSchema.parse(response)).toEqual(response);
+    }
+  });
+
+  test("rejects unknown ui.kind for command run response", () => {
+    expect(
+      OmpCommandRunResponseSchema.safeParse({
+        type: "omp.command.run.response",
+        payload: {
+          requestId: "cmd-bad",
+          agentInvoked: false,
+          output: "",
+          stateChange: false,
+          ui: { kind: "unknown_future_kind" },
+        },
+      }).success,
+    ).toBe(false);
+  });
+});
+
 describe("OMP tool and Vibe capability flags", () => {
   test("accepts host and agent flags while legacy payloads remain parseable", () => {
     expect(
@@ -894,6 +1075,10 @@ describe("OMP tool and Vibe capability flags", () => {
     const legacy = AgentSnapshotPayloadSchema.parse(baseSnapshot);
     expect(legacy.capabilities).not.toHaveProperty("supportsOmpVibe");
     expect(legacy.capabilities).not.toHaveProperty("supportsOmpToolSelection");
+    expect(legacy.capabilities).not.toHaveProperty("supportsOmpModes");
+    expect(legacy.capabilities).not.toHaveProperty("supportsOmpSettings");
+    expect(legacy.capabilities).not.toHaveProperty("supportsOmpSlashCommands");
+    expect(legacy.capabilities).not.toHaveProperty("supportsOmpKeybindings");
     expect(
       AgentSnapshotPayloadSchema.parse({
         ...baseSnapshot,
@@ -902,6 +1087,10 @@ describe("OMP tool and Vibe capability flags", () => {
           ...baseSnapshot.capabilities,
           supportsOmpVibe: true,
           supportsOmpToolSelection: true,
+          supportsOmpModes: true,
+          supportsOmpSettings: true,
+          supportsOmpSlashCommands: true,
+          supportsOmpKeybindings: true,
         },
       }),
     ).toMatchObject({
@@ -909,8 +1098,33 @@ describe("OMP tool and Vibe capability flags", () => {
       capabilities: {
         supportsOmpVibe: true,
         supportsOmpToolSelection: true,
+        supportsOmpModes: true,
+        supportsOmpSettings: true,
+        supportsOmpSlashCommands: true,
+        supportsOmpKeybindings: true,
       },
     });
+  });
+
+  test("AgentCapabilityFlags from protocol and server-sdk stay aligned", () => {
+    const flags: AgentCapabilityFlags = {
+      supportsStreaming: true,
+      supportsSessionPersistence: true,
+      supportsDynamicModes: true,
+      supportsMcpServers: true,
+      supportsReasoningStream: true,
+      supportsToolInvocations: true,
+      supportsOmpVibe: true,
+      supportsOmpToolSelection: true,
+      supportsOmpSlashCommands: true,
+      supportsOmpSettings: true,
+      supportsOmpModes: true,
+      supportsOmpKeybindings: true,
+    };
+    expect(flags.supportsOmpModes).toBe(true);
+    expect(flags.supportsOmpSettings).toBe(true);
+    expect(flags.supportsOmpSlashCommands).toBe(true);
+    expect(flags.supportsOmpKeybindings).toBe(true);
   });
 });
 

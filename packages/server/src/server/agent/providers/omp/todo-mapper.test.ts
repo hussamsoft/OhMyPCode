@@ -37,9 +37,9 @@ describe("OMP todo mapper", () => {
     ).toEqual({
       type: "todo",
       items: [
-        { text: "alpha task", status: "in_progress", completed: false },
-        { text: "beta task", status: "pending", completed: false },
-        { text: "gamma task", status: "pending", completed: false },
+        { text: "[Tasks] alpha task", status: "in_progress", completed: false },
+        { text: "[Tasks] beta task", status: "pending", completed: false },
+        { text: "[Tasks] gamma task", status: "pending", completed: false },
       ],
     });
 
@@ -48,9 +48,9 @@ describe("OMP todo mapper", () => {
     ).toEqual({
       type: "todo",
       items: [
-        { text: "alpha task", status: "completed", completed: true },
-        { text: "beta task", status: "in_progress", completed: false },
-        { text: "gamma task", status: "pending", completed: false },
+        { text: "[Tasks] alpha task", status: "completed", completed: true },
+        { text: "[Tasks] beta task", status: "in_progress", completed: false },
+        { text: "[Tasks] gamma task", status: "pending", completed: false },
       ],
     });
   });
@@ -67,6 +67,8 @@ describe("OMP todo mapper", () => {
     ).toEqual({
       type: "todo",
       items: [
+        // A reminder carries a flat todo list with no phase, so there is nothing
+        // to prefix — unlike the phase-driven fixtures above.
         { text: "beta task", status: "in_progress", completed: false },
         { text: "gamma task", status: "pending", completed: false },
       ],
@@ -89,9 +91,9 @@ describe("OMP todo mapper", () => {
       {
         type: "todo",
         items: [
-          { text: "alpha task", status: "completed", completed: true },
-          { text: "beta task", status: "in_progress", completed: false },
-          { text: "gamma task", status: "pending", completed: false },
+          { text: "[Tasks] alpha task", status: "completed", completed: true },
+          { text: "[Tasks] beta task", status: "in_progress", completed: false },
+          { text: "[Tasks] gamma task", status: "pending", completed: false },
         ],
       },
     ]);

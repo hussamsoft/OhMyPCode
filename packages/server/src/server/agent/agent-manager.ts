@@ -17,7 +17,7 @@ import {
   PARENT_AGENT_ID_LABEL,
 } from "@getpaseo/protocol/agent-labels";
 import type { Logger } from "pino";
-import type { ProviderOptions, ToolPolicy } from "@getpaseo/protocol/agent-types";
+import type { JsonValue, ProviderOptions, ToolPolicy } from "@getpaseo/protocol/agent-types";
 import type { ProviderPaseoToolsPolicy } from "@getpaseo/protocol/provider-config";
 import { z } from "zod";
 import type { TerminalManager } from "../../terminal/terminal-manager.js";
@@ -52,6 +52,23 @@ import {
   type ImportedTimelineEntry,
   type ImportableProviderSession,
   type ListImportableSessionsOptions,
+  type AgentToolDefinition,
+  type OmpVibeSession,
+  type OmpParitySession,
+  type OmpKeybindingsResult,
+  type OmpSetKeybindingResult,
+  type OmpSettingsResult,
+  type OmpSetSettingResult,
+  type OmpSlashCommandResult,
+  type OmpModesResult,
+  type OmpSetModeResult,
+  type VibeEnterResult,
+  type VibeExitResult,
+  type VibeKillResult,
+  type VibeSendResult,
+  type VibeSpawnResult,
+  type VibeStateResult,
+  type VibeWaitResult,
 } from "./agent-sdk-types.js";
 import { buildArchivedAgentRecord, type ArchivedStoredAgentRecord } from "./agent-archive.js";
 import type { StoredAgentRecord, AgentStorage } from "./agent-storage.js";
@@ -132,6 +149,63 @@ export class AgentRunCancellationError extends Error {
     );
     this.name = "AgentRunCancellationError";
   }
+}
+export type OmpVibeErrorCode =
+  | "omp_vibe_unavailable"
+  | "omp_vibe_busy"
+  | "omp_vibe_worker_not_found"
+  | "omp_vibe_conflict";
+
+export class AgentManagerOmpVibeError extends Error {
+  constructor(
+    public readonly code: OmpVibeErrorCode,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+    this.name = "AgentManagerOmpVibeError";
+  }
+}
+
+/**
+ * The codes a parity request can fail with. Carried on the error rather than
+ * inferred from the message: a host branches on the code, and sniffing a human
+ * message for it would silently reclassify an error the moment OMP rewords its
+ * guard text.
+ */
+export type OmpParityErrorCode =
+  | "omp_parity_unavailable"
+  | "omp_mode_conflict"
+  | "omp_command_failed"
+  | "omp_setting_failed"
+  | "omp_keybinding_failed";
+
+export class AgentManagerOmpParityError extends Error {
+  constructor(
+    public readonly code: OmpParityErrorCode,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+    this.name = "AgentManagerOmpParityError";
+  }
+}
+
+const OMP_PARITY_ERROR_CODES: ReadonlySet<string> = new Set<OmpParityErrorCode>([
+  "omp_parity_unavailable",
+  "omp_mode_conflict",
+  "omp_command_failed",
+  "omp_setting_failed",
+  "omp_keybinding_failed",
+]);
+
+export function isOmpParityErrorCode(value: unknown): value is OmpParityErrorCode {
+  return typeof value === "string" && OMP_PARITY_ERROR_CODES.has(value);
+}
+
+export interface OmpVibeMutationResult<T> {
+  result: T;
+  state: VibeStateResult;
 }
 
 export type AgentRunCancellationResult =
@@ -384,6 +458,7 @@ interface ManagedAgentBase {
   owner?: AgentOwner;
   capabilities: AgentCapabilityFlags;
   config: AgentSessionConfig;
+  tools?: AgentToolDefinition[];
   runtimeInfo?: AgentRuntimeInfo;
   createdAt: Date;
   updatedAt: Date;
@@ -692,6 +767,48 @@ function detachedAgentLabelPatch(labels: Record<string, string>): AgentLabelPatc
 }
 
 export class AgentManager {
+  /**
+   * Tool and provider-state updates are handled apart from the rest of the
+   * stream switch: they rewrite projected agent state rather than advancing a
+   * turn, and folding them into `dispatchStreamEventByType` pushed that switch
+   * past its complexity budget for two cases sharing no logic with any other.
+   */
+  private dispatchProviderStateEvent(
+    agent: ActiveManagedAgent,
+    event: Extract<AgentStreamEvent, { type: "tools_updated" | "provider_state_updated" }>,
+  ): void {
+    if (event.type === "tools_updated") {
+      this.applyTools(agent, event.tools);
+      this.emitState(agent);
+      return;
+    }
+    if (event.provider !== "omp") return;
+    agent.runtimeInfo = {
+      ...(agent.runtimeInfo ?? {
+        provider: agent.provider,
+        sessionId: agent.persistence?.sessionId ?? null,
+      }),
+      // Keyed by `stateKey`, not a fixed field: `vibe` and `modes` both project
+      // through here, and a fixed name would drop whichever arrived second.
+      extra: { ...agent.runtimeInfo?.extra, [event.stateKey]: event.state },
+    };
+    this.emitState(agent);
+  }
+
+  /** A mode change is agent state, not a timeline item, so it is not dispatched. */
+  private applyStreamModeChanged(
+    agent: ActiveManagedAgent,
+    event: Extract<AgentStreamEvent, { type: "mode_changed" }>,
+    flags: StreamEventFlags,
+  ): void {
+    agent.currentModeId = event.currentModeId;
+    agent.availableModes = event.availableModes;
+    if (agent.runtimeInfo) {
+      agent.runtimeInfo = { ...agent.runtimeInfo, modeId: event.currentModeId };
+    }
+    flags.shouldDispatchEvent = false;
+    this.emitState(agent);
+  }
   private readonly pluginLifecycle: PluginLifecycle | undefined;
   private readonly clients = new Map<AgentProvider, AgentClient>();
   private readonly providerEnabled = new Map<AgentProvider, boolean>();
@@ -1135,6 +1252,312 @@ export class AgentManager {
         );
       }
     }
+  }
+
+  async listProviderTools(provider: string, cwd: string): Promise<AgentToolDefinition[]> {
+    const config = await this.normalizeConfig({ provider, cwd }, { resolveDefaultModel: false });
+    const client = this.requireClient(provider);
+    const policy = this.paseoToolsEnabled
+      ? this.resolvePaseoToolPolicy(provider)
+      : { enabled: false };
+    const launchContext = await this.buildLaunchContext("provider-tools", client, cwd, policy);
+    if (!client.listTools) {
+      throw new Error(`Provider '${provider}' does not support listing tools`);
+    }
+    return await client.listTools(config, launchContext);
+  }
+
+  async listAgentTools(agentId: string): Promise<AgentToolDefinition[]> {
+    const agent = this.requirePublicAgent(agentId);
+    if (agent.session === null || !agent.session.listTools) {
+      throw new Error(`Agent '${agentId}' does not support listing tools`);
+    }
+    const tools = await agent.session.listTools();
+    this.applyTools(agent, tools);
+    if (agent.provider === "omp") {
+      agent.capabilities = { ...agent.capabilities, supportsOmpToolSelection: true };
+    }
+    return tools;
+  }
+
+  async setAgentTools(agentId: string, enabledTools: string[]): Promise<AgentToolDefinition[]> {
+    return await this.runLifecycleMutation(agentId, async () => {
+      const agent = this.requirePublicAgent(agentId);
+      if (agent.session === null || !agent.session.setTools) {
+        throw new Error(`Agent '${agentId}' does not support live tool selection`);
+      }
+      const tools = await agent.session.setTools(enabledTools);
+      this.applyTools(agent, tools);
+      this.emitState(agent);
+      return tools;
+    });
+  }
+
+  async getOmpVibeState(agentId: string): Promise<VibeStateResult> {
+    const agent = this.requirePublicAgent(agentId);
+    const state = await this.requireOmpVibeSession(agentId).vibeStatus();
+    agent.capabilities = { ...agent.capabilities, supportsOmpVibe: true };
+    this.applyProviderState(agent, state);
+    return state;
+  }
+
+  async enterOmpVibe(
+    agentId: string,
+    prompt?: string,
+  ): Promise<OmpVibeMutationResult<VibeEnterResult>> {
+    return await this.runOmpVibeMutation(agentId, async (session, agent) => {
+      const modes = agent.runtimeInfo?.extra?.modes as Record<string, unknown> | undefined;
+      if (modes?.planModeEnabled || modes?.goalModeEnabled) {
+        throw new AgentManagerOmpVibeError(
+          "omp_vibe_conflict",
+          `Cannot enter Vibe while agent '${agentId}' is in ${modes.planModeEnabled ? "plan" : "goal"} mode`,
+        );
+      }
+      return await session.vibeEnter(prompt);
+    });
+  }
+
+  async exitOmpVibe(agentId: string): Promise<OmpVibeMutationResult<VibeExitResult>> {
+    return await this.runOmpVibeMutation(agentId, (session) => session.vibeExit());
+  }
+
+  async spawnOmpVibeWorker(
+    agentId: string,
+    input: { cli: "fast" | "good"; name?: string; prompt: string },
+  ): Promise<OmpVibeMutationResult<VibeSpawnResult>> {
+    return await this.runOmpVibeMutation(agentId, (session) => session.vibeSpawn(input));
+  }
+
+  async sendOmpVibeWorker(
+    agentId: string,
+    input: { session: string; message: string },
+  ): Promise<OmpVibeMutationResult<VibeSendResult>> {
+    return await this.runOmpVibeMutation(agentId, (session) => session.vibeSend(input));
+  }
+
+  async waitOmpVibeWorkers(
+    agentId: string,
+    input?: { sessions?: string[]; timeoutMs?: number },
+  ): Promise<OmpVibeMutationResult<VibeWaitResult>> {
+    const session = this.requireOmpVibeSession(agentId);
+    const result = await session.vibeWait(input);
+    const state = await session.vibeStatus();
+    this.emitProviderState(agentId, state);
+    return { result, state };
+  }
+
+  async killOmpVibeWorker(
+    agentId: string,
+    workerId: string,
+  ): Promise<OmpVibeMutationResult<VibeKillResult>> {
+    return await this.runOmpVibeMutation(agentId, (session) => session.vibeKill(workerId));
+  }
+
+  /**
+   * Reads OMP's plan/goal/loop state. The agent's own `currentModeId` is the
+   * approval mode, which is a different axis and deliberately cannot change
+   * mid-session, so it is not consulted here.
+   */
+  async getOmpModes(agentId: string): Promise<OmpModesResult> {
+    return await this.requireOmpModeSession(agentId).getOmpModes();
+  }
+
+  async setOmpMode(
+    agentId: string,
+    mode: "plan" | "goal" | "loop",
+    paused?: boolean,
+  ): Promise<OmpSetModeResult> {
+    const result = await this.requireOmpModeSession(agentId).setOmpMode(mode, paused);
+    const agent = this.requirePublicAgent(agentId);
+    agent.runtimeInfo = {
+      ...(agent.runtimeInfo ?? {
+        provider: agent.provider,
+        sessionId: agent.persistence?.sessionId ?? null,
+      }),
+      extra: { ...agent.runtimeInfo?.extra, modes: result as unknown as JsonValue },
+    };
+    this.emitState(agent);
+    this.dispatchStream(agent.id, {
+      type: "provider_state_updated",
+      provider: agent.provider,
+      stateKey: "modes",
+      state: result as unknown as JsonValue,
+    });
+    return result;
+  }
+
+  /**
+   * Drives one mode, re-raising an OMP refusal as a typed conflict. OMP refuses
+   * a transition while another mode is active, and it refuses with a message
+   * written for a human, so the message is carried through verbatim and the
+   * caller is handed a code rather than having to recognise the text.
+   */
+  async setOmpModeChecked(
+    agentId: string,
+    mode: "plan" | "goal" | "loop",
+    paused?: boolean,
+  ): Promise<OmpSetModeResult> {
+    try {
+      return await this.setOmpMode(agentId, mode, paused);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/exit (plan|goal|vibe) mode|mode is paused/i.test(message)) {
+        throw new AgentManagerOmpParityError("omp_mode_conflict", message, { cause: error });
+      }
+      throw error;
+    }
+  }
+
+  async runOmpSlashCommand(
+    agentId: string,
+    name: string,
+    args?: string,
+  ): Promise<OmpSlashCommandResult> {
+    return await this.requireOmpModeSession(agentId).runSlashCommand(name, args);
+  }
+
+  async getOmpSettings(agentId: string): Promise<OmpSettingsResult> {
+    return await this.requireOmpModeSession(agentId).getSettings();
+  }
+
+  async setOmpSetting(agentId: string, path: string, value: unknown): Promise<OmpSetSettingResult> {
+    return await this.requireOmpModeSession(agentId).setSetting(path, value);
+  }
+
+  async getOmpKeybindings(agentId: string): Promise<OmpKeybindingsResult> {
+    return await this.requireOmpModeSession(agentId).getKeybindings();
+  }
+
+  async setOmpKeybinding(
+    agentId: string,
+    id: string,
+    keys: string,
+  ): Promise<OmpSetKeybindingResult> {
+    return await this.requireOmpModeSession(agentId).setKeybinding(id, keys);
+  }
+
+  private applyTools(agent: LiveManagedAgent, tools: AgentToolDefinition[]): void {
+    agent.tools = tools;
+    const allowedTools = [
+      ...new Set(tools.filter((tool) => tool.enabled).map((tool) => tool.name)),
+    ].sort((left, right) => left.localeCompare(right));
+    agent.config.providerOptions = { ...agent.config.providerOptions, allowedTools };
+    if (agent.provider === "omp") {
+      agent.capabilities = { ...agent.capabilities, supportsOmpToolSelection: true };
+    }
+  }
+
+  private emitProviderState(agentId: string, state: VibeStateResult): void {
+    const agent = this.requirePublicAgent(agentId);
+    this.applyProviderState(agent, state);
+    this.emitState(agent);
+    this.dispatchStream(agent.id, {
+      type: "provider_state_updated",
+      provider: agent.provider,
+      stateKey: "vibe",
+      state: state as unknown as JsonValue,
+    });
+  }
+
+  private applyProviderState(agent: LiveManagedAgent, state: VibeStateResult): void {
+    if (agent.provider !== "omp") {
+      throw new AgentManagerOmpVibeError(
+        "omp_vibe_unavailable",
+        `Agent '${agent.id}' is not an OMP agent`,
+      );
+    }
+    agent.capabilities = { ...agent.capabilities, supportsOmpVibe: true };
+    if (agent.runtimeInfo) {
+      agent.runtimeInfo = {
+        ...agent.runtimeInfo,
+        extra: { ...agent.runtimeInfo.extra, vibe: state },
+      };
+    }
+  }
+
+  private async runOmpVibeMutation<T>(
+    agentId: string,
+    mutation: (session: OmpVibeSession, agent: ActiveManagedAgent) => Promise<T>,
+  ): Promise<OmpVibeMutationResult<T>> {
+    return await this.runLifecycleMutation(agentId, async () => {
+      const agent = this.requirePublicAgent(agentId);
+      const session = this.requireOmpVibeSession(agentId);
+      try {
+        const result = await mutation(session, agent as ActiveManagedAgent);
+        const state = await session.vibeStatus();
+        this.applyProviderState(agent, state);
+        this.emitState(agent);
+        this.dispatchStream(agent.id, {
+          type: "provider_state_updated",
+          provider: "omp",
+          stateKey: "vibe",
+          state: state as unknown as JsonValue,
+        });
+        return { result, state };
+      } catch (error) {
+        if (error instanceof AgentManagerOmpVibeError) throw error;
+        const message = error instanceof Error ? error.message : String(error);
+        if (/unknown vibe session|unknown worker/i.test(message)) {
+          throw new AgentManagerOmpVibeError("omp_vibe_worker_not_found", message, {
+            cause: error,
+          });
+        }
+        if (/busy|already/i.test(message)) {
+          throw new AgentManagerOmpVibeError("omp_vibe_busy", message, { cause: error });
+        }
+        throw new AgentManagerOmpVibeError("omp_vibe_conflict", message, { cause: error });
+      }
+    });
+  }
+
+  private requireOmpVibeSession(agentId: string): OmpVibeSession {
+    const agent = this.requirePublicAgent(agentId);
+    if (agent.provider !== "omp") {
+      throw new AgentManagerOmpVibeError(
+        "omp_vibe_unavailable",
+        `Agent '${agentId}' is not an OMP agent`,
+      );
+    }
+    if (agent.session === null) {
+      throw new AgentManagerOmpVibeError(
+        "omp_vibe_unavailable",
+        `Agent '${agentId}' has no managed session`,
+      );
+    }
+    const session = agent.session as AgentSession & Partial<OmpVibeSession>;
+    if (
+      typeof session.vibeStatus !== "function" ||
+      typeof session.vibeEnter !== "function" ||
+      typeof session.vibeExit !== "function" ||
+      typeof session.vibeSpawn !== "function" ||
+      typeof session.vibeSend !== "function" ||
+      typeof session.vibeWait !== "function" ||
+      typeof session.vibeKill !== "function"
+    ) {
+      throw new AgentManagerOmpVibeError(
+        "omp_vibe_unavailable",
+        `Agent '${agentId}' does not expose OMP Vibe controls`,
+      );
+    }
+    return session as OmpVibeSession;
+  }
+
+  private requireOmpModeSession(agentId: string): OmpParitySession {
+    const agent = this.requirePublicAgent(agentId);
+    if (agent.provider !== "omp" || agent.session === null) {
+      throw new AgentManagerOmpParityError(
+        "omp_parity_unavailable",
+        `Agent '${agentId}' has no OMP session`,
+      );
+    }
+    const session = agent.session as AgentSession & Partial<OmpParitySession>;
+    if (typeof session.getOmpModes !== "function" || typeof session.setOmpMode !== "function") {
+      throw new AgentManagerOmpParityError(
+        "omp_parity_unavailable",
+        `Agent '${agentId}' does not expose OMP mode controls`,
+      );
+    }
+    return session as OmpParitySession;
   }
 
   getAgent(id: string): ManagedAgent | null {
@@ -1979,6 +2402,7 @@ export class AgentManager {
     ) {
       return;
     }
+    await agent.session.setTitle?.(normalizedTitle);
     this.touchUpdatedAt(agent);
     await this.persistSnapshot(agent, { title: normalizedTitle });
     this.emitState(agent, { persist: false });
@@ -3458,6 +3882,9 @@ export class AgentManager {
         durableTimelineHasRows,
         options,
       });
+      if (session.listTools) {
+        this.applyTools(managed, await session.listTools());
+      }
 
       this.assertAcceptingAgentRegistrations();
       this.agents.set(resolvedAgentId, managed);
@@ -4232,13 +4659,7 @@ export class AgentManager {
         this.emitState(agent);
         return undefined;
       case "mode_changed":
-        agent.currentModeId = event.currentModeId;
-        agent.availableModes = event.availableModes;
-        if (agent.runtimeInfo) {
-          agent.runtimeInfo = { ...agent.runtimeInfo, modeId: event.currentModeId };
-        }
-        flags.shouldDispatchEvent = false;
-        this.emitState(agent);
+        this.applyStreamModeChanged(agent, event, flags);
         return undefined;
       case "model_changed":
         agent.runtimeInfo = event.runtimeInfo;
@@ -4262,6 +4683,10 @@ export class AgentManager {
         }
         flags.shouldDispatchEvent = false;
         this.emitState(agent);
+        return undefined;
+      case "tools_updated":
+      case "provider_state_updated":
+        this.dispatchProviderStateEvent(agent, event);
         return undefined;
       case "timeline":
         return this.onStreamTimelineEvent({ agent, event, options, flags });

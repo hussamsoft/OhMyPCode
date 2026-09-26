@@ -16,6 +16,22 @@ import type {
   OmpSessionState,
   OmpSessionStats,
   OmpThinkingLevel,
+  OmpToolCatalogEntry,
+  OmpModesResult,
+  OmpSetModeResult,
+  OmpKeybindingsResult,
+  OmpSetKeybindingResult,
+  OmpSettingsResult,
+  OmpSetSettingResult,
+  OmpSlashCommandResult,
+  VibeEnterResult,
+  VibeExitResult,
+  VibeKillResult,
+  VibeListResult,
+  VibeSendResult,
+  VibeSpawnResult,
+  VibeStateResult,
+  VibeWaitResult,
 } from "../rpc-types.js";
 import { buildOmpLaunch } from "../runtime.js";
 
@@ -54,10 +70,19 @@ export class FakeOmp implements OmpRuntime {
   private readonly sessions: FakeOmpSession[] = [];
   private readonly command: [string, ...string[]];
   private readonly queuedCommands: OmpRpcSlashCommand[][] = [];
+  private readonly queuedToolCatalogs: OmpToolCatalogEntry[][] = [];
   private readonly queuedSubagentSubscriptionErrors = new Map<
     FakeOmpSubagentSubscriptionLevel,
     Error
   >();
+  loginProviders: Array<{
+    id: string;
+    name: string;
+    available?: boolean;
+    authenticated?: boolean;
+  }> = [];
+  nextLoginPromise: Promise<void> | null = null;
+  nextLoginError: Error | null = null;
 
   constructor(command: [string, ...string[]] = ["omp"]) {
     this.command = command;
@@ -71,6 +96,12 @@ export class FakeOmp implements OmpRuntime {
     this.recordedLaunches.push(launch);
     const session = new FakeOmpSession(launch);
     session.commands = this.queuedCommands.shift() ?? [];
+    session.toolCatalog = this.queuedToolCatalogs.shift() ?? [];
+    session.loginProviders = this.loginProviders;
+    session.loginPromise = this.nextLoginPromise;
+    this.nextLoginPromise = null;
+    session.loginError = this.nextLoginError;
+    this.nextLoginError = null;
     for (const [level, error] of this.queuedSubagentSubscriptionErrors) {
       session.subagentSubscriptionErrors.set(level, error);
     }
@@ -81,6 +112,9 @@ export class FakeOmp implements OmpRuntime {
 
   queueCommands(commands: OmpRpcSlashCommand[]): void {
     this.queuedCommands.push(commands);
+  }
+  queueToolCatalog(tools: OmpToolCatalogEntry[]): void {
+    this.queuedToolCatalogs.push(tools);
   }
 
   failNextSubagentSubscription(level: FakeOmpSubagentSubscriptionLevel, error: Error): void {
@@ -100,11 +134,13 @@ export class FakeOmpSession implements OmpRuntimeSession {
   readonly prompts: Array<{ message: string; imageCount: number }> = [];
   readonly compactRequests: Array<{ customInstructions?: string }> = [];
   readonly setAutoCompactionRequests: boolean[] = [];
+  readonly setFastModeRequests: boolean[] = [];
   readonly subagentSubscriptionRequests: FakeOmpSubagentSubscriptionLevel[] = [];
   readonly subagentMessageRequests: FakeOmpSubagentMessagesSelector[] = [];
   readonly setModelRequests: Array<{ provider: string; modelId: string }> = [];
   readonly setThinkingLevelRequests: OmpThinkingLevel[] = [];
   readonly handoffRequests: Array<{ customInstructions?: string }> = [];
+  readonly sessionNameRequests: string[] = [];
   readonly steerRequests: Array<{ message: string; imageCount: number }> = [];
   readonly followUpRequests: Array<{ message: string; imageCount: number }> = [];
   readonly hostToolSetRequests: OmpRpcHostToolDefinition[][] = [];
@@ -121,11 +157,21 @@ export class FakeOmpSession implements OmpRuntimeSession {
   setModelResult: OmpModel | null = null;
   models: OmpModel[] = [];
   messages: OmpAgentMessage[] = [];
+  loginProviders: Array<{
+    id: string;
+    name: string;
+    available?: boolean;
+    authenticated?: boolean;
+  }> = [];
+  readonly loginRequests: string[] = [];
+  loginError: Error | null = null;
+  loginPromise: Promise<void> | null = null;
   stats: OmpSessionStats = {
     tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
     cost: 0,
   };
   commands: OmpRpcSlashCommand[] = [];
+  readonly commandOutputByPrompt = new Map<string, string>();
   subagents: FakeOmpSubagentSnapshot[] = [];
   readonly subagentSubscriptionErrors = new Map<FakeOmpSubagentSubscriptionLevel, Error>();
   compactError: Error | null = null;
@@ -137,6 +183,31 @@ export class FakeOmpSession implements OmpRuntimeSession {
   readonly branchRequests: string[] = [];
   activeBranchEntryId?: string;
   closed = false;
+  vibeState: VibeStateResult = { revision: 0, enabled: false, workers: [] };
+  toolCatalog: OmpToolCatalogEntry[] = [];
+  vibeStatusError: Error | null = null;
+  toolCatalogError: Error | null = null;
+  setToolsError: Error | null = null;
+  readonly vibeRequests: Array<Record<string, unknown>> = [];
+  modesState: OmpModesResult = {
+    mode: "none",
+    planModeEnabled: false,
+    planModePaused: false,
+    goalModeEnabled: false,
+    goalModePaused: false,
+    loopModeEnabled: false,
+    loopModePaused: false,
+    canEnter: true,
+  };
+  setModeError: Error | null = null;
+  readonly modeRequests: Array<Record<string, unknown>> = [];
+  slashCommandResult: OmpSlashCommandResult = { outcome: "consumed", output: "ok" };
+  settingsResult: OmpSettingsResult = { revision: 1, settings: [] };
+  keybindingsResult: OmpKeybindingsResult = { keybindings: [] };
+  readonly slashCommandRequests: Array<{ command: string; args?: string }> = [];
+  readonly settingUpdates: Array<{ path: string; value: unknown }> = [];
+  readonly keybindingUpdates: Array<{ keybinding: string; keys: string }> = [];
+  readonly toolSelectionRequests: string[][] = [];
   state: OmpSessionState;
 
   private readonly subscribers = new Set<(event: OmpRuntimeEvent) => void>();
@@ -157,6 +228,8 @@ export class FakeOmpSession implements OmpRuntimeSession {
       isStreaming: false,
       isCompacting: false,
       autoCompactionEnabled: true,
+      fastModeEnabled: false,
+      fastModeActive: false,
       sessionFile: launch.session ?? "/tmp/omp-session",
       sessionId: "omp-session-1",
       messageCount: 0,
@@ -180,6 +253,10 @@ export class FakeOmpSession implements OmpRuntimeSession {
     }
     this.prompts.push({ message, imageCount: images?.length ?? 0 });
     this.promptWaiters.shift()?.();
+    const commandOutput = this.commandOutputByPrompt.get(message);
+    if (commandOutput !== undefined) {
+      this.emit({ type: "command_output", text: commandOutput });
+    }
     const heldPrompt = this.nextHeldPrompt;
     if (heldPrompt) {
       this.nextHeldPrompt = null;
@@ -261,6 +338,16 @@ export class FakeOmpSession implements OmpRuntimeSession {
     return this.state;
   }
 
+  async setFastMode(enabled: boolean): Promise<{ enabled: boolean; active: boolean }> {
+    this.setFastModeRequests.push(enabled);
+    this.state = {
+      ...this.state,
+      fastModeEnabled: enabled,
+      fastModeActive: enabled,
+    };
+    return { enabled, active: enabled };
+  }
+
   queueStateReports(states: OmpSessionState[]): void {
     this.stateReports.push(...states);
   }
@@ -278,6 +365,17 @@ export class FakeOmpSession implements OmpRuntimeSession {
     return this.models;
   }
 
+  async getLoginProviders(): Promise<
+    Array<{ id: string; name: string; available?: boolean; authenticated?: boolean }>
+  > {
+    return this.loginProviders;
+  }
+
+  async login(providerId: string): Promise<void> {
+    this.loginRequests.push(providerId);
+    if (this.loginError) throw this.loginError;
+    await this.loginPromise;
+  }
   async setModel(provider: string, modelId: string): Promise<OmpModel> {
     this.setModelRequests.push({ provider, modelId });
     if (!this.setModelResult) {
@@ -314,6 +412,148 @@ export class FakeOmpSession implements OmpRuntimeSession {
   async setHostTools(tools: OmpRpcHostToolDefinition[]): Promise<string[]> {
     this.hostToolSetRequests.push(tools);
     return tools.map((tool) => tool.name);
+  }
+
+  async getModes(): Promise<OmpModesResult> {
+    this.modeRequests.push({ type: "get_modes" });
+    return this.modesState;
+  }
+
+  async setMode(mode: "plan" | "goal" | "loop", paused?: boolean): Promise<OmpSetModeResult> {
+    this.modeRequests.push({ type: "set_mode", mode, ...(paused === undefined ? {} : { paused }) });
+    if (this.setModeError) throw this.setModeError;
+    const nextMode = paused ? `${mode}_paused` : mode;
+    this.modesState = {
+      ...this.modesState,
+      mode: nextMode as "none" | "plan" | "plan_paused" | "goal" | "goal_paused" | "loop",
+      planModeEnabled: mode === "plan" && !paused,
+      planModePaused: mode === "plan" && !!paused,
+      goalModeEnabled: mode === "goal" && !paused,
+      goalModePaused: mode === "goal" && !!paused,
+      loopModeEnabled: mode === "loop" && !paused,
+      loopModePaused: mode === "loop" && !!paused,
+    };
+    return { ...this.modesState, changed: true };
+  }
+
+  async runSlashCommand(command: string, args?: string): Promise<OmpSlashCommandResult> {
+    this.slashCommandRequests.push({ command, ...(args === undefined ? {} : { args }) });
+    return this.slashCommandResult;
+  }
+
+  async getSettings(): Promise<OmpSettingsResult> {
+    return this.settingsResult;
+  }
+
+  async setSetting(path: string, value: unknown): Promise<OmpSetSettingResult> {
+    this.settingUpdates.push({ path, value });
+    this.settingsResult = {
+      ...this.settingsResult,
+      revision: this.settingsResult.revision + 1,
+    };
+    return { path, value, revision: this.settingsResult.revision };
+  }
+
+  async getKeybindings(): Promise<OmpKeybindingsResult> {
+    return this.keybindingsResult;
+  }
+
+  async setKeybinding(keybinding: string, keys: string): Promise<OmpSetKeybindingResult> {
+    this.keybindingUpdates.push({ keybinding, keys });
+    return { keybinding, keys, persisted: true };
+  }
+  async getVibeStatus(): Promise<VibeStateResult> {
+    this.vibeRequests.push({ type: "vibe_status" });
+    if (this.vibeStatusError) throw this.vibeStatusError;
+    return this.vibeState;
+  }
+
+  async enterVibe(prompt?: string): Promise<VibeEnterResult> {
+    this.vibeRequests.push({ type: "vibe_enter", ...(prompt === undefined ? {} : { prompt }) });
+    if (this.vibeStatusError) throw this.vibeStatusError;
+    return { enabled: true, accepted: prompt !== undefined };
+  }
+
+  async exitVibe(): Promise<VibeExitResult> {
+    this.vibeRequests.push({ type: "vibe_exit" });
+    if (this.vibeStatusError) throw this.vibeStatusError;
+    return { enabled: false, killedWorkers: 0 };
+  }
+
+  async spawnVibeWorker(input: {
+    cli: "fast" | "good";
+    name?: string;
+    prompt: string;
+  }): Promise<VibeSpawnResult> {
+    this.vibeRequests.push({ type: "vibe_spawn", ...input });
+    if (this.vibeStatusError) throw this.vibeStatusError;
+    const worker = {
+      id: "worker-1",
+      cli: input.cli,
+      name: input.name ?? "Worker 1",
+      state: "initializing" as const,
+      turnCount: 0,
+      queuedMessages: 0,
+      outputTail: [],
+      lastTurnStatus: "idle" as const,
+      createdAt: 1,
+      lastActivityAt: 1,
+    };
+    this.vibeState = { ...this.vibeState, workers: [...this.vibeState.workers, worker] };
+    return worker;
+  }
+
+  async sendVibeWorkerMessage(session: string, message: string): Promise<VibeSendResult> {
+    this.vibeRequests.push({ type: "vibe_send", session, message });
+    if (this.vibeStatusError) throw this.vibeStatusError;
+    return { delivery: "queued" };
+  }
+
+  async waitForVibeWorkers(sessions?: string[], timeoutMs?: number): Promise<VibeWaitResult> {
+    this.vibeRequests.push({
+      type: "vibe_wait",
+      ...(sessions === undefined ? {} : { sessions }),
+      ...(timeoutMs === undefined ? {} : { timeoutMs }),
+    });
+    if (this.vibeStatusError) throw this.vibeStatusError;
+    return { settled: [], stillRunning: sessions ?? [], timedOut: false };
+  }
+
+  async killVibeWorker(session: string): Promise<VibeKillResult> {
+    this.vibeRequests.push({ type: "vibe_kill", session });
+    if (this.vibeStatusError) throw this.vibeStatusError;
+    const worker = this.vibeState.workers.find((candidate) => candidate.id === session);
+    if (!worker) throw new Error(`FakeOmp has no Vibe worker '${session}'`);
+    const killed = { ...worker, state: "dead" as const, lastTurnStatus: "cancelled" as const };
+    this.vibeState = {
+      ...this.vibeState,
+      workers: this.vibeState.workers.map((candidate) =>
+        candidate.id === session ? killed : candidate,
+      ),
+    };
+    return killed;
+  }
+
+  async listVibeWorkers(): Promise<VibeListResult> {
+    this.vibeRequests.push({ type: "vibe_list" });
+    if (this.vibeStatusError) throw this.vibeStatusError;
+    return this.vibeState.workers;
+  }
+
+  async getToolCatalog(): Promise<OmpToolCatalogEntry[]> {
+    if (this.toolCatalogError) throw this.toolCatalogError;
+    return this.toolCatalog;
+  }
+
+  async setTools(enabledTools: string[]): Promise<OmpToolCatalogEntry[]> {
+    this.toolSelectionRequests.push(enabledTools);
+    if (this.setToolsError) throw this.setToolsError;
+    const selected = new Set(enabledTools);
+    this.toolCatalog = this.toolCatalog.map((tool) => ({
+      ...tool,
+      enabled: tool.required || selected.has(tool.name),
+    }));
+    return this.toolCatalog;
   }
 
   async branch(entryId: string): Promise<{ text: string }> {
@@ -388,6 +628,11 @@ export class FakeOmpSession implements OmpRuntimeSession {
 
   async handoff(customInstructions?: string): Promise<void> {
     this.handoffRequests.push(customInstructions ? { customInstructions } : {});
+  }
+
+  async setSessionName(name: string): Promise<void> {
+    this.sessionNameRequests.push(name);
+    this.state = { ...this.state, sessionName: name };
   }
 
   respondToExtensionUiRequest(

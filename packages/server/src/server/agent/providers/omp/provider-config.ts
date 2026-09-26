@@ -24,6 +24,12 @@ export const OmpProviderParamsSchema = z
   })
   .strict();
 
+export const OmpProviderOptionsSchema = z
+  .object({
+    allowedTools: z.array(z.string().min(1)).optional(),
+  })
+  .strict();
+
 export interface OmpRuntimeProviderParams {
   sessionDir: string;
   readyTimeoutMs: number;
@@ -39,24 +45,53 @@ export interface OmpModelRoleParams {
 export function resolveOmpLaunchMode(
   modeId: string | undefined,
   modelRoleParams: OmpModelRoleParams = {},
+  featureArgs: string[] = [],
 ): { modeId: string; extraArgs: string[] } {
   const modelRoleArgs = resolveOmpModelRoleArgs(modelRoleParams);
   switch (modeId ?? DEFAULT_OMP_MODE_ID) {
     case "full":
-      return { modeId: "full", extraArgs: ["--approval-mode", "yolo", ...modelRoleArgs] };
+      return {
+        modeId: "full",
+        extraArgs: ["--approval-mode", "yolo", ...modelRoleArgs, ...featureArgs],
+      };
     case "write":
       return {
         modeId: "write",
-        extraArgs: ["--approval-mode", "write", ...modelRoleArgs],
+        extraArgs: ["--approval-mode", "write", ...modelRoleArgs, ...featureArgs],
       };
     case "ask":
       return {
         modeId: "ask",
-        extraArgs: ["--approval-mode", "always-ask", ...modelRoleArgs],
+        extraArgs: ["--approval-mode", "always-ask", ...modelRoleArgs, ...featureArgs],
       };
     default:
       throw new Error(`Unsupported OMP mode '${modeId}'`);
   }
+}
+
+export function resolveOmpFeatureLaunch(featureValues: Record<string, unknown> | undefined): {
+  roleOverrides: OmpModelRoleParams;
+  args: string[];
+} {
+  const values = featureValues ?? {};
+  const roleOverrides: OmpModelRoleParams = {};
+  const args: string[] = [];
+
+  if (values.omp_plan_yolo === true) args.push("--plan-yolo");
+  if (values.omp_prewalk === "on") args.push("--prewalk");
+  if (values.omp_prewalk === "off") args.push("--no-prewalk");
+
+  if (typeof values.omp_smol_model === "string" && values.omp_smol_model !== "default") {
+    roleOverrides.smolModel = values.omp_smol_model;
+  }
+  if (typeof values.omp_slow_model === "string" && values.omp_slow_model !== "default") {
+    roleOverrides.slowModel = values.omp_slow_model;
+  }
+  if (typeof values.omp_plan_model === "string" && values.omp_plan_model !== "default") {
+    roleOverrides.planModel = values.omp_plan_model;
+  }
+
+  return { roleOverrides, args };
 }
 
 function resolveOmpModelRoleArgs(modelRoleParams: OmpModelRoleParams): string[] {

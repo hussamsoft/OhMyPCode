@@ -128,6 +128,8 @@ export const OmpSessionStateSchema = z
     isStreaming: z.boolean(),
     isCompacting: z.boolean(),
     autoCompactionEnabled: z.boolean().optional(),
+    fastModeEnabled: z.boolean().optional(),
+    fastModeActive: z.boolean().optional(),
     sessionFile: z.string().optional(),
     sessionId: z.string(),
     sessionName: z.string().optional(),
@@ -436,6 +438,191 @@ export const OmpAvailableCommandsUpdateEventSchema = z
   })
   .passthrough();
 
+export const OmpVibeWorkerSchema = z
+  .object({
+    id: z.string().min(1),
+    cli: z.enum(["fast", "good"]),
+    name: z.string(),
+    state: z.enum(["initializing", "running", "idle", "dead"]),
+    turnCount: z.number().int().nonnegative(),
+    queuedMessages: z.number().int().nonnegative(),
+    resolvedModel: z.string().optional(),
+    lastActivity: z.string().optional(),
+    currentTool: z.string().optional(),
+    outputTail: z.array(z.string()),
+    lastTurnStatus: z.enum(["running", "completed", "failed", "cancelled", "idle"]),
+    createdAt: z.number().int().nonnegative(),
+    lastActivityAt: z.number().int().nonnegative(),
+  })
+  .passthrough();
+
+export const OmpVibeStateSchema = z
+  .object({
+    revision: z.number().int().nonnegative(),
+    enabled: z.boolean(),
+    workers: z.array(OmpVibeWorkerSchema),
+  })
+  .passthrough();
+export const OmpVibeEnterResultSchema = z
+  .object({ enabled: z.literal(true), accepted: z.boolean() })
+  .passthrough();
+export const OmpVibeExitResultSchema = z
+  .object({ enabled: z.literal(false), killedWorkers: z.number().int().nonnegative() })
+  .passthrough();
+export const OmpVibeSpawnResultSchema = OmpVibeWorkerSchema;
+export const OmpVibeSendResultSchema = z
+  .object({ delivery: z.enum(["steered", "started", "queued"]) })
+  .passthrough();
+export const OmpVibeKillResultSchema = OmpVibeWorkerSchema;
+export const OmpVibeWaitResultSchema = z
+  .object({
+    settled: z.array(
+      z
+        .object({
+          id: z.string(),
+          jobId: z.string(),
+          status: z.enum(["completed", "failed", "cancelled"]),
+          resultText: z.string(),
+        })
+        .passthrough(),
+    ),
+    stillRunning: z.array(z.string()),
+    timedOut: z.boolean(),
+  })
+  .passthrough();
+export const OmpVibeListResultSchema = z.array(OmpVibeWorkerSchema);
+
+export const OmpModesResultSchema = z
+  .object({
+    mode: z.enum(["none", "plan", "plan_paused", "goal", "goal_paused", "loop"]),
+    planModeEnabled: z.boolean(),
+    planModePaused: z.boolean(),
+    goalModeEnabled: z.boolean(),
+    goalModePaused: z.boolean(),
+    loopModeEnabled: z.boolean(),
+    loopModePaused: z.boolean(),
+    planFilePath: z.string().optional(),
+    canEnter: z.boolean(),
+    /** OMP's own guard message, verbatim. Present only when `canEnter` is false. */
+    blockedReason: z.string().optional(),
+  })
+  .passthrough();
+
+export const OmpSetModeResultSchema = OmpModesResultSchema.extend({
+  changed: z.boolean(),
+}).passthrough();
+
+export const OmpKeybindingEntrySchema = z
+  .object({
+    id: z.string(),
+    keys: z.string(),
+    description: z.string().optional(),
+    action: z.string(),
+  })
+  .passthrough();
+
+export const OmpKeybindingsResultSchema = z
+  .object({
+    keybindings: z.array(OmpKeybindingEntrySchema),
+    configPath: z.string().optional(),
+  })
+  .passthrough();
+
+export const OmpSetKeybindingResultSchema = z
+  .object({
+    keybinding: z.string(),
+    keys: z.string(),
+    persisted: z.boolean(),
+    configPath: z.string().optional(),
+  })
+  .passthrough();
+
+export const OmpSettingEntrySchema = z
+  .object({
+    path: z.string(),
+    type: z.string(),
+    defaultValue: z.unknown().optional(),
+    value: z.unknown().optional(),
+    enumValues: z.array(z.string()).optional(),
+    description: z.string().optional(),
+    credential: z.boolean(),
+    condition: z.unknown().optional(),
+    ui: z
+      .object({
+        tab: z.string(),
+        group: z.string().optional(),
+        label: z.string(),
+        description: z.string().optional(),
+      })
+      .optional(),
+  })
+  .passthrough();
+
+export const OmpSettingsResultSchema = z
+  .object({
+    settings: z.array(OmpSettingEntrySchema),
+    revision: z.number().int().nonnegative(),
+  })
+  .passthrough();
+
+export const OmpSetSettingResultSchema = z
+  .object({
+    path: z.string(),
+    value: z.unknown(),
+    revision: z.number().int().nonnegative(),
+  })
+  .passthrough();
+
+export const OmpSlashCommandResultSchema = z.union([
+  z
+    .object({
+      outcome: z.literal("consumed"),
+      agentInvoked: z.boolean().optional(),
+      output: z.string(),
+    })
+    .passthrough(),
+  z
+    .object({
+      outcome: z.literal("prompt"),
+      prompt: z.string(),
+    })
+    .passthrough(),
+  z
+    .object({
+      outcome: z.literal("overlay"),
+      overlay: z.string(),
+    })
+    .passthrough(),
+  OmpSetModeResultSchema,
+]);
+
+const OmpSettingsUpdateEventSchema = z
+  .object({
+    type: z.literal("settings_update"),
+    payload: z.object({
+      revision: z.number().int().nonnegative(),
+      paths: z.array(z.string()),
+    }),
+  })
+  .passthrough();
+
+export const OmpToolCatalogEntrySchema = z
+  .object({
+    name: z.string().min(1),
+    label: z.string(),
+    description: z.string(),
+    source: z.enum(["native", "paseo", "mcp"]),
+    enabled: z.boolean(),
+    required: z.boolean(),
+  })
+  .passthrough();
+export const OmpToolCatalogResultSchema = z
+  .object({ tools: z.array(OmpToolCatalogEntrySchema) })
+  .passthrough();
+
+const OmpVibeStateEventSchema = z
+  .object({ type: z.literal("vibe_state"), payload: OmpVibeStateSchema })
+  .passthrough();
 const OmpExtensionUiRequestSchema = z
   .object({
     type: z.literal("extension_ui_request"),
@@ -494,6 +681,8 @@ export const OmpRuntimeEventSchema = z.discriminatedUnion("type", [
   OmpRpcHostToolCallRequestSchema,
   OmpRpcHostToolCancelRequestSchema,
   OmpRpcHostToolUpdateSchema,
+  OmpVibeStateEventSchema,
+  OmpSettingsUpdateEventSchema,
 ]);
 
 const OmpCommandBase = { id: z.string().optional() };
@@ -514,6 +703,7 @@ export const OmpRpcCommandSchema = z.discriminatedUnion("type", [
   z.object({ ...OmpCommandBase, type: z.literal("get_state") }),
   z.object({ ...OmpCommandBase, type: z.literal("get_messages") }),
   z.object({ ...OmpCommandBase, type: z.literal("get_available_models") }),
+  z.object({ ...OmpCommandBase, type: z.literal("set_fast_mode"), enabled: z.boolean() }),
   z.object({
     ...OmpCommandBase,
     type: z.literal("set_model"),
@@ -526,6 +716,7 @@ export const OmpRpcCommandSchema = z.discriminatedUnion("type", [
     level: OmpThinkingLevelSchema,
   }),
   z.object({ ...OmpCommandBase, type: z.literal("get_session_stats") }),
+  z.object({ ...OmpCommandBase, type: z.literal("set_session_name"), name: z.string().min(1) }),
   z.object({ ...OmpCommandBase, type: z.literal("get_available_commands") }),
   z.object({
     ...OmpCommandBase,
@@ -537,8 +728,75 @@ export const OmpRpcCommandSchema = z.discriminatedUnion("type", [
     type: z.literal("set_host_tools"),
     tools: z.array(OmpRpcHostToolDefinitionSchema),
   }),
+  z.object({ ...OmpCommandBase, type: z.literal("vibe_status") }),
+  z.object({ ...OmpCommandBase, type: z.literal("get_modes") }),
+  z.object({
+    ...OmpCommandBase,
+    type: z.literal("set_mode"),
+    mode: z.enum(["plan", "goal", "loop"]),
+    paused: z.boolean().optional(),
+  }),
+  z.object({
+    ...OmpCommandBase,
+    type: z.literal("run_slash_command"),
+    command: z.string(),
+    args: z.string().optional(),
+  }),
+  z.object({ ...OmpCommandBase, type: z.literal("get_settings") }),
+  z.object({
+    ...OmpCommandBase,
+    type: z.literal("set_setting"),
+    path: z.string(),
+    value: z.unknown(),
+  }),
+  z.object({ ...OmpCommandBase, type: z.literal("get_keybindings") }),
+  z.object({
+    ...OmpCommandBase,
+    type: z.literal("set_keybinding"),
+    keybinding: z.string(),
+    keys: z.string(),
+  }),
+  z.object({
+    ...OmpCommandBase,
+    type: z.literal("vibe_enter"),
+    prompt: z.string().optional(),
+  }),
+  z.object({ ...OmpCommandBase, type: z.literal("vibe_exit") }),
+  z.object({
+    ...OmpCommandBase,
+    type: z.literal("vibe_spawn"),
+    cli: z.enum(["fast", "good"]),
+    name: z.string().optional(),
+    prompt: z.string(),
+  }),
+  z.object({
+    ...OmpCommandBase,
+    type: z.literal("vibe_send"),
+    session: z.string().min(1),
+    message: z.string(),
+  }),
+  z.object({
+    ...OmpCommandBase,
+    type: z.literal("vibe_wait"),
+    sessions: z.array(z.string().min(1)).optional(),
+    timeoutMs: z.number().int().positive().optional(),
+  }),
+  z.object({
+    ...OmpCommandBase,
+    type: z.literal("vibe_kill"),
+    session: z.string().min(1),
+  }),
+  z.object({ ...OmpCommandBase, type: z.literal("vibe_list") }),
+  z.object({ ...OmpCommandBase, type: z.literal("get_tool_catalog") }),
+  z.object({
+    ...OmpCommandBase,
+    type: z.literal("set_tool_selection"),
+    enabledTools: z.array(z.string()),
+  }),
   z.object({ ...OmpCommandBase, type: z.literal("branch"), entryId: z.string() }),
   z.object({ ...OmpCommandBase, type: z.literal("get_branch_messages") }),
+  z.object({ ...OmpCommandBase, type: z.literal("get_login_providers") }),
+  z.object({ ...OmpCommandBase, type: z.literal("login"), providerId: z.string().min(1) }),
   z.object({
     ...OmpCommandBase,
     type: z.literal("handoff"),
@@ -550,6 +808,9 @@ export const OmpPromptAckSchema = z
   .object({ agentInvoked: z.boolean().optional() })
   .passthrough()
   .optional();
+export const OmpFastModeResultSchema = z
+  .object({ enabled: z.boolean(), active: z.boolean() })
+  .passthrough();
 export const OmpMessagesResultSchema = z
   .object({ messages: z.array(OmpAgentMessageSchema).optional() })
   .passthrough();
@@ -568,6 +829,22 @@ export const OmpBranchResultSchema = z
 export const OmpBranchMessagesResultSchema = z
   .object({
     messages: z.array(z.object({ entryId: z.string(), text: z.string() }).passthrough()).optional(),
+  })
+  .passthrough();
+export const OmpLoginProvidersResultSchema = z
+  .object({
+    providers: z
+      .array(
+        z
+          .object({
+            id: z.string(),
+            name: z.string(),
+            available: z.boolean().optional(),
+            authenticated: z.boolean().optional(),
+          })
+          .passthrough(),
+      )
+      .default([]),
   })
   .passthrough();
 
@@ -612,6 +889,36 @@ export type OmpAvailableCommand = z.infer<typeof OmpAvailableCommandSchema>;
 export type OmpAvailableCommandsUpdateEvent = z.infer<typeof OmpAvailableCommandsUpdateEventSchema>;
 export type OmpRpcCommand = z.infer<typeof OmpRpcCommandSchema>;
 export type OmpPromptAck = z.infer<typeof OmpPromptAckSchema> & { requestId?: string };
+export type OmpVibeWorker = z.infer<typeof OmpVibeWorkerSchema>;
+export type OmpVibeState = z.infer<typeof OmpVibeStateSchema>;
+export type OmpVibeEnterResult = z.infer<typeof OmpVibeEnterResultSchema>;
+export type OmpVibeExitResult = z.infer<typeof OmpVibeExitResultSchema>;
+export type OmpVibeSpawnResult = z.infer<typeof OmpVibeSpawnResultSchema>;
+export type OmpVibeSendResult = z.infer<typeof OmpVibeSendResultSchema>;
+export type OmpVibeWaitResult = z.infer<typeof OmpVibeWaitResultSchema>;
+export type OmpVibeKillResult = z.infer<typeof OmpVibeKillResultSchema>;
+export type OmpVibeListResult = z.infer<typeof OmpVibeListResultSchema>;
+export type OmpModesResult = z.infer<typeof OmpModesResultSchema>;
+export type OmpSetModeResult = z.infer<typeof OmpSetModeResultSchema>;
+export type OmpToolCatalogEntry = z.infer<typeof OmpToolCatalogEntrySchema>;
+export type OmpToolCatalogResult = z.infer<typeof OmpToolCatalogResultSchema>;
+export type OmpKeybindingEntry = z.infer<typeof OmpKeybindingEntrySchema>;
+export type OmpKeybindingsResult = z.infer<typeof OmpKeybindingsResultSchema>;
+export type OmpSetKeybindingResult = z.infer<typeof OmpSetKeybindingResultSchema>;
+export type OmpSettingEntry = z.infer<typeof OmpSettingEntrySchema>;
+export type OmpSettingsResult = z.infer<typeof OmpSettingsResultSchema>;
+export type OmpSetSettingResult = z.infer<typeof OmpSetSettingResultSchema>;
+export type OmpSlashCommandResult = z.infer<typeof OmpSlashCommandResultSchema>;
+export type OmpSettingsUpdateEvent = z.infer<typeof OmpSettingsUpdateEventSchema>;
+export type VibeWorkerSnapshot = OmpVibeWorker;
+export type VibeStateResult = OmpVibeState;
+export type VibeEnterResult = OmpVibeEnterResult;
+export type VibeExitResult = OmpVibeExitResult;
+export type VibeSpawnResult = OmpVibeSpawnResult;
+export type VibeSendResult = OmpVibeSendResult;
+export type VibeWaitResult = OmpVibeWaitResult;
+export type VibeKillResult = OmpVibeKillResult;
+export type VibeListResult = OmpVibeListResult;
 
 export interface OmpSubagentSnapshot {
   id: string;

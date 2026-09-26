@@ -161,8 +161,25 @@ export interface AgentCapabilityFlags {
   supportsReasoningStream: boolean;
   supportsToolInvocations: boolean;
   supportsRewindConversation?: boolean;
+  supportsOmpVibe?: boolean;
+  supportsOmpToolSelection?: boolean;
+  supportsOmpSlashCommands?: boolean;
+  supportsOmpSettings?: boolean;
+  supportsOmpModes?: boolean;
+  supportsOmpKeybindings?: boolean;
   supportsRewindFiles?: boolean;
   supportsRewindBoth?: boolean;
+}
+
+export type AgentToolSource = "native" | "paseo" | "mcp";
+
+export interface AgentToolDefinition {
+  name: string;
+  label: string;
+  description: string;
+  source: AgentToolSource;
+  enabled: boolean;
+  required: boolean;
 }
 
 export interface AgentPersistenceHandle {
@@ -393,6 +410,17 @@ export type AgentStreamEvent =
       provider: AgentProvider;
       currentModeId: string | null;
       availableModes: AgentMode[];
+    }
+  | {
+      type: "tools_updated";
+      provider: AgentProvider;
+      tools: AgentToolDefinition[];
+    }
+  | {
+      type: "provider_state_updated";
+      provider: AgentProvider;
+      stateKey: string;
+      state: JsonValue;
     }
   | { type: "model_changed"; provider: AgentProvider; runtimeInfo: AgentRuntimeInfo }
   | {

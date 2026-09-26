@@ -133,6 +133,7 @@ export function toAgentPayload(
       : null,
     capabilities: cloneCapabilities(agent.capabilities),
     currentModeId: agent.currentModeId,
+    ...(agent.tools ? { tools: agent.tools } : {}),
     availableModes: cloneAvailableModes(agent.availableModes),
     features: normalizeFeatures(agent.features),
     pendingPermissions: sanitizePendingPermissions(agent.pendingPermissions),
