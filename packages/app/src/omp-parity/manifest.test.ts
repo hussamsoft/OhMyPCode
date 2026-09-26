@@ -7,19 +7,29 @@ const root = path.resolve(__dirname, "../../../..");
 const controlSurfacePath = path.join(root, "docs", "omp", "CONTROL-SURFACE.md");
 const parityDocPath = path.join(root, "docs", "omp", "PARITY.md");
 
-// Valid protocol feature capabilities defined in ServerInfoStatusPayload['features']
-const VALID_PROTOCOL_CAPABILITIES = new Set([
-  "ompStatistics",
-  "ompCollab",
-  "ompProviders",
-  "ompVibe",
-  "ompToolSelection",
-  "ompSlashCommands",
-  "ompSettings",
-  "ompModes",
-  "ompKeybindings",
-  "ompRuntime",
-]);
+// Valid protocol feature capabilities defined in ServerInfoStatusPayload['features'].
+// Derived directly from packages/protocol/src/messages.ts (not hand-copied) so an
+// upstream capability flag addition/removal can never silently drift from this test.
+const messagesPath = path.join(root, "packages", "protocol", "src", "messages.ts");
+const messagesSource = fs.readFileSync(messagesPath, "utf8");
+const forkCapabilitiesAnchor =
+  "// OhMyPCode fork capabilities: stock Paseo daemons never set these";
+const forkCapabilitiesAnchorIndex = messagesSource.indexOf(forkCapabilitiesAnchor);
+if (forkCapabilitiesAnchorIndex === -1) {
+  throw new Error(`Anchor comment not found in ${messagesPath}: "${forkCapabilitiesAnchor}"`);
+}
+const nextCompatIndex = messagesSource.indexOf("// COMPAT(", forkCapabilitiesAnchorIndex);
+if (nextCompatIndex <= forkCapabilitiesAnchorIndex) {
+  throw new Error(
+    `Could not find the "// COMPAT(" boundary after the fork-capabilities anchor in ${messagesPath}`,
+  );
+}
+const forkCapabilitiesBlock = messagesSource.slice(forkCapabilitiesAnchorIndex, nextCompatIndex);
+const VALID_PROTOCOL_CAPABILITIES = new Set(
+  [...forkCapabilitiesBlock.matchAll(/^\s*(\w+):\s*z\.boolean\(\)\.optional\(\),/gm)].map(
+    (match) => match[1],
+  ),
+);
 
 // Valid GUI homes that exist in the codebase today
 const VALID_GUI_HOMES = new Set([
@@ -54,22 +64,8 @@ describe("OMP Parity Manifest", () => {
     }
   });
 
-  it("VALID_PROTOCOL_CAPABILITIES stays in sync with the OhMyPCode fork capability flags actually declared in packages/protocol/src/messages.ts, so this test file's hand-maintained set can never silently drift from the real protocol source", () => {
-    const messagesPath = path.join(root, "packages", "protocol", "src", "messages.ts");
-    const messagesSource = fs.readFileSync(messagesPath, "utf8");
-    const anchor = "// OhMyPCode fork capabilities: stock Paseo daemons never set these";
-    const anchorIndex = messagesSource.indexOf(anchor);
-    expect(anchorIndex).toBeGreaterThan(-1);
-    const nextCompatIndex = messagesSource.indexOf("// COMPAT(", anchorIndex);
-    expect(nextCompatIndex).toBeGreaterThan(anchorIndex);
-    const forkCapabilitiesBlock = messagesSource.slice(anchorIndex, nextCompatIndex);
-    const declaredCapabilities = new Set(
-      [...forkCapabilitiesBlock.matchAll(/^\s*(\w+):\s*z\.boolean\(\)\.optional\(\),/gm)].map(
-        (match) => match[1],
-      ),
-    );
-    expect(declaredCapabilities.size).toBeGreaterThan(0);
-    expect([...declaredCapabilities].sort()).toEqual([...VALID_PROTOCOL_CAPABILITIES].sort());
+  it("derives a non-empty VALID_PROTOCOL_CAPABILITIES set from messages.ts (guards against the anchor regex silently matching nothing)", () => {
+    expect(VALID_PROTOCOL_CAPABILITIES.size).toBeGreaterThan(0);
   });
 
   it("assigns only valid currently-existing GUI homes or terminal escape hatch with reason", () => {
