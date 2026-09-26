@@ -65,6 +65,8 @@
     "ensure:omp-runtime": "node scripts/build-omp-runtime.mjs --ensure",
     "generate:omp-theme": "node --import tsx scripts/generate-omp-theme-tokens.mjs",
     "generate:omp-theme:check": "node --import tsx scripts/generate-omp-theme-tokens.mjs --check",
+    "generate:omp-control-surface": "node scripts/generate-omp-control-surface.mjs",
+    "parity:check": "node scripts/generate-omp-control-surface.mjs --check",
     "build:app-deps": "npm run build:highlight && npm run build:client && npm run build:plugin && npm run build --workspace=@getpaseo/expo-two-way-audio",
     "build:app-deps:clean": "npm run build:highlight:clean && npm run build:client:clean && npm run build:plugin:clean && npm run build --workspace=@getpaseo/expo-two-way-audio",
     "watch:protocol": "npm run watch --workspace=@getpaseo/protocol",
