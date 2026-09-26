@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { parseChangelog, type ChangelogRelease } from "./parse-changelog";
+import { PRODUCT_APP_REPO_OWNER, PRODUCT_APP_REPO_NAME } from "@/constants/product";
 
-const CHANGELOG_URL = "https://raw.githubusercontent.com/hussamsoft/OhMyPCode/main/CHANGELOG.md";
+const CHANGELOG_URL = `https://raw.githubusercontent.com/${PRODUCT_APP_REPO_OWNER}/${PRODUCT_APP_REPO_NAME}/main/CHANGELOG.md`;
 
 export type ChangelogState =
   | { status: "loading" }

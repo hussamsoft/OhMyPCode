@@ -24,8 +24,9 @@ import {
   type ChangelogRelease,
   type ChangelogSection,
 } from "./parse-changelog";
+import { PRODUCT_APP_REPO_URL } from "@/constants/product";
 
-const WEBSITE_CHANGELOG_URL = "https://github.com/hussamsoft/OhMyPCode/blob/main/CHANGELOG.md";
+const WEBSITE_CHANGELOG_URL = `${PRODUCT_APP_REPO_URL}/blob/main/CHANGELOG.md`;
 
 const ThemedGift = withUnistyles(Gift);
 const ThemedExternalLink = withUnistyles(ExternalLink);
