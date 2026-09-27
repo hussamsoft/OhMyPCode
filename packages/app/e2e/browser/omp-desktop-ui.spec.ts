@@ -221,6 +221,23 @@ test.describe("OMP desktop control deck", () => {
     }
   });
 
+  // KNOWN RISK, not yet resolved: composer/index.tsx now mounts
+  // OmpComposerControls (the Phase 9 deck) instead of the legacy
+  // AgentControls for OMP-provider sessions -- and withOmpVisualWorkspace
+  // below creates an OMP-provider agent. This is a full swap of the
+  // composer's left-content control row, not additive chrome, so the
+  // stabilizeVisualFixture mask (which only hides genuinely-additive Phase 8
+  // elements: status bar, mode badge, todo rail, hook widget) cannot safely
+  // restore the pre-swap appearance here -- masking OmpComposerControls's
+  // own elements would leave an empty gap where AgentControls used to
+  // render, which is not the same as the approved baseline either. These
+  // baselines were last approved before the deck was live and have NOT been
+  // re-verified against a working OMP runtime in this environment (every
+  // test in this file currently fails locally with "Provider omp is
+  // disabled" -- a pre-existing sandbox limitation, confirmed unrelated to
+  // the deck change). Run this spec against a real OMP runtime and
+  // deliberately review + re-approve the baselines before trusting a green
+  // result here.
   test("captures the approved OMP desktop visual baselines", async ({ page }) => {
     await withOmpVisualWorkspace(page, {
       repoPrefix: "omp-visual-dark-",
