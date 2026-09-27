@@ -9,7 +9,7 @@ import { usePanelStore, type MobilePanelView } from "@/stores/panel-store";
  * not exist here.
  */
 export function MobilePanelsProvider({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return children;
 }
 
 /**
