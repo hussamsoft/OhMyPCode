@@ -37,6 +37,14 @@ interface UseAgentAutocompleteInput {
   draftConfig?: DraftCommandConfig;
   onAutocompleteApplied?: () => void;
   onClientSlashCommand?: (command: ClientSlashCommand) => void;
+  /**
+   * Called when the user selects a server-side (provider) slash command from
+   * the autocomplete at the root position (`/`). Inline (skill) commands
+   * continue to use text insertion because they expand to a prompt reference,
+   * not an RPC call. The composer usually clears the input + handles the
+   * response payload itself.
+   */
+  onRunOmpSlashCommand?: (input: { name: string; args?: string }) => void | Promise<void>;
   canExecuteClientSlashCommand?: boolean;
   pluginClientSlashCommands?: readonly PluginClientSlashCommand[];
 }
@@ -337,6 +345,85 @@ function resolveAutocompleteErrorMessage(args: {
   return undefined;
 }
 
+interface ResolveAutocompleteSelectionActionInput {
+  selected: AgentAutocompleteOption;
+  snapshot: AgentAutocompleteSnapshot;
+  canExecuteClientSlashCommand: boolean;
+  hasOnClientSlashCommand: boolean;
+  hasOnRunOmpSlashCommand: boolean;
+}
+
+type AgentAutocompleteSelectionAction =
+  | { kind: "execute_client_command"; command: ClientSlashCommand }
+  | { kind: "execute_provider_command"; name: string }
+  | { kind: "set_user_input"; nextInput: string }
+  | { kind: "noop" };
+
+/**
+ * Decide what the composer should do when the user picks an option from the
+ * autocomplete popover. Extracted from `onSelectOption` so the hook body stays
+ * below the `complexity` lint threshold and the policy lives in one place.
+ *
+ * - Client commands with `execution === "immediate"` (e.g. /exit) run when
+ *   the composer can run them.
+ * - Provider commands at the root of the input (`position === "start"`)
+ *   execute via the OMP RPC hook when one is provided; inline skill commands
+ *   fall through to text replacement because they expand to a prompt
+ *   fragment, not an RPC call.
+ * - Everything else falls back to in-place text replacement so the user can
+ *   continue typing args and submit with Enter.
+ */
+function resolveAutocompleteSelectionAction(
+  input: ResolveAutocompleteSelectionActionInput,
+): AgentAutocompleteSelectionAction {
+  const {
+    selected,
+    snapshot,
+    canExecuteClientSlashCommand,
+    hasOnClientSlashCommand,
+    hasOnRunOmpSlashCommand,
+  } = input;
+
+  if (
+    selected.type === "client_command" &&
+    selected.command.execution === "immediate" &&
+    canExecuteClientSlashCommand &&
+    hasOnClientSlashCommand
+  ) {
+    return { kind: "execute_client_command", command: selected.command };
+  }
+
+  const selectedIsCommand =
+    selected.type === "client_command" ||
+    selected.type === "plugin_command" ||
+    selected.type === "provider_command";
+
+  if (
+    selectedIsCommand &&
+    selected.type === "provider_command" &&
+    snapshot.slashCommand?.position === "start" &&
+    hasOnRunOmpSlashCommand
+  ) {
+    return { kind: "execute_provider_command", name: selected.id };
+  }
+
+  if (selectedIsCommand) {
+    if (!snapshot.slashCommand) {
+      return { kind: "set_user_input", nextInput: `/${selected.id} ` };
+    }
+    return {
+      kind: "set_user_input",
+      nextInput: applySlashCommandReplacement({
+        text: snapshot.text,
+        command: snapshot.slashCommand,
+        commandName: selected.id,
+      }),
+    };
+  }
+
+  return { kind: "noop" };
+}
+
 export function useAgentAutocomplete(input: UseAgentAutocompleteInput): AgentAutocompleteResult {
   const { t } = useTranslation();
   const {
@@ -348,6 +435,7 @@ export function useAgentAutocomplete(input: UseAgentAutocompleteInput): AgentAut
     draftConfig,
     onAutocompleteApplied,
     onClientSlashCommand,
+    onRunOmpSlashCommand,
     canExecuteClientSlashCommand,
     pluginClientSlashCommands = [],
   } = input;
@@ -503,31 +591,32 @@ export function useAgentAutocomplete(input: UseAgentAutocompleteInput): AgentAut
         selected.type === "plugin_command" ||
         selected.type === "provider_command";
       if (snapshot && selectedIsCommand && !current.slashCommand) return;
-      if (
-        selected.type === "client_command" &&
-        selected.command.execution === "immediate" &&
-        canExecuteClientSlashCommand &&
-        onClientSlashCommand
-      ) {
-        onClientSlashCommand(selected.command);
-        return;
-      }
 
       if (selectedIsCommand) {
-        if (!current.slashCommand) {
-          setUserInput(`/${selected.id} `);
-          onAutocompleteApplied?.();
-          return;
-        }
-
-        const nextInput = applySlashCommandReplacement({
-          text: current.text,
-          command: current.slashCommand,
-          commandName: selected.id,
+        const action = resolveAutocompleteSelectionAction({
+          selected,
+          snapshot: current,
+          canExecuteClientSlashCommand: Boolean(canExecuteClientSlashCommand),
+          hasOnClientSlashCommand: Boolean(onClientSlashCommand),
+          hasOnRunOmpSlashCommand: Boolean(onRunOmpSlashCommand),
         });
-        setUserInput(nextInput);
-        onAutocompleteApplied?.();
-        return;
+        switch (action.kind) {
+          case "execute_client_command":
+            onClientSlashCommand?.(action.command);
+            return;
+          case "execute_provider_command":
+            // Surface failures via the composer's own error pipeline; the
+            // autocomplete just needs to close the popover.
+            void Promise.resolve(onRunOmpSlashCommand?.({ name: action.name })).catch(() => {});
+            onAutocompleteApplied?.();
+            return;
+          case "set_user_input":
+            setUserInput(action.nextInput);
+            onAutocompleteApplied?.();
+            return;
+          case "noop":
+            return;
+        }
       }
 
       if (!current.fileMention) return;
@@ -543,6 +632,7 @@ export function useAgentAutocomplete(input: UseAgentAutocompleteInput): AgentAut
       canExecuteClientSlashCommand,
       onAutocompleteApplied,
       onClientSlashCommand,
+      onRunOmpSlashCommand,
       setUserInput,
       userInput,
       cursorIndex,

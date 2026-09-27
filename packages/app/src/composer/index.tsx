@@ -114,6 +114,10 @@ import { submitAgentInput } from "@/composer/submit";
 import { createMessageSubmissionWriter } from "@/composer/submission/writer";
 import { ComposerKeyboardScopeProvider, useComposerKeyboardScope } from "@/composer/keyboard-scope";
 import { useAppSettings } from "@/hooks/use-settings";
+import { useOmpSlashCommand } from "@/composer/omp-control-deck/use-omp-rpc";
+import { openOmpVibeTarget } from "@/workspace-tabs/open-omp-vibe-target";
+import type { OmpCommandRunPayload } from "@ohmypcode/client/internal/daemon-client";
+import type { ToastApi } from "@/components/toast-host";
 import { RenderProfile } from "@/utils/render-profiler";
 import { AfterPaintPublication } from "@/composer/after-paint-publication";
 import { isWeb, isNative } from "@/constants/platform";
@@ -500,6 +504,59 @@ function resolveErrorMessage(error: unknown): string | null {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
   return null;
+}
+
+/**
+ * Map a server-reported OMP command overlay name to a workspace target that
+ * we can open with the existing layout-store helpers. When no panel kind
+ * currently owns the overlay (e.g. a Phase-10 screen hasn't landed yet),
+ * callers must fall back to surfacing `output` directly.
+ */
+function resolveOmpCommandOverlayTarget(input: {
+  name: string;
+  agentId: string;
+}): { kind: "omp_vibe"; agentId: string; workerId: string | null } | null {
+  if (input.name === "omp_vibe") {
+    return { kind: "omp_vibe", agentId: input.agentId, workerId: null };
+  }
+  return null;
+}
+
+interface HandleOmpCommandRunResponseArgs {
+  response: OmpCommandRunPayload;
+  agentId: string;
+  toast: ToastApi;
+  setSendError: (error: string | null) => void;
+  reportUnknownOverlay?: (name: string) => void;
+}
+
+function handleOmpCommandRunResponse(args: HandleOmpCommandRunResponseArgs): void {
+  const { response, agentId, toast, setSendError, reportUnknownOverlay } = args;
+  const ui = response.ui;
+  if (ui?.kind === "overlay") {
+    const target = resolveOmpCommandOverlayTarget({ name: ui.name, agentId });
+    if (target) {
+      const openedTabId = openOmpVibeTarget(target);
+      if (openedTabId) {
+        if (response.output) {
+          toast.show(response.output);
+        }
+        return;
+      }
+      // Layout store refused to open (no workspace owning this agent) — fall
+      // back to surface output inline rather than swallow the result.
+    } else {
+      reportUnknownOverlay?.(ui.name);
+    }
+  }
+
+  if (response.output) {
+    toast.show(response.output);
+    return;
+  }
+  if (!response.agentInvoked && !response.stateChange) {
+    setSendError(null);
+  }
 }
 
 interface AttemptStartRealtimeVoiceArgs {
@@ -1440,6 +1497,50 @@ function ComposerContentImpl({
     ],
   );
 
+  const ompSlash = useOmpSlashCommand(serverId, agentId);
+
+  const runOmpSlashCommand = useCallback(
+    async (input: { name: string; args?: string }): Promise<void> => {
+      if (blurOnSubmit) {
+        messageInputRef.current?.blur();
+      }
+      clearDraft("sent");
+      replaceUserInput("");
+      setSelectedAttachments([]);
+      resetSuppression();
+      setSendError(null);
+      setIsProcessing(true);
+      try {
+        const response = await ompSlash.run({ name: input.name, args: input.args });
+        handleOmpCommandRunResponse({
+          response,
+          agentId,
+          toast,
+          setSendError,
+          reportUnknownOverlay: (name) =>
+            console.warn(
+              `[Composer] OMP command "${input.name}" returned unhandled overlay "${name}"; rendering output inline.`,
+            ),
+        });
+      } catch (error) {
+        console.error("[Composer] Failed to run OMP slash command:", error);
+        setSendError(error instanceof Error ? error.message : String(error));
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [
+      agentId,
+      blurOnSubmit,
+      clearDraft,
+      ompSlash,
+      resetSuppression,
+      setSelectedAttachments,
+      replaceUserInput,
+      toast,
+    ],
+  );
+
   const runPluginClientSlashCommand = useCallback(
     (resolved: { command: (typeof pluginClientSlashCommands)[number]; args: string }): boolean => {
       if (blurOnSubmit) messageInputRef.current?.blur();
@@ -2349,6 +2450,7 @@ function ComposerContentImpl({
       draftConfig: commandDraftConfig,
       canExecuteClientSlashCommand: buildOutgoingAttachments(attachments).length === 0,
       onClientSlashCommand: runClientSlashCommand,
+      onRunOmpSlashCommand: runOmpSlashCommand,
       pluginClientSlashCommands,
     }),
     [
@@ -2359,6 +2461,7 @@ function ComposerContentImpl({
       buildOutgoingAttachments,
       attachments,
       runClientSlashCommand,
+      runOmpSlashCommand,
       pluginClientSlashCommands,
     ],
   );
