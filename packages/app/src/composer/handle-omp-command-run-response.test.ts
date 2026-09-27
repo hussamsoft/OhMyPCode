@@ -12,6 +12,7 @@ function buildOpeners(overrides: Partial<OmpOverlayOpeners> = {}): OmpOverlayOpe
     openOmpKeybindingsTarget: vi.fn(() => "tab-keybindings"),
     openOmpContextTarget: vi.fn(() => "tab-context"),
     openOmpMcpTarget: vi.fn(() => "tab-mcp"),
+    openOmpSshTarget: vi.fn(() => "tab-ssh"),
     ...overrides,
   };
 }
@@ -148,6 +149,22 @@ describe("handleOmpCommandRunResponse", () => {
     });
 
     expect(openers.openOmpMcpTarget).toHaveBeenCalledWith({ agentId: "agent-1" });
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it("opens the ssh panel for a non-overlay ssh response instead of toasting", () => {
+    const openers = buildOpeners();
+    const showToast = vi.fn();
+    handleOmpCommandRunResponse({
+      response: buildResponse({ output: "2 hosts configured" }),
+      commandName: "ssh",
+      agentId: "agent-1",
+      showToast,
+      setSendError: vi.fn(),
+      openers,
+    });
+
+    expect(openers.openOmpSshTarget).toHaveBeenCalledWith({ agentId: "agent-1" });
     expect(showToast).not.toHaveBeenCalled();
   });
 

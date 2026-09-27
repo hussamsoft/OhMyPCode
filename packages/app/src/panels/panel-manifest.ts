@@ -53,6 +53,11 @@ const manifests = {
     supportedHosts: ["main"],
     resourceKey: (target) => `ompMcp:${target.agentId}`,
   },
+  omp_ssh: {
+    kind: "omp_ssh",
+    supportedHosts: ["main"],
+    resourceKey: (target) => `ompSsh:${target.agentId}`,
+  },
   provider_subagent: {
     kind: "provider_subagent",
     supportedHosts: ["main", "explorer"],

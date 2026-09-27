@@ -6761,10 +6761,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:ssh",
     surface: "slash",
     name: "ssh",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "omp_ssh",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Reachable via the headless omp.command.run RPC (handle: handleSshAcp covers list/add/remove); the desktop app's omp_ssh console runs subcommands and shows the text output. Distinct from OMP's standalone `omp ssh` CLI subcommand (see subcommand:ssh), which is a separate, session-less codepath and stays TUI-only",
   },
   {
     id: "slash:stats",

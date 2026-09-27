@@ -121,6 +121,7 @@ import { openOmpSettingsTarget } from "@/workspace-tabs/open-omp-settings-target
 import { openOmpKeybindingsTarget } from "@/workspace-tabs/open-omp-keybindings-target";
 import { openOmpContextTarget } from "@/workspace-tabs/open-omp-context-target";
 import { openOmpMcpTarget } from "@/workspace-tabs/open-omp-mcp-target";
+import { openOmpSshTarget } from "@/workspace-tabs/open-omp-ssh-target";
 import { handleOmpCommandRunResponse } from "@/composer/handle-omp-command-run-response";
 import { RenderProfile } from "@/utils/render-profiler";
 import { AfterPaintPublication } from "@/composer/after-paint-publication";
@@ -1479,6 +1480,7 @@ function ComposerContentImpl({
             openOmpKeybindingsTarget,
             openOmpContextTarget,
             openOmpMcpTarget,
+            openOmpSshTarget,
           },
         });
       } catch (error) {

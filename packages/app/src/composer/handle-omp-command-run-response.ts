@@ -16,6 +16,7 @@ export interface OmpOverlayOpeners {
   openOmpKeybindingsTarget: (target: { kind: "omp_keybindings"; agentId: string }) => string | null;
   openOmpContextTarget: (target: { agentId: string }) => string | null;
   openOmpMcpTarget: (target: { agentId: string }) => string | null;
+  openOmpSshTarget: (target: { agentId: string }) => string | null;
 }
 
 function openOmpOverlayTarget(target: OverlayTarget, openers: OmpOverlayOpeners): string | null {
@@ -48,6 +49,9 @@ function resolveNonOverlayPanelOpener(
   }
   if (commandName === "mcp") {
     return openers.openOmpMcpTarget;
+  }
+  if (commandName === "ssh") {
+    return openers.openOmpSshTarget;
   }
   return null;
 }

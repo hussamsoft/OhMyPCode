@@ -318,6 +318,7 @@ function getFallbackTabOptionLabel(
     keybindings: string;
     context: string;
     mcp: string;
+    ssh: string;
   },
 ): string {
   if (tab.target.kind === "new_tab") {
@@ -365,6 +366,9 @@ function getFallbackTabOptionLabel(
   if (tab.target.kind === "omp_mcp") {
     return labels.mcp;
   }
+  if (tab.target.kind === "omp_ssh") {
+    return labels.ssh;
+  }
   return labels.agent;
 }
 
@@ -385,6 +389,7 @@ function getFallbackTabOptionDescription(
     keybindings: string;
     context: string;
     mcp: string;
+    ssh: string;
   },
 ): string {
   if (tab.target.kind === "new_tab") {
@@ -437,6 +442,9 @@ function getFallbackTabOptionDescription(
   }
   if (tab.target.kind === "omp_mcp") {
     return labels.mcp;
+  }
+  if (tab.target.kind === "omp_ssh") {
+    return labels.ssh;
   }
   return tab.target.path;
 }
@@ -647,6 +655,7 @@ function MobileWorkspaceTabOption({
       keybindings: t("panels.ompKeybindings.label"),
       context: t("panels.ompContext.label"),
       mcp: t("panels.ompMcp.label"),
+      ssh: t("panels.ompSsh.label"),
     }),
     [t],
   );
@@ -2271,6 +2280,7 @@ function WorkspaceScreenContent({
       keybindings: t("panels.ompKeybindings.label"),
       context: t("panels.ompContext.label"),
       mcp: t("panels.ompMcp.label"),
+      ssh: t("panels.ompSsh.label"),
     }),
     [t],
   );

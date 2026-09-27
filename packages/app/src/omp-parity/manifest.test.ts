@@ -40,6 +40,7 @@ const VALID_GUI_HOMES = new Set([
   "omp_keybindings",
   "omp_context",
   "omp_mcp",
+  "omp_ssh",
   "/h/[serverId]/settings/collaboration",
   "/usage",
 ]);

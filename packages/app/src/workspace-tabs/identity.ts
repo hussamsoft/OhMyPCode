@@ -64,6 +64,7 @@ function normalizeSimpleWorkspaceTabTarget(value: WorkspaceTabTarget): Workspace
     case "omp_keybindings":
     case "omp_context":
     case "omp_mcp":
+    case "omp_ssh":
       return normalizeOmpPanelTarget(value);
     case "setup": {
       const workspaceId = trimNonEmpty(value.workspaceId);
@@ -88,7 +89,9 @@ function normalizeSimpleWorkspaceTabTarget(value: WorkspaceTabTarget): Workspace
 function normalizeOmpPanelTarget(
   value: Extract<
     WorkspaceTabTarget,
-    { kind: "omp_vibe" | "omp_settings" | "omp_keybindings" | "omp_context" | "omp_mcp" }
+    {
+      kind: "omp_vibe" | "omp_settings" | "omp_keybindings" | "omp_context" | "omp_mcp" | "omp_ssh";
+    }
   >,
 ): WorkspaceTabTarget | null {
   const agentId = trimNonEmpty(value.agentId);
@@ -213,6 +216,9 @@ function ompPanelTargetsEqual(left: WorkspaceTabTarget, right: WorkspaceTabTarge
   if (left.kind === "omp_mcp" && right.kind === "omp_mcp") {
     return left.agentId === right.agentId;
   }
+  if (left.kind === "omp_ssh" && right.kind === "omp_ssh") {
+    return left.agentId === right.agentId;
+  }
   return null;
 }
 
@@ -286,22 +292,37 @@ export function buildDeterministicWorkspaceTabId(target: WorkspaceTabTarget): st
       ? `plugin_workspace_${identity}`
       : `plugin_agent_${identity}_${target.agentId.length}_${target.agentId}`;
   }
-  if (target.kind === "omp_vibe") {
-    return `omp_vibe_${target.agentId.length}_${target.agentId}`;
-  }
-  if (target.kind === "omp_settings") {
-    return `omp_settings_${target.agentId.length}_${target.agentId}`;
-  }
-  if (target.kind === "omp_keybindings") {
-    return `omp_keybindings_${target.agentId.length}_${target.agentId}`;
-  }
-  if (target.kind === "omp_context") {
-    return `omp_context_${target.agentId.length}_${target.agentId}`;
-  }
-  if (target.kind === "omp_mcp") {
-    return `omp_mcp_${target.agentId.length}_${target.agentId}`;
+  if (isOmpPanelTarget(target)) {
+    return `${target.kind}_${target.agentId.length}_${target.agentId}`;
   }
   return `file_${target.path}`;
+}
+
+type OmpPanelTargetKind =
+  | "omp_vibe"
+  | "omp_settings"
+  | "omp_keybindings"
+  | "omp_context"
+  | "omp_mcp"
+  | "omp_ssh";
+
+/**
+ * Every omp_* panel target's deterministic id is `${kind}_${agentId.length}_
+ * ${agentId}` — the kind literal itself is the prefix, so one generic check
+ * (this predicate) covers all of them instead of a branch per kind (same
+ * reasoning as `normalizeOmpPanelTarget`/`ompPanelTargetsEqual`).
+ */
+function isOmpPanelTarget(
+  target: WorkspaceTabTarget,
+): target is Extract<WorkspaceTabTarget, { kind: OmpPanelTargetKind }> {
+  return (
+    target.kind === "omp_vibe" ||
+    target.kind === "omp_settings" ||
+    target.kind === "omp_keybindings" ||
+    target.kind === "omp_context" ||
+    target.kind === "omp_mcp" ||
+    target.kind === "omp_ssh"
+  );
 }
 
 function normalizePluginTabTarget(
