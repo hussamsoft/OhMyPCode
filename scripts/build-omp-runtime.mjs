@@ -163,6 +163,28 @@ function validateManifest(dir, target) {
       fail(`Existing OMP runtime manifest is missing ${field}: ${manifestPath}`);
     }
   }
+  // Per OMP_DESKTOP_MASTER_PLAN.md:21, the manifest's sourceCommit must match
+  // the actual vendored fork HEAD -- otherwise the runtime could carry a
+  // build from a different commit than the parent repo pins, which is the
+  // exact failure mode the build script's CI gate is supposed to catch.
+  // OMP_SOURCE_COMMIT_OVERRIDE lets CI pin the check against the env-provided
+  // commit (matches the build() path's sourceCommit resolution).
+  const expectedSourceCommit =
+    process.env.OMP_SOURCE_COMMIT?.trim() ||
+    (() => {
+      try {
+        return execFileSync("git", ["-C", vendor, "rev-parse", "HEAD"], {
+          encoding: "utf8",
+        }).trim();
+      } catch {
+        return null;
+      }
+    })();
+  if (expectedSourceCommit && manifest.sourceCommit !== expectedSourceCommit) {
+    fail(
+      `Existing OMP runtime sourceCommit '${manifest.sourceCommit}' does not match the vendored fork HEAD '${expectedSourceCommit}'. Re-run with --rebuild (or delete ${dir}).`,
+    );
+  }
   return true;
 }
 
