@@ -315,6 +315,7 @@ function getFallbackTabOptionLabel(
     pullRequest: string;
     vibe: string;
     settings: string;
+    keybindings: string;
   },
 ): string {
   if (tab.target.kind === "new_tab") {
@@ -353,6 +354,9 @@ function getFallbackTabOptionLabel(
   if (tab.target.kind === "omp_settings") {
     return labels.settings;
   }
+  if (tab.target.kind === "omp_keybindings") {
+    return labels.keybindings;
+  }
   return labels.agent;
 }
 
@@ -370,6 +374,7 @@ function getFallbackTabOptionDescription(
     pullRequest: string;
     vibe: string;
     settings: string;
+    keybindings: string;
   },
 ): string {
   if (tab.target.kind === "new_tab") {
@@ -413,6 +418,9 @@ function getFallbackTabOptionDescription(
   }
   if (tab.target.kind === "omp_settings") {
     return labels.settings;
+  }
+  if (tab.target.kind === "omp_keybindings") {
+    return labels.keybindings;
   }
   return tab.target.path;
 }
@@ -620,6 +628,7 @@ function MobileWorkspaceTabOption({
       pullRequest: t("panels.pullRequest.label"),
       vibe: t("workspace.tabs.fallback.vibe"),
       settings: t("panels.ompSettings.label"),
+      keybindings: t("panels.ompKeybindings.label"),
     }),
     [t],
   );
@@ -2241,6 +2250,7 @@ function WorkspaceScreenContent({
       pullRequest: t("panels.pullRequest.label"),
       vibe: t("workspace.tabs.fallback.vibe"),
       settings: t("panels.ompSettings.label"),
+      keybindings: t("panels.ompKeybindings.label"),
     }),
     [t],
   );

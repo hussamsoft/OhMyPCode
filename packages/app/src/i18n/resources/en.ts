@@ -274,6 +274,11 @@ export const en = {
       settingsUnavailable: "OMP settings are not available for this agent.",
       settingsLoading: "Loading OMP settings...",
       noSettings: "No OMP settings available.",
+      keybindingsUnavailable: "OMP keybindings are not available for this agent.",
+      keybindingsLoading: "Loading OMP keybindings...",
+      noKeybindings: "No keybindings match this filter.",
+      keybindingsFilterLabel: "Filter keybindings",
+      keybindingsFilterPlaceholder: "Filter by id, action, or keys",
       credentialField: "{{label}} (credential)",
       booleanField: "{{label}} (boolean)",
     },
@@ -2027,6 +2032,11 @@ export const en = {
       label: "Settings",
       subtitle: "OMP settings",
       tooltip: "Browse and edit OMP settings",
+    },
+    ompKeybindings: {
+      label: "Keybindings",
+      subtitle: "OMP keybindings",
+      tooltip: "Browse and edit OMP keybindings",
     },
     pullRequest: {
       label: "Pull request",

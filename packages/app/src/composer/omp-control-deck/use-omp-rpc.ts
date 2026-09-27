@@ -3,11 +3,16 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type {
   OmpCommandRunPayload,
+  OmpKeybindingsSetPayload,
   OmpModesGetPayload,
   OmpModesSetPayload,
   OmpSettingsSetPayload,
 } from "@ohmypcode/client/internal/daemon-client";
-import type { OmpModesState, OmpSettingEntrySchema } from "@ohmypcode/protocol/messages";
+import type {
+  OmpKeybindingEntrySchema,
+  OmpModesState,
+  OmpSettingEntrySchema,
+} from "@ohmypcode/protocol/messages";
 import type { z } from "zod";
 import { useFetchQuery } from "@/data/query";
 import { useHostRuntimeClient, useHostRuntimeIsConnected } from "@/runtime/host-runtime";
@@ -79,7 +84,7 @@ function useOmpAgentScope(serverId: string | null | undefined) {
 
 function useOmpSupportsFeature(
   serverId: string | null | undefined,
-  feature: "ompModes" | "ompSettings" | "ompSlashCommands",
+  feature: "ompModes" | "ompSettings" | "ompSlashCommands" | "ompKeybindings",
 ): boolean {
   return useSessionStore(
     (state) => state.sessions[serverId ?? ""]?.serverInfo?.features?.[feature] === true,
@@ -379,4 +384,111 @@ export function useOmpSettingsUpdate(
       : [];
     return { revision, paths };
   });
+}
+
+export function ompKeybindingsQueryKey(
+  serverId: string | null | undefined,
+  agentId: string | null | undefined,
+) {
+  return ["ompKeybindings", serverId ?? "", agentId ?? ""] as const;
+}
+
+export type OmpKeybindingEntry = z.infer<typeof OmpKeybindingEntrySchema>;
+
+export interface UseOmpKeybindingsResult {
+  keybindings: readonly OmpKeybindingEntry[];
+  isLoading: boolean;
+  isFetching: boolean;
+  error: Error | null;
+  refresh: () => Promise<void>;
+}
+
+export function useOmpKeybindings(
+  serverId: string | null | undefined,
+  agentId: string | null | undefined,
+  options: UseOmpAgentScopeOptions = {},
+): UseOmpKeybindingsResult {
+  const { client, isConnected, errorHostDisconnected } = useOmpAgentScope(serverId);
+  const queryClient = useQueryClient();
+  const queryKey = useMemo(() => ompKeybindingsQueryKey(serverId, agentId), [serverId, agentId]);
+  const supportsOmpKeybindings = useOmpSupportsFeature(serverId, "ompKeybindings");
+  const enabled =
+    (options.enabled ?? true) &&
+    Boolean(serverId && agentId && client && isConnected && supportsOmpKeybindings);
+  const query = useFetchQuery({
+    queryKey,
+    enabled,
+    dataShape: "value",
+    staleTimeMs: 60_000,
+    queryFn: async () => {
+      if (!client || !agentId) {
+        throw new Error(errorHostDisconnected);
+      }
+      return client.getOmpKeybindings(agentId);
+    },
+  });
+  const keybindings = (query.data?.keybindings ?? []) as readonly OmpKeybindingEntry[];
+  const refresh = useCallback(async () => {
+    if (!client || !agentId) return;
+    await queryClient.fetchQuery({
+      queryKey,
+      queryFn: () => client.getOmpKeybindings(agentId),
+      staleTime: 0,
+    });
+  }, [agentId, client, queryClient, queryKey]);
+  return {
+    keybindings,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    error: query.error instanceof Error ? query.error : null,
+    refresh,
+  };
+}
+
+export interface UseOmpKeybindingSetterInput {
+  id: string;
+  keys: string;
+}
+
+export interface UseOmpKeybindingSetterResult {
+  setKeybinding: (input: UseOmpKeybindingSetterInput) => Promise<OmpKeybindingsSetPayload>;
+  isPending: boolean;
+  error: Error | null;
+  lastResult: OmpKeybindingsSetPayload | null;
+}
+
+export function useOmpKeybindingSetter(
+  serverId: string | null | undefined,
+  agentId: string | null | undefined,
+): UseOmpKeybindingSetterResult {
+  const { client, isConnected } = useOmpAgentScope(serverId);
+  const queryClient = useQueryClient();
+  const supportsOmpKeybindings = useOmpSupportsFeature(serverId, "ompKeybindings");
+  const queryKey = useMemo(() => ompKeybindingsQueryKey(serverId, agentId), [serverId, agentId]);
+  const mutation = useMutation({
+    mutationFn: async (input: UseOmpKeybindingSetterInput): Promise<OmpKeybindingsSetPayload> => {
+      if (!client || !agentId) {
+        throw new Error("OMP host client unavailable");
+      }
+      return await client.setOmpKeybinding(agentId, input.id, input.keys);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey });
+    },
+  });
+  const setKeybinding = useCallback(
+    async (input: UseOmpKeybindingSetterInput): Promise<OmpKeybindingsSetPayload> => {
+      if (!isConnected || !supportsOmpKeybindings) {
+        throw new Error("OMP keybindings capability unavailable on this server/agent");
+      }
+      return await mutation.mutateAsync(input);
+    },
+    [isConnected, mutation, supportsOmpKeybindings],
+  );
+  return {
+    setKeybinding,
+    isPending: mutation.isPending,
+    error: mutation.error instanceof Error ? mutation.error : null,
+    lastResult: mutation.data ?? null,
+  };
 }

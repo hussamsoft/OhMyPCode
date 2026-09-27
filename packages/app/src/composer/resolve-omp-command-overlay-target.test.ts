@@ -24,6 +24,13 @@ describe("resolveOmpCommandOverlayTarget", () => {
     });
   });
 
+  it("maps the hotkeys overlay to the omp_keybindings panel target", () => {
+    expect(resolveOmpCommandOverlayTarget({ name: "hotkeys", agentId: "agent-1" })).toEqual({
+      kind: "omp_keybindings",
+      agentId: "agent-1",
+    });
+  });
+
   it("returns null for an overlay name with no registered panel yet", () => {
     expect(resolveOmpCommandOverlayTarget({ name: "git", agentId: "agent-1" })).toBeNull();
   });

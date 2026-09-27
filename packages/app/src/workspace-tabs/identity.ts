@@ -59,16 +59,10 @@ function normalizeSimpleWorkspaceTabTarget(value: WorkspaceTabTarget): Workspace
     case "files":
     case "pull_request":
       return { kind: value.kind };
-    case "omp_vibe": {
-      const agentId = trimNonEmpty(value.agentId);
-      if (!agentId) return null;
-      const workerId = typeof value.workerId === "string" ? trimNonEmpty(value.workerId) : null;
-      return { kind: "omp_vibe", agentId, workerId };
-    }
-    case "omp_settings": {
-      const agentId = trimNonEmpty(value.agentId);
-      return agentId ? { kind: "omp_settings", agentId } : null;
-    }
+    case "omp_vibe":
+    case "omp_settings":
+    case "omp_keybindings":
+      return normalizeOmpPanelTarget(value);
     case "setup": {
       const workspaceId = trimNonEmpty(value.workspaceId);
       return workspaceId ? { kind: "setup", workspaceId } : null;
@@ -80,6 +74,25 @@ function normalizeSimpleWorkspaceTabTarget(value: WorkspaceTabTarget): Workspace
     default:
       return null;
   }
+}
+
+/**
+ * Agent-scoped OMP panel targets (settings, keybindings, vibe, and future
+ * Phase 10 screens) all normalize the same way — a required trimmed
+ * `agentId`, plus whatever kind-specific extras each carries. Extracted so
+ * `normalizeSimpleWorkspaceTabTarget`'s own cyclomatic complexity doesn't
+ * grow with every new omp_* screen registered.
+ */
+function normalizeOmpPanelTarget(
+  value: Extract<WorkspaceTabTarget, { kind: "omp_vibe" | "omp_settings" | "omp_keybindings" }>,
+): WorkspaceTabTarget | null {
+  const agentId = trimNonEmpty(value.agentId);
+  if (!agentId) return null;
+  if (value.kind === "omp_vibe") {
+    const workerId = typeof value.workerId === "string" ? trimNonEmpty(value.workerId) : null;
+    return { kind: "omp_vibe", agentId, workerId };
+  }
+  return { kind: value.kind, agentId };
 }
 
 export function normalizeWorkspaceDraftTabSetup(
@@ -243,6 +256,9 @@ export function buildDeterministicWorkspaceTabId(target: WorkspaceTabTarget): st
   }
   if (target.kind === "omp_settings") {
     return `omp_settings_${target.agentId.length}_${target.agentId}`;
+  }
+  if (target.kind === "omp_keybindings") {
+    return `omp_keybindings_${target.agentId.length}_${target.agentId}`;
   }
   return `file_${target.path}`;
 }
