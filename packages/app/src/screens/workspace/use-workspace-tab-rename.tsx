@@ -13,6 +13,20 @@ interface RenamingTabState {
   currentTitle: string;
 }
 
+/**
+ * `updateAgent` only renames the app-level tab label. OMP tracks its own
+ * session title independently (surfaced in its native /resume picker and
+ * session file), so it needs a separate `/rename` RPC call to stay in
+ * sync. Extracted as a pure predicate so the decision is testable without
+ * standing up a full session store + rendered hook.
+ */
+export function shouldSyncRenameToOmp(agent: {
+  provider: string;
+  features?: Record<string, boolean | undefined> | null;
+}): boolean {
+  return agent.provider === "omp" && agent.features?.ompSlashCommands === true;
+}
+
 interface UseWorkspaceTabRenameInput {
   client: DaemonClient | null;
   normalizedServerId: string;
@@ -80,6 +94,20 @@ export function useWorkspaceTabRename(
       void queryClient.invalidateQueries({
         queryKey: ["allAgents", normalizedServerId],
       });
+      // Best-effort: the app-level rename already succeeded, so a sync
+      // failure here shouldn't fail the whole operation.
+      const session = useSessionStore.getState().sessions[normalizedServerId];
+      const agent = session?.agents.get(renamingTab.id);
+      if (
+        agent &&
+        shouldSyncRenameToOmp({ provider: agent.provider, features: session?.serverInfo?.features })
+      ) {
+        try {
+          await client.runOmpSlashCommand(renamingTab.id, "rename", trimmed);
+        } catch (error) {
+          console.error("[WorkspaceTabRename] Failed to sync rename to the OMP session:", error);
+        }
+      }
     },
     [client, normalizedServerId, queryClient, renamingTab, terminalsQueryKey, t],
   );
