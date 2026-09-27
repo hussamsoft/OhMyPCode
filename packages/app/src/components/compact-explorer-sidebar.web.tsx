@@ -7,7 +7,7 @@ import { Gesture } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { StyleSheet, useUnistyles, withUnistyles } from "react-native-unistyles";
+import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { formatPrTabLabel, PullRequestTabIcon } from "@/git/pull-request-panel";
@@ -48,6 +48,12 @@ import { mutedIconColorMapping } from "@/components/ui/icon-button-chrome";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
 
 const ThemedX = withUnistyles(X);
+const ThemedPullRequestTabIconActive = withUnistyles(PullRequestTabIcon, (theme) => ({
+  color: theme.colors.foreground,
+}));
+const ThemedPullRequestTabIconMuted = withUnistyles(PullRequestTabIcon, (theme) => ({
+  color: theme.colors.foregroundMuted,
+}));
 
 function logExplorerSidebar(_event: string, _details: Record<string, unknown>): void {}
 
@@ -88,7 +94,6 @@ export function CompactExplorerSidebar({
   isGit,
   onOpenFile,
 }: ExplorerSidebarProps) {
-  const { theme } = useUnistyles();
   const insets = useSafeAreaInsets();
   const isActive = usePanelStore(selectIsCompactFileExplorerOpen);
   const showMobileAgent = usePanelStore((state) => state.showMobileAgent);
@@ -115,17 +120,14 @@ export function CompactExplorerSidebar({
   const handleHeaderClose = useCallback(() => handleClose("header-close-button"), [handleClose]);
 
   const mobileSidebarStyle = useMemo(
-    () => ({
-      paddingTop: insets.top + HEADER_TOP_PADDING_MOBILE,
-      paddingBottom: usePanelKeyboardPadding ? 0 : insets.bottom,
-      backgroundColor: theme.colors.surfaceSidebar,
-    }),
-    [
-      insets.bottom,
-      insets.top,
-      theme.colors.surfaceSidebar,
-      usePanelKeyboardPadding,
+    () => [
+      styles.mobileSidebarSurface,
+      {
+        paddingTop: insets.top + HEADER_TOP_PADDING_MOBILE,
+        paddingBottom: usePanelKeyboardPadding ? 0 : insets.bottom,
+      },
     ],
+    [insets.bottom, insets.top, usePanelKeyboardPadding],
   );
 
   return (
@@ -161,7 +163,6 @@ export function NativeExplorerSidebarDock({
   persistenceKey,
   containerWidth,
 }: NativeExplorerSidebarDockProps) {
-  const { theme } = useUnistyles();
   const insets = useSafeAreaInsets();
   const isOpen = usePanelStore(selectIsCompactFileExplorerOpen);
   const showMobileAgent = usePanelStore((state) => state.showMobileAgent);
@@ -218,18 +219,18 @@ export function NativeExplorerSidebarDock({
   const dockStyle = useMemo(
     () => [
       styles.nativeDock,
+      styles.nativeDockSurface,
       {
         display: isOpen ? ("flex" as const) : ("none" as const),
         paddingTop: insets.top + HEADER_TOP_PADDING_MOBILE,
-        backgroundColor: theme.colors.surfaceSidebar,
       },
       animatedWidthStyle,
     ],
-    [animatedWidthStyle, insets.top, isOpen, theme.colors.surfaceSidebar],
+    [animatedWidthStyle, insets.top, isOpen],
   );
   const dockContentStyle = useMemo(
-    () => [styles.nativeDockContent, { borderLeftColor: theme.colors.border }],
-    [theme.colors.border],
+    () => [styles.nativeDockContent, styles.nativeDockContentBorder],
+    [],
   );
 
   return (
@@ -314,7 +315,6 @@ function ExplorerSidebarContent({
   isOpen,
   onOpenFile,
 }: SidebarContentProps) {
-  const { theme } = useUnistyles();
   const { t } = useTranslation();
   const isCompact = useIsCompactFormFactor();
   const closeButtonLayout = explorerSidebarCloseButtonLayout(isCompact);
@@ -380,13 +380,11 @@ function ExplorerSidebarContent({
               onTabPress={onTabPress}
               testID="explorer-tab-pr"
             >
-              <PullRequestTabIcon
-                forge={prPane.forge}
-                size={13}
-                color={
-                  resolvedTab === "pr" ? theme.colors.foreground : theme.colors.foregroundMuted
-                }
-              />
+              {resolvedTab === "pr" ? (
+                <ThemedPullRequestTabIconActive forge={prPane.forge} size={13} />
+              ) : (
+                <ThemedPullRequestTabIconMuted forge={prPane.forge} size={13} />
+              )}
             </ExplorerTabButton>
           )}
         </View>
@@ -498,11 +496,20 @@ const styles = StyleSheet.create((theme) => ({
     minHeight: 0,
     overflow: "hidden",
   },
+  nativeDockSurface: {
+    backgroundColor: theme.colors.surfaceSidebar,
+  },
   nativeDockContent: {
     position: "relative",
     flex: 1,
     minHeight: 0,
     borderLeftWidth: 1,
+  },
+  nativeDockContentBorder: {
+    borderLeftColor: theme.colors.border,
+  },
+  mobileSidebarSurface: {
+    backgroundColor: theme.colors.surfaceSidebar,
   },
   sidebarContent: {
     flex: 1,

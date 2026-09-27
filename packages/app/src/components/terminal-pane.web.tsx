@@ -10,8 +10,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Clipboard from "expo-clipboard";
 import { Pressable, Text, View, type PressableStateCallbackType } from "react-native";
 import Animated, { runOnJS, useAnimatedReaction } from "react-native-reanimated";
-import { StyleSheet, useUnistyles } from "react-native-unistyles";
+import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { Keyboard as KeyboardIcon, KeyboardOff as KeyboardOffIcon } from "lucide-react-native";
+import { ICON_SIZE } from "@/styles/theme";
 import type { TerminalKeyInput } from "@ohmypcode/protocol/terminal-key-input";
 import type { TerminalState } from "@ohmypcode/protocol/messages";
 import {
@@ -97,6 +98,19 @@ interface TerminalPaneProps {
 const TERMINAL_REFIT_DELAYS_MS = [0, 48, 144, 320];
 const TERMINAL_RESIZE_DEBOUNCE_MS = 100;
 
+const ThemedKeyboardIcon = withUnistyles(KeyboardIcon, (theme) => ({
+  color: theme.colors.foregroundMuted,
+}));
+const ThemedKeyboardOffIcon = withUnistyles(KeyboardOffIcon, (theme) => ({
+  color: theme.colors.foregroundMuted,
+}));
+const ThemedLoadingSpinner = withUnistyles(LoadingSpinner, (theme) => ({
+  color: theme.colors.foregroundMuted,
+}));
+const ThemedTerminalEmulator = withUnistyles(TerminalEmulator, (theme) => ({
+  xtermTheme: toXtermTheme(theme.colors.terminal),
+}));
+
 const MODIFIER_LABELS = {
   ctrl: "Ctrl",
   shift: "Shift",
@@ -173,17 +187,12 @@ function VirtualKeyButton({ id, label, keyValue, onSend }: VirtualKeyButtonProps
 
 interface KeyboardToggleButtonProps {
   isKeyboardVisible: boolean;
-  iconColor: string;
   onToggle: () => void;
 }
 
-function KeyboardToggleButton({
-  isKeyboardVisible,
-  iconColor,
-  onToggle,
-}: KeyboardToggleButtonProps) {
+function KeyboardToggleButton({ isKeyboardVisible, onToggle }: KeyboardToggleButtonProps) {
   const label = isKeyboardVisible ? "Hide keyboard" : "Show keyboard";
-  const Icon = isKeyboardVisible ? KeyboardOffIcon : KeyboardIcon;
+  const Icon = isKeyboardVisible ? ThemedKeyboardOffIcon : ThemedKeyboardIcon;
   const pressableStyle = useCallback(
     ({ hovered, pressed }: PressableStateCallbackType & { hovered?: boolean }) => [
       styles.keyButton,
@@ -200,7 +209,7 @@ function KeyboardToggleButton({
       onPress={onToggle}
       style={pressableStyle}
     >
-      <Icon color={iconColor} size={16} />
+      <Icon size={ICON_SIZE.md} />
     </Pressable>
   );
 }
@@ -217,9 +226,7 @@ export function TerminalPane({
   const { t } = useTranslation();
   const retainedPanelActive = useRetainedPanelActive();
   const isAppActivelyVisible = useAppActivelyVisible();
-  const { theme } = useUnistyles();
   const { settings } = useAppSettings();
-  const xtermTheme = useMemo(() => toXtermTheme(theme.colors.terminal), [theme]);
   const terminalFontFamily = useMemo(() => {
     const trimmed = settings.monoFontFamily.trim();
     return trimmed.length > 0 ? trimmed : undefined;
@@ -270,7 +277,7 @@ export function TerminalPane({
   const [isKeyboardToggleVisible, setIsKeyboardToggleVisible] = useState(false);
   const [focusRequestToken, setFocusRequestToken] = useState(0);
   const [resizeRequestToken, setResizeRequestToken] = useState(0);
-    const emulatorRef = useRef<TerminalEmulatorHandle>(null);
+  const emulatorRef = useRef<TerminalEmulatorHandle>(null);
   const findRef = useRef<TerminalPaneFindHandle>(null);
   const handleFindRequest = useCallback(() => findRef.current?.open(), []);
   const handleFindResult = useCallback(
@@ -973,7 +980,6 @@ export function TerminalPane({
     hasSelection,
     isNative,
   });
-  const keyboardToggleIconColor = theme.colors.foregroundMuted;
 
   const renderVirtualKeyboardControl = (control: TerminalVirtualKeyboardControl) => {
     const controlId = getTerminalVirtualKeyboardControlId(control);
@@ -1009,7 +1015,6 @@ export function TerminalPane({
         return (
           <KeyboardToggleButton
             key={controlId}
-            iconColor={keyboardToggleIconColor}
             isKeyboardVisible={isKeyboardToggleVisible}
             onToggle={handleKeyboardToggle}
           />
@@ -1036,13 +1041,12 @@ export function TerminalPane({
     <Animated.View style={containerStyle}>
       <View style={styles.outputContainer}>
         <View style={styles.terminalGestureContainer}>
-          <TerminalEmulator
+          <ThemedTerminalEmulator
             ref={emulatorRef}
             dom={TERMINAL_EMULATOR_DOM_PROPS}
             streamKey={terminalStreamKey}
             supportsTerminalInputModeReplay={supportsTerminalInputModeReplay}
             testId="terminal-surface"
-            xtermTheme={xtermTheme}
             scrollbackLines={settings.terminalScrollbackLines}
             fontFamily={terminalFontFamily}
             fontSize={settings.codeFontSize}
@@ -1082,7 +1086,7 @@ export function TerminalPane({
 
         {showLoadingOverlay ? (
           <View style={styles.attachOverlay} pointerEvents="none" testID="terminal-attach-loading">
-            <LoadingSpinner size="small" color={theme.colors.foregroundMuted} />
+            <ThemedLoadingSpinner size="small" />
           </View>
         ) : null}
 
