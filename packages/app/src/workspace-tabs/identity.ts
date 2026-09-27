@@ -59,6 +59,16 @@ function normalizeSimpleWorkspaceTabTarget(value: WorkspaceTabTarget): Workspace
     case "files":
     case "pull_request":
       return { kind: value.kind };
+    case "omp_vibe": {
+      const agentId = trimNonEmpty(value.agentId);
+      if (!agentId) return null;
+      const workerId = typeof value.workerId === "string" ? trimNonEmpty(value.workerId) : null;
+      return { kind: "omp_vibe", agentId, workerId };
+    }
+    case "omp_settings": {
+      const agentId = trimNonEmpty(value.agentId);
+      return agentId ? { kind: "omp_settings", agentId } : null;
+    }
     case "setup": {
       const workspaceId = trimNonEmpty(value.workspaceId);
       return workspaceId ? { kind: "setup", workspaceId } : null;
@@ -230,6 +240,9 @@ export function buildDeterministicWorkspaceTabId(target: WorkspaceTabTarget): st
   }
   if (target.kind === "omp_vibe") {
     return `omp_vibe_${target.agentId.length}_${target.agentId}`;
+  }
+  if (target.kind === "omp_settings") {
+    return `omp_settings_${target.agentId.length}_${target.agentId}`;
   }
   return `file_${target.path}`;
 }

@@ -265,7 +265,8 @@ export const en = {
       on: "On",
       off: "Off",
       accessAlwaysAsk: "Always ask",
-      accessAlwaysAskDescription: "Auto-approve read-only tools; require confirmation for write and exec tools.",
+      accessAlwaysAskDescription:
+        "Auto-approve read-only tools; require confirmation for write and exec tools.",
       accessWrite: "Write",
       accessWriteDescription: "Auto-approve read and workspace-write tools; prompt for exec tools.",
       accessYolo: "Yolo",
@@ -2021,6 +2022,11 @@ export const en = {
       subtitle: "Workspace files",
       tooltip: "Browse workspace files",
       chooseFile: "Choose a file",
+    },
+    ompSettings: {
+      label: "Settings",
+      subtitle: "OMP settings",
+      tooltip: "Browse and edit OMP settings",
     },
     pullRequest: {
       label: "Pull request",

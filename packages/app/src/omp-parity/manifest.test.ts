@@ -36,6 +36,7 @@ const VALID_GUI_HOMES = new Set([
   "terminal:omp-tui",
   "omp-tools-control",
   "omp_vibe",
+  "omp_settings",
   "/h/[serverId]/settings/collaboration",
   "/usage",
 ]);

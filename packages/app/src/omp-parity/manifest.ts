@@ -2091,8 +2091,8 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     surface: "rpc",
     name: "get_settings",
     transport: "rpc",
-    guiHome: "terminal:omp-tui",
-    reason: "Reachable over RPC; the host control lands in the Phase 10 screen pass",
+    guiHome: "omp_settings",
+    capability: "ompSettings",
   },
   {
     id: "rpc:get_state",
@@ -2312,8 +2312,8 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     surface: "rpc",
     name: "set_setting",
     transport: "rpc",
-    guiHome: "terminal:omp-tui",
-    reason: "Reachable over RPC; the host control lands in the Phase 10 screen pass",
+    guiHome: "omp_settings",
+    capability: "ompSettings",
   },
   {
     id: "rpc:set_steering_mode",
@@ -6771,10 +6771,9 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:settings",
     surface: "slash",
     name: "settings",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
-    reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+    transport: "rpc",
+    guiHome: "omp_settings",
+    capability: "ompSettings",
   },
   {
     id: "slash:setup",

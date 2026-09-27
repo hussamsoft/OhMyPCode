@@ -33,6 +33,11 @@ const manifests = {
     supportedHosts: ["main"],
     resourceKey: (target) => `ompVibe:${target.agentId}`,
   },
+  omp_settings: {
+    kind: "omp_settings",
+    supportedHosts: ["main"],
+    resourceKey: (target) => `ompSettings:${target.agentId}`,
+  },
   provider_subagent: {
     kind: "provider_subagent",
     supportedHosts: ["main", "explorer"],

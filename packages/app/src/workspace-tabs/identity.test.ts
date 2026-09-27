@@ -196,3 +196,51 @@ describe("plugin panel tab identity", () => {
     expect(agent).toBe("plugin_agent_6_review_7_details_7_agent-1");
   });
 });
+
+describe("omp vibe tab identity", () => {
+  it("normalizes agent and worker ids so openTab does not silently reject it", () => {
+    expect(
+      normalizeWorkspaceTabTarget({
+        kind: "omp_vibe",
+        agentId: " agent-1 ",
+        workerId: " worker-1 ",
+      }),
+    ).toEqual({ kind: "omp_vibe", agentId: "agent-1", workerId: "worker-1" });
+  });
+
+  it("normalizes a null worker id to null, not an empty string", () => {
+    expect(
+      normalizeWorkspaceTabTarget({ kind: "omp_vibe", agentId: "agent-1", workerId: null }),
+    ).toEqual({ kind: "omp_vibe", agentId: "agent-1", workerId: null });
+  });
+
+  it("rejects a missing agent id", () => {
+    expect(
+      normalizeWorkspaceTabTarget({ kind: "omp_vibe", agentId: "   ", workerId: null }),
+    ).toBeNull();
+  });
+
+  it("keys the deterministic id by agent id", () => {
+    expect(
+      buildDeterministicWorkspaceTabId({ kind: "omp_vibe", agentId: "agent-1", workerId: null }),
+    ).toBe("omp_vibe_7_agent-1");
+  });
+});
+
+describe("omp settings tab identity", () => {
+  it("normalizes and deterministically keys by agent id", () => {
+    const target = normalizeWorkspaceTabTarget({
+      kind: "omp_settings",
+      agentId: " agent-1 ",
+    });
+
+    expect(target).toEqual({ kind: "omp_settings", agentId: "agent-1" });
+    expect(buildDeterministicWorkspaceTabId({ kind: "omp_settings", agentId: "agent-1" })).toBe(
+      "omp_settings_7_agent-1",
+    );
+  });
+
+  it("rejects a missing agent id", () => {
+    expect(normalizeWorkspaceTabTarget({ kind: "omp_settings", agentId: "" })).toBeNull();
+  });
+});

@@ -117,6 +117,8 @@ import { useAppSettings } from "@/hooks/use-settings";
 import { useOmpSlashCommand } from "@/composer/omp-control-deck/use-omp-rpc";
 import { useOmpCapabilities } from "@/hooks/use-omp-capabilities";
 import { openOmpVibeTarget } from "@/workspace-tabs/open-omp-vibe-target";
+import { openOmpSettingsTarget } from "@/workspace-tabs/open-omp-settings-target";
+import { resolveOmpCommandOverlayTarget } from "@/composer/resolve-omp-command-overlay-target";
 import type { OmpCommandRunPayload } from "@ohmypcode/client/internal/daemon-client";
 import type { ToastApi } from "@/components/toast-host";
 import { RenderProfile } from "@/utils/render-profiler";
@@ -507,22 +509,6 @@ function resolveErrorMessage(error: unknown): string | null {
   return null;
 }
 
-/**
- * Map a server-reported OMP command overlay name to a workspace target that
- * we can open with the existing layout-store helpers. When no panel kind
- * currently owns the overlay (e.g. a Phase-10 screen hasn't landed yet),
- * callers must fall back to surfacing `output` directly.
- */
-function resolveOmpCommandOverlayTarget(input: {
-  name: string;
-  agentId: string;
-}): { kind: "omp_vibe"; agentId: string; workerId: string | null } | null {
-  if (input.name === "omp_vibe") {
-    return { kind: "omp_vibe", agentId: input.agentId, workerId: null };
-  }
-  return null;
-}
-
 interface HandleOmpCommandRunResponseArgs {
   response: OmpCommandRunPayload;
   agentId: string;
@@ -537,7 +523,8 @@ function handleOmpCommandRunResponse(args: HandleOmpCommandRunResponseArgs): voi
   if (ui?.kind === "overlay") {
     const target = resolveOmpCommandOverlayTarget({ name: ui.name, agentId });
     if (target) {
-      const openedTabId = openOmpVibeTarget(target);
+      const openedTabId =
+        target.kind === "omp_vibe" ? openOmpVibeTarget(target) : openOmpSettingsTarget(target);
       if (openedTabId) {
         if (response.output) {
           toast.show(response.output);
