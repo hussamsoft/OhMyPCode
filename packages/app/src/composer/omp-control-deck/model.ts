@@ -98,9 +98,7 @@ export interface OmpToolGrouping {
  * resulting ordering preserves first-seen order so a stable catalog renders
  * deterministically across reloads.
  */
-export function groupOmpToolsByServer(
-  rows: readonly AgentToolDefinition[],
-): OmpToolGrouping {
+export function groupOmpToolsByServer(rows: readonly AgentToolDefinition[]): OmpToolGrouping {
   const nonMcp: AgentToolDefinition[] = [];
   const mcp: OmpMcpServerGroup[] = [];
   const indexByServer = new Map<string, number>();

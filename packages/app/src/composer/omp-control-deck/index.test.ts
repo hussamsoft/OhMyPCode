@@ -269,7 +269,10 @@ describe("OMP desktop control model", () => {
     expect(grouped.nonMcp.map((tool) => tool.name)).toEqual(["read", "create_agent"]);
     expect(grouped.mcp).toHaveLength(2);
     expect(grouped.mcp[0]?.serverName).toBe("fs");
-    expect(grouped.mcp[0]?.rows.map((tool) => tool.name)).toEqual(["mcp__fs_read", "mcp__fs_write"]);
+    expect(grouped.mcp[0]?.rows.map((tool) => tool.name)).toEqual([
+      "mcp__fs_read",
+      "mcp__fs_write",
+    ]);
     expect(grouped.mcp[1]?.serverName).toBe("github");
     expect(grouped.mcp[1]?.rows.map((tool) => tool.name)).toEqual(["mcp__github_list_prs"]);
   });

@@ -29,7 +29,11 @@ async function stabilizeVisualFixture(page: Page, projectLabel: string): Promise
       [data-testid="workspace-header-subtitle"],
       [data-testid^="sidebar-row-project-icon-"],
       [data-testid^="worktree-setup-callout-"],
-      [data-testid^="omp-vibe-worker-worker-"] {
+      [data-testid^="omp-vibe-worker-worker-"],
+      [data-testid="agent-composer-chrome"],
+      [data-testid="omp-mode-badge"],
+      [data-testid="omp-hook-widget-belowEditor"],
+      [data-testid="omp-todo-rail"] {
         display: none !important;
       }
     `,
