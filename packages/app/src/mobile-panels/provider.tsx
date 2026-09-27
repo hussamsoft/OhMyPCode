@@ -236,11 +236,7 @@ export function MobilePanelsProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return (
-    <MobilePanelsContext.Provider value={value}>
-      {children}
-    </MobilePanelsContext.Provider>
-  );
+  return <MobilePanelsContext.Provider value={value}>{children}</MobilePanelsContext.Provider>;
 }
 
 /** Internal to the mobile-panels module. Callers use gesture and presentation adapters. */

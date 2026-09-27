@@ -206,7 +206,10 @@ class DeterministicOmpSession extends FakeOmpSession {
       },
     ];
     for (const message of messages) {
-      this.emit({ type: "subagent_event", payload: { id, event: { type: "message_end", message } } });
+      this.emit({
+        type: "subagent_event",
+        payload: { id, event: { type: "message_end", message } },
+      });
     }
     return worker;
   }
@@ -228,7 +231,12 @@ class DeterministicOmpSession extends FakeOmpSession {
     const selected = new Set(sessions ?? this.vibeState.workers.map((worker) => worker.id));
     const settled = this.vibeState.workers
       .filter((worker) => selected.has(worker.id) && worker.state !== "dead")
-      .map((worker) => ({ id: worker.id, jobId: `${worker.id}-turn`, status: "completed" as const, resultText: "Fixture worker settled" }));
+      .map((worker) => ({
+        id: worker.id,
+        jobId: `${worker.id}-turn`,
+        status: "completed" as const,
+        resultText: "Fixture worker settled",
+      }));
     this.vibeState = {
       ...this.vibeState,
       revision: this.vibeState.revision + 1,
@@ -269,7 +277,12 @@ class DeterministicOmpSession extends FakeOmpSession {
     return await super.setTools(enabledTools);
   }
 
-  private emitWorkerEvent(id: string, name: string, prompt: string, status: "running" | "aborted"): void {
+  private emitWorkerEvent(
+    id: string,
+    name: string,
+    prompt: string,
+    status: "running" | "aborted",
+  ): void {
     const event: OmpRuntimeEvent =
       status === "running"
         ? {
@@ -301,7 +314,9 @@ async function main(): Promise<void> {
   const reservedPort = Number(reservedPortText);
   const expectedListen = `127.0.0.1:${reservedPortText}`;
   if (!/^\d+$/.test(reservedPortText) || reservedPort <= 0) {
-    throw new Error(`Fake OMP daemon requires a concrete reserved port, received ${reservedPortText}`);
+    throw new Error(
+      `Fake OMP daemon requires a concrete reserved port, received ${reservedPortText}`,
+    );
   }
   if (
     process.env.E2E_DAEMON_PORT !== reservedPortText ||

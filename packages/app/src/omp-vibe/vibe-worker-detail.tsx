@@ -86,9 +86,13 @@ export function VibeWorkerDetail({
     <View style={styles.container} testID="omp-vibe-worker-detail">
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <Text style={styles.title} numberOfLines={1}>{worker?.name ?? "Worker"}</Text>
+          <Text style={styles.title} numberOfLines={1}>
+            {worker?.name ?? "Worker"}
+          </Text>
           <Text style={styles.subtitle} numberOfLines={1}>
-            {worker ? `${worker.cli === "fast" ? "Fast" : "Good"} · ${ompVibeWorkerStatusLabel(worker)}` : "Worker unavailable"}
+            {worker
+              ? `${worker.cli === "fast" ? "Fast" : "Good"} · ${ompVibeWorkerStatusLabel(worker)}`
+              : "Worker unavailable"}
           </Text>
         </View>
         <View style={styles.actions}>
@@ -115,7 +119,11 @@ export function VibeWorkerDetail({
         </View>
       </View>
       {delivery ? <Text style={styles.delivery}>{delivery}</Text> : null}
-      {error ? <Text style={styles.error} role="alert">{error}</Text> : null}
+      {error ? (
+        <Text style={styles.error} role="alert">
+          {error}
+        </Text>
+      ) : null}
       {worker ? (
         <View style={styles.composer}>
           <AdaptiveTextInput
@@ -136,7 +144,9 @@ export function VibeWorkerDetail({
           </Button>
         </View>
       ) : null}
-      {worker ? <VibeWorkerTranscript worker={worker} /> : (
+      {worker ? (
+        <VibeWorkerTranscript worker={worker} />
+      ) : (
         <View style={styles.transcript} testID="omp-vibe-worker-transcript">
           <Text style={styles.transcriptEmpty}>Worker is no longer available.</Text>
         </View>
@@ -154,13 +164,38 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.spacing[2],
   },
   headerText: { gap: theme.spacing[1] },
-  title: { color: theme.colors.foreground, fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.medium },
+  title: {
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.base,
+    fontWeight: theme.fontWeight.medium,
+  },
   subtitle: { color: theme.colors.foregroundMuted, fontSize: theme.fontSize.sm },
   actions: { flexDirection: "row", gap: theme.spacing[2] },
-  delivery: { color: theme.colors.statusSuccess, fontSize: theme.fontSize.sm, paddingHorizontal: theme.spacing[3] },
-  error: { color: theme.colors.statusDanger, fontSize: theme.fontSize.sm, paddingHorizontal: theme.spacing[3] },
-  composer: { flexDirection: "row", alignItems: "flex-end", gap: theme.spacing[2], padding: theme.spacing[3] },
-  input: { flex: 1, minHeight: 40, color: theme.colors.foreground, borderWidth: theme.borderWidth[1], borderColor: theme.colors.border, borderRadius: theme.borderRadius.md, padding: theme.spacing[2] },
+  delivery: {
+    color: theme.colors.statusSuccess,
+    fontSize: theme.fontSize.sm,
+    paddingHorizontal: theme.spacing[3],
+  },
+  error: {
+    color: theme.colors.statusDanger,
+    fontSize: theme.fontSize.sm,
+    paddingHorizontal: theme.spacing[3],
+  },
+  composer: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: theme.spacing[2],
+    padding: theme.spacing[3],
+  },
+  input: {
+    flex: 1,
+    minHeight: 40,
+    color: theme.colors.foreground,
+    borderWidth: theme.borderWidth[1],
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing[2],
+  },
   transcriptLine: { color: theme.colors.foreground, fontSize: theme.fontSize.sm, lineHeight: 20 },
   transcriptEmpty: { color: theme.colors.foregroundMuted, fontSize: theme.fontSize.sm },
   transcript: { flex: 1, minHeight: 0 },

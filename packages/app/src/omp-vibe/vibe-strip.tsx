@@ -15,7 +15,8 @@ import {
 function WorkerStatusMark({ worker }: { worker: OmpVibeWorker }) {
   if (worker.state === "running") return <View style={styles.runningMark} />;
   if (worker.state === "initializing") return <Clock3 size={13} />;
-  if (worker.state === "dead") return worker.lastTurnStatus === "cancelled" ? <X size={13} /> : <TriangleAlert size={13} />;
+  if (worker.state === "dead")
+    return worker.lastTurnStatus === "cancelled" ? <X size={13} /> : <TriangleAlert size={13} />;
   if (worker.lastTurnStatus === "completed") return <Check size={13} />;
   if (worker.lastTurnStatus === "failed") return <TriangleAlert size={13} />;
   return <Clock3 size={13} />;
@@ -65,11 +66,19 @@ export function VibeStrip({ serverId, agentId }: { serverId: string; agentId: st
       >
         <Sparkles size={14} />
         <Text style={styles.label}>Vibe</Text>
-        <Text style={styles.count}>{running}/{state.workers.length}</Text>
+        <Text style={styles.count}>
+          {running}/{state.workers.length}
+        </Text>
         <View style={styles.marks}>
-          {state.workers.slice(0, 3).map((worker) => <WorkerStatusMark key={worker.id} worker={worker} />)}
+          {state.workers.slice(0, 3).map((worker) => (
+            <WorkerStatusMark key={worker.id} worker={worker} />
+          ))}
         </View>
-        {selectedWorker ? <Text style={styles.selected} numberOfLines={1}>{selectedWorker.name}</Text> : null}
+        {selectedWorker ? (
+          <Text style={styles.selected} numberOfLines={1}>
+            {selectedWorker.name}
+          </Text>
+        ) : null}
         <Users size={14} />
         <Text style={styles.action}>Open team</Text>
       </Pressable>
@@ -82,25 +91,54 @@ export function VibeStrip({ serverId, agentId }: { serverId: string; agentId: st
       >
         {pending?.kind === "exit" ? "Ending..." : "End Vibe"}
       </Button>
-      <Text
-        accessibilityLiveRegion="polite"
-        role="status"
-        style={styles.announcement}
-      >
+      <Text accessibilityLiveRegion="polite" role="status" style={styles.announcement}>
         {announcement}
       </Text>
-      {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create((theme) => ({
-  strip: { minHeight: 36, flexDirection: "row", alignItems: "center", gap: theme.spacing[2], paddingHorizontal: theme.spacing[3], borderTopWidth: theme.borderWidth[1], borderTopColor: theme.colors.border, backgroundColor: theme.colors.surface1 },
-  summary: { flex: 1, minWidth: 0, minHeight: 36, flexDirection: "row", alignItems: "center", gap: theme.spacing[2], borderWidth: 2, borderColor: "transparent", borderRadius: theme.borderRadius.md },
-  label: { color: theme.colors.foreground, fontSize: theme.fontSize.sm, fontWeight: theme.fontWeight.medium },
+  strip: {
+    minHeight: 36,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[2],
+    paddingHorizontal: theme.spacing[3],
+    borderTopWidth: theme.borderWidth[1],
+    borderTopColor: theme.colors.border,
+    backgroundColor: theme.colors.surface1,
+  },
+  summary: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 36,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[2],
+    borderWidth: 2,
+    borderColor: "transparent",
+    borderRadius: theme.borderRadius.md,
+  },
+  label: {
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+  },
   count: { color: theme.colors.foregroundMuted, fontSize: theme.fontSize.sm },
   marks: { flexDirection: "row", alignItems: "center", gap: theme.spacing[1] },
-  runningMark: { width: 13, height: 13, borderRadius: 7, borderWidth: 2, borderColor: theme.colors.statusWarning },
+  runningMark: {
+    width: 13,
+    height: 13,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: theme.colors.statusWarning,
+  },
   selected: { flexShrink: 1, color: theme.colors.foregroundMuted, fontSize: theme.fontSize.sm },
   summaryFocused: { borderColor: theme.colors.ring },
   action: { color: theme.colors.foregroundMuted, fontSize: theme.fontSize.sm },

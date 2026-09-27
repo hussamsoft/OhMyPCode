@@ -7,6 +7,8 @@ describe("OMP runtime source commit metadata", () => {
     const source = readFileSync(resolve("scripts/build-omp-runtime.mjs"), "utf8");
     expect(source).toContain("process.env.OMP_SOURCE_COMMIT");
     expect(source).toContain('git", ["-C", vendor, "rev-parse", "HEAD"');
-    expect(source.indexOf("process.env.OMP_SOURCE_COMMIT")).toBeLessThan(source.indexOf("sourceCommit,"));
+    expect(source.indexOf("process.env.OMP_SOURCE_COMMIT")).toBeLessThan(
+      source.indexOf("sourceCommit,"),
+    );
   });
 });

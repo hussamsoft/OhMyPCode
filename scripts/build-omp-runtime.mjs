@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  copyFileSync,
+  statSync,
+} from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
@@ -15,8 +22,16 @@ const TARGETS = {
   "bun-darwin-x64": { platform: "darwin", arch: "x64", releaseTargetId: "darwin-x64" },
   "bun-linux-x64-baseline": { platform: "linux", arch: "x64", releaseTargetId: "linux-x64" },
   "bun-linux-arm64": { platform: "linux", arch: "arm64", releaseTargetId: "linux-arm64" },
-  "bun-linux-x64-musl-baseline": { platform: "linux", arch: "x64-musl", releaseTargetId: "linux-musl-x64" },
-  "bun-linux-arm64-musl": { platform: "linux", arch: "arm64-musl", releaseTargetId: "linux-musl-arm64" },
+  "bun-linux-x64-musl-baseline": {
+    platform: "linux",
+    arch: "x64-musl",
+    releaseTargetId: "linux-musl-x64",
+  },
+  "bun-linux-arm64-musl": {
+    platform: "linux",
+    arch: "arm64-musl",
+    releaseTargetId: "linux-musl-arm64",
+  },
   "bun-windows-x64-baseline": { platform: "win32", arch: "x64", releaseTargetId: "win32-x64" },
   "bun-windows-arm64": { platform: "win32", arch: "arm64", releaseTargetId: "win32-arm64" },
 };
@@ -41,9 +56,8 @@ function bunCandidates() {
   }
   const pathValue = process.env.PATH ?? "";
   const pathEntries = pathValue.split(path.delimiter).filter(Boolean);
-  const extensions = process.platform === "win32"
-    ? (process.env.PATHEXT ?? ".EXE;.CMD;.BAT").split(";")
-    : [""];
+  const extensions =
+    process.platform === "win32" ? (process.env.PATHEXT ?? ".EXE;.CMD;.BAT").split(";") : [""];
   for (const entry of pathEntries) {
     for (const extension of extensions) {
       candidates.push(path.join(entry, `bun${extension.toLowerCase()}`));
@@ -62,7 +76,9 @@ function resolveBun() {
   for (const candidate of bunCandidates()) {
     if (isFile(candidate)) return candidate;
   }
-  fail("Unable to resolve Bun. Set BUN or BUN_PATH to a Bun executable, add Bun to PATH, or install Bun using the standard user installation.");
+  fail(
+    "Unable to resolve Bun. Set BUN or BUN_PATH to a Bun executable, add Bun to PATH, or install Bun using the standard user installation.",
+  );
 }
 
 function runBun(args, cwd) {
@@ -90,7 +106,9 @@ function fail(message) {
 function defaultTarget() {
   const platform = process.platform === "win32" ? "windows" : process.platform;
   const key = `${platform}-${process.arch}`;
-  return Object.keys(TARGETS).find((target) => target === `bun-${key}` || target === `bun-${key}-baseline`);
+  return Object.keys(TARGETS).find(
+    (target) => target === `bun-${key}` || target === `bun-${key}-baseline`,
+  );
 }
 
 function parseArgs(args) {
@@ -98,15 +116,18 @@ function parseArgs(args) {
   const requestedTarget = targetIndex >= 0 ? args[targetIndex + 1] : undefined;
   const ensurePlatformArches = args.includes("--ensure-platform-arches");
   const ensure = args.includes("--ensure") || ensurePlatformArches;
-  const resolvedTarget = requestedTarget ?? (ensure || args.includes("--check") ? defaultTarget() : undefined);
-  if (!ensurePlatformArches && !resolvedTarget) fail("Pass --target with a target from the pinned OMP build script.");
+  const resolvedTarget =
+    requestedTarget ?? (ensure || args.includes("--check") ? defaultTarget() : undefined);
+  if (!ensurePlatformArches && !resolvedTarget)
+    fail("Pass --target with a target from the pinned OMP build script.");
   const target = TARGET_ALIASES[resolvedTarget] ?? resolvedTarget;
   if (target && !TARGETS[target]) {
-    fail(`Unsupported Bun target '${resolvedTarget}'. Choose one of: ${Object.keys(TARGETS).join(", ")}`);
+    fail(
+      `Unsupported Bun target '${resolvedTarget}'. Choose one of: ${Object.keys(TARGETS).join(", ")}`,
+    );
   }
   return { target, ensure, check: args.includes("--check"), ensurePlatformArches };
 }
-
 
 function readOmpVersion() {
   for (const file of ["package.json", "packages/coding-agent/package.json"]) {
@@ -133,8 +154,10 @@ function validateManifest(dir, target) {
   const binaryPath = path.join(dir, binaryName(target));
   if (!existsSync(binaryPath) || !existsSync(manifestPath)) return false;
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  if (manifest.target !== target) fail(`Existing OMP runtime target '${manifest.target}' does not match '${target}'.`);
-  if (manifest.sha256 !== sha256(binaryPath)) fail(`Existing OMP runtime checksum does not match ${binaryPath}.`);
+  if (manifest.target !== target)
+    fail(`Existing OMP runtime target '${manifest.target}' does not match '${target}'.`);
+  if (manifest.sha256 !== sha256(binaryPath))
+    fail(`Existing OMP runtime checksum does not match ${binaryPath}.`);
   for (const field of ["ompVersion", "sourceCommit", "bunVersion", "target", "sha256"]) {
     if (typeof manifest[field] !== "string" || manifest[field].length === 0) {
       fail(`Existing OMP runtime manifest is missing ${field}: ${manifestPath}`);
@@ -151,16 +174,25 @@ function build(target) {
   if (!existsSync(path.join(vendor, "package.json"))) {
     fail("vendor/oh-my-pi is unavailable or incomplete; restore the pinned OMP checkout first.");
   }
-  const sourceCommit = process.env.OMP_SOURCE_COMMIT?.trim() || (() => {
-    try {
-      return execFileSync("git", ["-C", vendor, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-    } catch {
-      fail("Unable to determine OMP source commit; set OMP_SOURCE_COMMIT for a source tree without .git metadata.");
-    }
-  })();
+  const sourceCommit =
+    process.env.OMP_SOURCE_COMMIT?.trim() ||
+    (() => {
+      try {
+        return execFileSync("git", ["-C", vendor, "rev-parse", "HEAD"], {
+          encoding: "utf8",
+        }).trim();
+      } catch {
+        fail(
+          "Unable to determine OMP source commit; set OMP_SOURCE_COMMIT for a source tree without .git metadata.",
+        );
+      }
+    })();
   runBun(["install", "--frozen-lockfile"], vendor);
   runBun(["run", "build:native"], vendor);
-  runBun(["scripts/ci-release-build-binaries.ts", "--targets", TARGETS[target].releaseTargetId], vendor);
+  runBun(
+    ["scripts/ci-release-build-binaries.ts", "--targets", TARGETS[target].releaseTargetId],
+    vendor,
+  );
 
   const info = TARGETS[target];
   const sourceName = `omp-${info.platform === "win32" ? "windows" : info.platform}-${info.arch}${info.platform === "win32" ? ".exe" : ""}`;
@@ -193,7 +225,8 @@ if (ensurePlatformArches) {
   }
 } else if (check) {
   const dir = runtimeDir(target);
-  if (!existsSync(dir) || !validateManifest(dir, target)) fail(`No valid OMP runtime exists for ${target}.`);
+  if (!existsSync(dir) || !validateManifest(dir, target))
+    fail(`No valid OMP runtime exists for ${target}.`);
 } else if (ensure) {
   const dir = runtimeDir(target);
   if (existsSync(dir) && validateManifest(dir, target)) process.exit(0);

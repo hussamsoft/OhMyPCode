@@ -30,9 +30,7 @@ interface CompactExplorerOpenGestureSurfaceProps {
   onOpenExplorer: () => void;
 }
 
-function CompactExplorerOpenGestureSurface({
-  children,
-}: CompactExplorerOpenGestureSurfaceProps) {
+function CompactExplorerOpenGestureSurface({ children }: CompactExplorerOpenGestureSurfaceProps) {
   return <View style={styles.fill}>{children}</View>;
 }
 
