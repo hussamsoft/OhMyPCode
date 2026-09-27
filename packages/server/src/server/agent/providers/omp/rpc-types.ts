@@ -642,15 +642,18 @@ export const OmpToolCatalogResultSchema = z
 
 // Read-only catalog of agents the host can render in a list cell. The wire
 // shape mirrors `AgentDefinition` minus `systemPrompt` (intentionally omitted
-// because prompts are large and the host only needs metadata to render a row).
-// Spawn/execute is intentionally NOT modelled -- the fork does not expose it
-// over RPC yet, and a host must gate any spawn action on a future capability.
+// because prompts are large and the host only needs metadata to render a row)
+// and minus `filePath` (the on-disk location of user/project agent
+// definitions is a host filesystem detail and must not leak over the wire
+// -- same boundary as the omp.session.switch handle-validation fix in
+// commit 9d255997f). Spawn/execute is intentionally NOT modelled -- the
+// fork does not expose it over RPC yet, and a host must gate any spawn
+// action on a future capability.
 export const OmpAvailableAgentCatalogEntrySchema = z
   .object({
     name: z.string().min(1),
     description: z.string(),
     source: z.enum(["bundled", "user", "project"]),
-    filePath: z.string().optional(),
     tools: z.array(z.string()).optional(),
     spawns: z.array(z.string()).optional(),
     model: z.array(z.string()).optional(),

@@ -2060,13 +2060,15 @@ export const OmpSessionSwitchResponseMessageSchema = z.object({
  * Spawn/execute is intentionally absent — the fork does not expose it over
  * RPC yet, and the host must gate any spawn action on a future capability.
  * Each entry mirrors the fork's `get_available_agents` data shape minus
- * `systemPrompt` (intentionally omitted because prompts are large).
+ * `systemPrompt` (intentionally omitted because prompts are large) and minus
+ * `filePath` (the on-disk location of user/project agent definitions is a
+ * host filesystem detail and must not leak over the wire -- same boundary as
+ * the omp.session.switch handle-validation fix in commit 9d255997f).
  */
 export const OmpAvailableAgentPayloadSchema = z.object({
   name: z.string(),
   description: z.string(),
   source: z.enum(["bundled", "user", "project"]),
-  filePath: z.string().optional(),
   tools: z.array(z.string()).optional(),
   spawns: z.array(z.string()).optional(),
   model: z.array(z.string()).optional(),

@@ -45,9 +45,12 @@ export type {
 
 /**
  * Host-facing agent-catalog row. Mirrors the fork's `get_available_agents`
- * response (omitting `systemPrompt` because prompts are large and the host
- * only needs metadata to render a list cell). Spawn/execute is intentionally
- * absent — the fork does not expose it over RPC yet.
+ * response minus `systemPrompt` (prompts are large and the host only needs
+ * metadata to render a list cell) and minus `filePath` (the on-disk
+ * location of user/project agent definitions is a host filesystem detail
+ * and must not leak over the wire -- same boundary as the omp.session.switch
+ * handle-validation fix in commit 9d255997f). Spawn/execute is
+ * intentionally absent -- the fork does not expose it over RPC yet.
  */
 export type OmpAgentCatalogEntry = OmpAvailableAgentCatalogEntry;
 
