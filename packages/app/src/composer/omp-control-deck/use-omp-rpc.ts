@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type {
@@ -31,14 +31,18 @@ import { useSessionStore } from "@/stores/session-store";
  *
  * Server plumbing note: `OmpModesState` is pushed to clients as a
  * `provider_state_updated` snapshot with `stateKey: "modes"` after every
- * `setOmpMode` call (`agent-manager.ts:dispatchProviderStateEvent`), so
- * the modes query is invalidated via the `modes` query-key when the
- * session-store state updates. The OMP runtime event `settings_update`
- * is accepted by `OmpRuntimeEventSchema` server-side but the agent does
- * not yet emit `provider_state_updated` with `stateKey: "settings"` when
- * one arrives, so the `useOmpSettingsUpdate` subscription hook today
- * receives no live pushes; it exists so consumers can adopt it the moment
- * the server side lands the wiring.
+ * `setOmpMode`/`goalAction` call, every `runSlashCommand` call, and every
+ * agent turn (`agent.ts:refreshModes`/`refreshAfterTurn`) --
+ * `AgentManager.dispatchProviderStateEvent` projects it onto
+ * `runtimeInfo.extra.modes`. `useOmpModes` below watches that value and
+ * invalidates its own query on change, so an agent-driven goal change
+ * (tool-completed, budget-limited) isn't left stale behind this hook's
+ * own mutation-triggered invalidations. The OMP runtime event
+ * `settings_update` is accepted by `OmpRuntimeEventSchema` server-side but
+ * the agent does not yet emit `provider_state_updated` with
+ * `stateKey: "settings"` when one arrives, so the `useOmpSettingsUpdate`
+ * subscription hook today receives no live pushes; it exists so consumers
+ * can adopt it the moment the server side lands the wiring.
  */
 
 export function ompModesQueryKey(
@@ -137,6 +141,27 @@ export function useOmpModes(
       staleTime: 0,
     });
   }, [agentId, client, queryClient, queryKey]);
+  // `refreshModes()` (agent.ts) pushes a fresh `OmpModesResult` onto
+  // `runtimeInfo.extra.modes` after every turn and every slash command, not
+  // just after a mutation this hook itself triggered -- an agent-driven goal
+  // change (tool-completed, budget-limited) would otherwise sit stale behind
+  // this query's own 30s staleTime until something else happened to refetch
+  // it. Re-validates through the typed RPC (`refresh`) rather than trusting
+  // the raw pushed value directly, matching this hook's existing fetch path.
+  const modesPushSignal = useSessionStore((state) => {
+    const extra = agentId
+      ? state.sessions[serverId ?? ""]?.agents.get(agentId)?.runtimeInfo?.extra
+      : undefined;
+    return extra && "modes" in extra ? extra.modes : undefined;
+  });
+  useEffect(() => {
+    if (modesPushSignal === undefined) return;
+    void refresh();
+    // `refresh` intentionally excluded: it's derived from `client`/`agentId`/
+    // `queryClient`/`queryKey`, all of which already gate this effect through
+    // `modesPushSignal` (unreachable without a live session for this agent).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modesPushSignal]);
   return {
     modes,
     isLoading: query.isLoading,

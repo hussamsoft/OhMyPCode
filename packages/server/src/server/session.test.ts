@@ -6119,4 +6119,37 @@ describe("omp parity message handling", () => {
       payload: { requestId: "untyped-req", code: "omp_command_failed", error: "socket closed" },
     });
   });
+
+  test("buckets a goal action failure as its own code, not a mode conflict", async () => {
+    const messages: SessionOutboundMessage[] = [];
+    const agentManager = {
+      getOmpModes: vi.fn(),
+      setOmpMode: vi.fn(),
+      runOmpSlashCommand: vi.fn(),
+      // OMP's own "resume with nothing paused" throw is the action failing,
+      // not the fork refusing a transition — the host branches on the code,
+      // so it must not share `omp_mode_conflict` with set_mode rejections.
+      goalAction: vi.fn().mockRejectedValue(new Error("No paused goal.")),
+      getOmpSettings: vi.fn(),
+      setOmpSetting: vi.fn(),
+      getOmpKeybindings: vi.fn(),
+      setOmpKeybinding: vi.fn(),
+    };
+    const session = createSessionForTest({ messages, agentManager });
+
+    await session.handleMessage({
+      type: "omp.goal.action.request",
+      agentId: "agent-1",
+      action: "resume",
+      requestId: "goal-resume-req",
+    });
+
+    expect(messages.find((m) => m.type === "rpc_error")).toMatchObject({
+      payload: {
+        requestId: "goal-resume-req",
+        code: "omp_goal_action_failed",
+        error: "No paused goal.",
+      },
+    });
+  });
 });

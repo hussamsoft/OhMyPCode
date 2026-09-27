@@ -104,6 +104,7 @@ function mapSlashResult(result: OmpSlashCommandResult): Omit<CommandRunPayload, 
  * - `omp_command_failed`: slash command failed or unknown
  * - `omp_setting_failed`: setting path unknown or write invalid
  * - `omp_keybinding_failed`: keybinding unknown or chord invalid
+ * - `omp_goal_action_failed`: pause/resume/drop failed (e.g. resume with no paused goal)
  */
 export class OmpParitySessionController {
   constructor(private readonly options: OmpParitySessionControllerOptions) {}
@@ -235,8 +236,12 @@ export class OmpParitySessionController {
         return "omp_keybinding_failed";
       case "omp.modes.get.request":
       case "omp.modes.set.request":
-      case "omp.goal.action.request":
         return "omp_mode_conflict";
+      case "omp.goal.action.request":
+        // Distinct from omp_mode_conflict: this bucket is "the goal action
+        // itself failed" (e.g. resumeGoal() throwing "No paused goal."),
+        // not "OMP refused a mode transition because another mode is active".
+        return "omp_goal_action_failed";
     }
   }
 

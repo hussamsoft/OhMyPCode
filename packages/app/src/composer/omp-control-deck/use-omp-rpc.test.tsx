@@ -115,6 +115,40 @@ describe("useOmpModes", () => {
     expect(result.current.isLoading).toBe(false);
     expect(getOmpModes).not.toHaveBeenCalled();
   });
+
+  it("refetches when runtimeInfo.extra.modes changes independently of this hook's own mutations", async () => {
+    installSession("server-1", { ompModes: true });
+    const session = runtime.sessions.get("server-1") as { agents: Map<string, unknown> };
+    session.agents.set("agent-1", { runtimeInfo: { extra: {} } });
+    const getOmpModes = vi.fn(async () => ({
+      requestId: "req-1",
+      state: {
+        mode: "goal",
+        planModeEnabled: false,
+        planModePaused: false,
+        goalModeEnabled: true,
+        goalModePaused: false,
+        loopModeEnabled: false,
+        loopModePaused: false,
+        canEnter: true,
+      },
+    }));
+    installClient("server-1", { getOmpModes, setOmpMode: vi.fn() });
+
+    const { result, rerender } = renderHook(() => useOmpModes("server-1", "agent-1"), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(getOmpModes).toHaveBeenCalledTimes(1);
+
+    // Simulate an agent-driven push (tool-completed, budget-limited) landing
+    // on runtimeInfo.extra.modes without this hook's own mutation hooks
+    // ever running -- the invalidation must come from the push itself.
+    session.agents.set("agent-1", {
+      runtimeInfo: { extra: { modes: { mode: "goal_paused", goalModePaused: true } } },
+    });
+    rerender();
+
+    await waitFor(() => expect(getOmpModes).toHaveBeenCalledTimes(2));
+  });
 });
 
 describe("useOmpModeSetter", () => {

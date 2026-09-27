@@ -178,7 +178,8 @@ export type OmpParityErrorCode =
   | "omp_mode_conflict"
   | "omp_command_failed"
   | "omp_setting_failed"
-  | "omp_keybinding_failed";
+  | "omp_keybinding_failed"
+  | "omp_goal_action_failed";
 
 export class AgentManagerOmpParityError extends Error {
   constructor(
@@ -197,6 +198,7 @@ const OMP_PARITY_ERROR_CODES: ReadonlySet<string> = new Set<OmpParityErrorCode>(
   "omp_command_failed",
   "omp_setting_failed",
   "omp_keybinding_failed",
+  "omp_goal_action_failed",
 ]);
 
 export function isOmpParityErrorCode(value: unknown): value is OmpParityErrorCode {
