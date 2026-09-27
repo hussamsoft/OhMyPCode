@@ -37,6 +37,7 @@ import {
   type OmpMode,
 } from "./model";
 import { useOmpModeSetter, useOmpModes, useOmpSettingSetter, useOmpSettings } from "./use-omp-rpc";
+import type { OmpModesState } from "@ohmypcode/protocol/messages";
 export { OMP_VIBE_FEATURE_ID, OMP_APPROVAL_MODE_PATH, resolveOmpEnabledTools } from "./model";
 export type { OmpApprovalMode } from "./model";
 
@@ -156,6 +157,23 @@ function resolveCommittedMode(input: {
   return "build";
 }
 
+function resolveDisplayedMode(input: {
+  optimisticMode: OmpMode | null;
+  modes: OmpModesState | null;
+  vibeEnabled: boolean;
+}): OmpMode {
+  if (input.optimisticMode) return input.optimisticMode;
+  if (input.modes) {
+    return resolveCommittedMode({
+      planEnabled: input.modes.planModeEnabled,
+      goalEnabled: input.modes.goalModeEnabled,
+      loopEnabled: input.modes.loopModeEnabled,
+      vibeEnabled: input.vibeEnabled,
+    });
+  }
+  return input.vibeEnabled ? "vibe" : "build";
+}
+
 function OmpModeSegmentChip({
   segment,
   label,
@@ -163,7 +181,7 @@ function OmpModeSegmentChip({
   pending,
   disabled,
   disabledReason,
-  onPress,
+  onSelect,
 }: {
   segment: OmpModeSegmentDescriptor;
   label: string;
@@ -171,7 +189,7 @@ function OmpModeSegmentChip({
   pending: boolean;
   disabled: boolean;
   disabledReason?: string;
-  onPress(): void;
+  onSelect(id: OmpMode): void;
 }) {
   const { t } = useTranslation();
   const Icon = getModeIcon(segment.id === "vibe");
@@ -179,6 +197,9 @@ function OmpModeSegmentChip({
   const accessibilityLabel = disabledReason
     ? `${baseAccessibilityLabel}. ${disabledReason}`
     : baseAccessibilityLabel;
+  const handlePress = useCallback(() => {
+    onSelect(segment.id);
+  }, [onSelect, segment.id]);
   return (
     <View style={styles.modeSegmentSlot}>
       <ControlChip
@@ -190,7 +211,7 @@ function OmpModeSegmentChip({
         selected={selected}
         accentSelected
         disabled={disabled}
-        onPress={onPress}
+        onPress={handlePress}
         testID={segment.testID}
       />
       {pending ? <ThemedLoadingSpinner /> : null}
@@ -214,18 +235,11 @@ export function OmpModeControl({
   const [pendingMode, setPendingMode] = useState<OmpMode | null>(null);
   const [optimisticMode, setOptimisticMode] = useState<OmpMode | null>(null);
   const [segmentError, setSegmentError] = useState<{ mode: OmpMode; message: string } | null>(null);
-  const committedMode: OmpMode = optimisticMode
-    ? optimisticMode
-    : modes
-      ? resolveCommittedMode({
-          planEnabled: modes.planModeEnabled,
-          goalEnabled: modes.goalModeEnabled,
-          loopEnabled: modes.loopModeEnabled,
-          vibeEnabled: vibe.enabled,
-        })
-      : vibe.enabled
-        ? "vibe"
-        : "build";
+  const committedMode: OmpMode = resolveDisplayedMode({
+    optimisticMode,
+    modes,
+    vibeEnabled: vibe.enabled,
+  });
   const canEnterAll = modes?.canEnter ?? true;
   const globalBlockedReason = modes?.blockedReason;
   const transitionTo = useCallback(
@@ -309,7 +323,7 @@ export function OmpModeControl({
             pending={entry.isPending}
             disabled={entry.isDisabled}
             disabledReason={entry.disabledReason}
-            onPress={() => void transitionTo(entry.segment.id)}
+            onSelect={transitionTo}
           />
         ))}
       </View>
@@ -969,7 +983,7 @@ export function OmpAccessControl({
       <Combobox
         options={options}
         value={currentMode}
-        onSelect={(id) => void handleSelect(id)}
+        onSelect={handleSelect}
         open={open}
         onOpenChange={handleOpenChange}
         anchorRef={anchorRef}

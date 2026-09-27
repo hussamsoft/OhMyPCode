@@ -362,10 +362,9 @@ describe("OMP control deck MCP server grouping", () => {
       list: async () => initialRows,
       set: async (next) => {
         setCalls.push(next);
-        return initialRows.map((tool) => ({
-          ...tool,
-          enabled: next.includes(tool.name),
-        }));
+        return initialRows.map((tool) =>
+          Object.assign({}, tool, { enabled: next.includes(tool.name) }),
+        );
       },
     });
 

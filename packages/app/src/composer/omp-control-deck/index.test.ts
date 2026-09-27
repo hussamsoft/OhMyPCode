@@ -170,10 +170,9 @@ describe("OMP desktop control model", () => {
       enabled: true,
       set: async (enabledTools) => {
         calls.push(enabledTools);
-        return mcpTools.map((tool) => ({
-          ...tool,
-          enabled: enabledTools.includes(tool.name),
-        }));
+        return mcpTools.map((tool) =>
+          Object.assign({}, tool, { enabled: enabledTools.includes(tool.name) }),
+        );
       },
     });
 
@@ -210,10 +209,9 @@ describe("OMP desktop control model", () => {
       enabled: false,
       set: async (enabledTools) => {
         calls.push(enabledTools);
-        return mcpTools.map((tool) => ({
-          ...tool,
-          enabled: enabledTools.includes(tool.name),
-        }));
+        return mcpTools.map((tool) =>
+          Object.assign({}, tool, { enabled: enabledTools.includes(tool.name) }),
+        );
       },
     });
 
