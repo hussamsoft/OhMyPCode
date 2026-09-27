@@ -14,6 +14,12 @@ afterEach(() => {
   cleanup();
 });
 
+const ACTIVE_TOGGLES: OmpModeBadgeProps["toggles"] = {
+  fast: true,
+  advisor: false,
+  prewalk: true,
+};
+
 describe("OmpModeBadge", () => {
   it("renders the no-mode badge when no mode is supplied", () => {
     const view = render(<OmpModeBadge />);
@@ -58,12 +64,7 @@ describe("OmpModeBadge", () => {
   });
 
   it("renders active toggles and suppresses off toggles", () => {
-    const toggles: OmpModeBadgeProps["toggles"] = {
-      fast: true,
-      advisor: false,
-      prewalk: true,
-    };
-    const view = render(<OmpModeBadge persistedMode="plan" toggles={toggles} />);
+    const view = render(<OmpModeBadge persistedMode="plan" toggles={ACTIVE_TOGGLES} />);
     // Toggle labels are capitalized ("Fast", "Prewalk"); case-insensitive match
     // keeps the test stable across future label re-styling.
     expect(view.getByText(/Fast/)).toBeTruthy();

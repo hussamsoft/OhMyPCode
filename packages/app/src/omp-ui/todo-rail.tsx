@@ -44,7 +44,11 @@ interface AggregatedCounts {
   completed: number;
 }
 
-const EMPTY_COUNTS: AggregatedCounts = { inProgress: 0, pending: 0, completed: 0 };
+const EMPTY_COUNTS: AggregatedCounts = {
+  inProgress: 0,
+  pending: 0,
+  completed: 0,
+};
 
 function aggregate(tasks: readonly OmpTodoItem[]): AggregatedCounts {
   const counts: AggregatedCounts = { ...EMPTY_COUNTS };
@@ -84,6 +88,37 @@ interface PhaseRowProps {
   index: number;
 }
 
+interface TaskRowProps {
+  task: OmpTodoItem;
+}
+
+const TASK_STATE_CHECKED = { checked: true };
+const TASK_STATE_UNCHECKED = { checked: false };
+
+function TaskRow({ task }: TaskRowProps): ReactElement {
+  return (
+    <View
+      style={styles.taskRow}
+      accessibilityRole="text"
+      accessibilityState={task.status === COMPLETED ? TASK_STATE_CHECKED : TASK_STATE_UNCHECKED}
+    >
+      <View
+        style={[
+          styles.bullet,
+          task.status === COMPLETED && styles.bulletCompleted,
+          task.status === IN_PROGRESS && styles.bulletActive,
+        ]}
+      />
+      <Text
+        style={[styles.taskText, task.status === COMPLETED && styles.taskTextCompleted]}
+        numberOfLines={2}
+      >
+        {task.text}
+      </Text>
+    </View>
+  );
+}
+
 function PhaseRow({ phase, index }: PhaseRowProps): ReactElement {
   const counts = useMemo(() => aggregate(phase.tasks), [phase.tasks]);
   const total = phase.tasks.length;
@@ -103,31 +138,9 @@ function PhaseRow({ phase, index }: PhaseRowProps): ReactElement {
         <Text style={styles.phaseProgress}>{progressLabel}</Text>
       </View>
       <View style={styles.taskList}>
-        {phase.tasks.map((task) => {
-          const state = { checked: task.status === COMPLETED };
-          return (
-            <View
-              key={task.text}
-              style={styles.taskRow}
-              accessibilityRole="text"
-              accessibilityState={state}
-            >
-              <View
-                style={[
-                  styles.bullet,
-                  task.status === COMPLETED && styles.bulletCompleted,
-                  task.status === IN_PROGRESS && styles.bulletActive,
-                ]}
-              />
-              <Text
-                style={[styles.taskText, task.status === COMPLETED && styles.taskTextCompleted]}
-                numberOfLines={2}
-              >
-                {task.text}
-              </Text>
-            </View>
-          );
-        })}
+        {phase.tasks.map((task) => (
+          <TaskRow key={task.text} task={task} />
+        ))}
       </View>
     </View>
   );

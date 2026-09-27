@@ -20,26 +20,43 @@ afterEach(() => {
   cleanup();
 });
 
+const FULL_DEFAULT_DATA: OmpStatusBarData = {
+  preset: "default",
+  modelLabel: "sonnet",
+  path: "/repo",
+  currentBranch: "main",
+  lastUsage: {
+    inputTokens: 1234,
+    outputTokens: 56,
+    cachedInputTokens: 200,
+    totalCostUsd: 0.42,
+    contextWindowUsedTokens: 4000,
+    contextWindowMaxTokens: 200000,
+  },
+};
+
+const MINIMAL_DEFAULT_DATA: OmpStatusBarData = {
+  preset: "default",
+  modelLabel: "sonnet",
+  path: "/repo",
+};
+
+const GIT_HIDDEN_DATA: OmpStatusBarData = {
+  preset: "default",
+  modelLabel: "sonnet",
+  path: "/repo",
+  currentBranch: "main",
+  unavailable: new Set(["git"]),
+};
+
+const EMPTY_DEFAULT_DATA: OmpStatusBarData = { preset: "default" };
+
 describe("OmpStatusBar", () => {
   it("renders real model / path / git / cost / ctx segments when their data is supplied", () => {
     // `default` is the only preset that includes path, model, git, and context
     // in a single line: ["pi", "vim", "model", "mode", "collab", "stream",
     // "path", "git", "pr", "context_pct", "cost"].
-    const data: OmpStatusBarData = {
-      preset: "default",
-      modelLabel: "sonnet",
-      path: "/repo",
-      currentBranch: "main",
-      lastUsage: {
-        inputTokens: 1234,
-        outputTokens: 56,
-        cachedInputTokens: 200,
-        totalCostUsd: 0.42,
-        contextWindowUsedTokens: 4000,
-        contextWindowMaxTokens: 200000,
-      },
-    };
-    const view = render(<OmpStatusBar data={data} />);
+    const view = render(<OmpStatusBar data={FULL_DEFAULT_DATA} />);
     expect(view.getByText("sonnet")).toBeTruthy();
     expect(view.getByText("/repo")).toBeTruthy();
     expect(view.getByText("main")).toBeTruthy();
@@ -48,12 +65,7 @@ describe("OmpStatusBar", () => {
   });
 
   it("suppresses git / pr / subagents when their data is absent (no fabrication)", () => {
-    const data: OmpStatusBarData = {
-      preset: "default",
-      modelLabel: "sonnet",
-      path: "/repo",
-    };
-    const view = render(<OmpStatusBar data={data} />);
+    const view = render(<OmpStatusBar data={MINIMAL_DEFAULT_DATA} />);
     expect(view.getByText("sonnet")).toBeTruthy();
     expect(view.getByText("/repo")).toBeTruthy();
     // No #PR without data.
@@ -61,14 +73,7 @@ describe("OmpStatusBar", () => {
   });
 
   it("respects the explicit `unavailable` set", () => {
-    const data: OmpStatusBarData = {
-      preset: "default",
-      modelLabel: "sonnet",
-      path: "/repo",
-      currentBranch: "main",
-      unavailable: new Set(["git"]),
-    };
-    const view = render(<OmpStatusBar data={data} />);
+    const view = render(<OmpStatusBar data={GIT_HIDDEN_DATA} />);
     expect(view.getByText("sonnet")).toBeTruthy();
     expect(view.getByText("/repo")).toBeTruthy();
     // Even though currentBranch='main', the unavailable set hides it.
@@ -76,8 +81,7 @@ describe("OmpStatusBar", () => {
   });
 
   it("still renders the static `pi` segment even when no other data is supplied", () => {
-    const data: OmpStatusBarData = { preset: "default" };
-    const view = render(<OmpStatusBar data={data} />);
+    const view = render(<OmpStatusBar data={EMPTY_DEFAULT_DATA} />);
     expect(view.getByText("π")).toBeTruthy();
   });
 });
