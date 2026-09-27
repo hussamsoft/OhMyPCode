@@ -16,6 +16,7 @@ const mockRun = vi.hoisted(() =>
   })),
 );
 const mockState = vi.hoisted(() => ({
+  supported: true,
   isPending: false,
   error: null as Error | null,
   lastResult: null as { output: string } | null,
@@ -33,6 +34,7 @@ vi.mock("lucide-react-native", () => ({
 vi.mock("@/composer/omp-control-deck/use-omp-rpc", () => ({
   useOmpSlashCommand: () => ({
     run: mockRun,
+    supported: mockState.supported,
     isPending: mockState.isPending,
     error: mockState.error,
     lastResult: mockState.lastResult,
@@ -53,6 +55,7 @@ describe("OmpContextForm", () => {
   afterEach(() => {
     cleanup();
     mockRun.mockClear();
+    mockState.supported = true;
     mockState.isPending = false;
     mockState.error = null;
     mockState.lastResult = null;
@@ -84,6 +87,13 @@ describe("OmpContextForm", () => {
 
   it("shows a placeholder when serverId or agentId is missing and does not run the command", () => {
     render(<OmpContextForm serverId={null} agentId="agent-1" />, { wrapper });
+    expect(screen.getByTestId("omp-context-form-placeholder")).toBeTruthy();
+    expect(mockRun).not.toHaveBeenCalled();
+  });
+
+  it("shows a placeholder and does not call run when the server lacks slash-command support, instead of hanging on an unhandled rejection", () => {
+    mockState.supported = false;
+    render(<OmpContextForm serverId="remote" agentId="agent-1" />, { wrapper });
     expect(screen.getByTestId("omp-context-form-placeholder")).toBeTruthy();
     expect(mockRun).not.toHaveBeenCalled();
   });

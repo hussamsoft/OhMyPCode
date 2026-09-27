@@ -31,21 +31,23 @@ export interface OmpContextFormProps {
 export function OmpContextForm({ serverId, agentId }: OmpContextFormProps) {
   const { t } = useTranslation();
   const enabled = Boolean(serverId && agentId);
-  const { run, isPending, error, lastResult } = useOmpSlashCommand(serverId, agentId);
+  const { run, supported, isPending, error, lastResult } = useOmpSlashCommand(serverId, agentId);
+  const canRun = enabled && supported;
 
   const refresh = useCallback(() => {
-    if (!enabled) return;
+    if (!canRun) return;
     void run({ name: "context" });
-  }, [enabled, run]);
+  }, [canRun, run]);
 
   useEffect(() => {
     refresh();
-    // Only re-run when the agent identity actually changes, not on every
-    // `run`/`refresh` identity churn from the underlying mutation.
+    // Only re-run when the agent identity or capability actually changes,
+    // not on every `run`/`refresh` identity churn from the underlying
+    // mutation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverId, agentId]);
+  }, [serverId, agentId, canRun]);
 
-  if (!enabled) {
+  if (!canRun) {
     return (
       <View style={styles.placeholder} testID="omp-context-form-placeholder">
         <Text style={styles.message}>{t("agentControls.omp.contextUnavailable")}</Text>

@@ -65,22 +65,23 @@ export interface OmpMcpFormProps {
 export function OmpMcpForm({ serverId, agentId }: OmpMcpFormProps) {
   const { t } = useTranslation();
   const enabled = Boolean(serverId && agentId);
-  const { run, isPending, error, lastResult } = useOmpSlashCommand(serverId, agentId);
+  const { run, supported, isPending, error, lastResult } = useOmpSlashCommand(serverId, agentId);
+  const canRun = enabled && supported;
   const [argsDraft, setArgsDraft] = useState("");
 
   const runMcp = useCallback(
     (args: string) => {
-      if (!enabled) return;
+      if (!canRun) return;
       void run({ name: "mcp", args });
     },
-    [enabled, run],
+    [canRun, run],
   );
 
   useEffect(() => {
     runMcp("list");
-    // Only re-run when the agent identity actually changes.
+    // Only re-run when the agent identity or capability actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverId, agentId]);
+  }, [serverId, agentId, canRun]);
 
   const runArgsDraft = useCallback(() => {
     const trimmed = argsDraft.trim();
@@ -89,7 +90,7 @@ export function OmpMcpForm({ serverId, agentId }: OmpMcpFormProps) {
 
   const runListAgain = useCallback(() => runMcp("list"), [runMcp]);
 
-  if (!enabled) {
+  if (!canRun) {
     return (
       <View style={styles.placeholder} testID="omp-mcp-form-placeholder">
         <Text style={styles.message}>{t("agentControls.omp.mcpUnavailable")}</Text>

@@ -301,6 +301,8 @@ export interface UseOmpSlashCommandInput {
 
 export interface UseOmpSlashCommandResult {
   run: (input: UseOmpSlashCommandInput) => Promise<OmpCommandRunPayload>;
+  /** Whether the connection + server capability allow calling `run` at all. */
+  supported: boolean;
   isPending: boolean;
   error: Error | null;
   lastResult: OmpCommandRunPayload | null;
@@ -343,6 +345,7 @@ export function useOmpSlashCommand(
   );
   return {
     run,
+    supported: isConnected && supportsOmpSlashCommands,
     isPending: mutation.isPending,
     error: mutation.error instanceof Error ? mutation.error : null,
     lastResult: mutation.data ?? null,

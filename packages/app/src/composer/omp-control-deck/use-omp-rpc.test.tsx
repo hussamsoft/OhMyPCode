@@ -287,6 +287,7 @@ describe("useOmpSlashCommand", () => {
     });
 
     expect(runOmpSlashCommand).toHaveBeenCalledWith("agent-1", "compact", "--force");
+    expect(result.current.supported).toBe(true);
     // Query keys used for invalidation must match the exported shape.
     expect(ompModesQueryKey("server-1", "agent-1")).toEqual(["ompModes", "server-1", "agent-1"]);
     expect(ompSettingsQueryKey("server-1", "agent-1")).toEqual([
@@ -294,6 +295,15 @@ describe("useOmpSlashCommand", () => {
       "server-1",
       "agent-1",
     ]);
+  });
+
+  it("reports supported: false when the server does not advertise slash-command support, so callers can gate before calling run", () => {
+    installSession("server-1", { ompSlashCommands: false });
+    installClient("server-1", { runOmpSlashCommand: vi.fn() });
+
+    const { result } = renderHook(() => useOmpSlashCommand("server-1", "agent-1"), { wrapper });
+
+    expect(result.current.supported).toBe(false);
   });
 });
 
