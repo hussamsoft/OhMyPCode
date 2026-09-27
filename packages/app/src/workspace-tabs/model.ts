@@ -42,6 +42,8 @@ export type WorkspaceTabTarget =
   | { kind: "omp_context"; agentId: string }
   | { kind: "omp_mcp"; agentId: string }
   | { kind: "omp_ssh"; agentId: string }
+  | { kind: "omp_goal"; agentId: string }
+  | { kind: "omp_loop"; agentId: string }
   | { kind: "provider_subagent"; parentAgentId: string; subagentId: string }
   | { kind: "terminal"; terminalId: string }
   | { kind: "browser"; browserId: string }

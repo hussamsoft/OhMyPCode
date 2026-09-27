@@ -1366,8 +1366,21 @@ export class AgentManager {
     agentId: string,
     mode: "plan" | "goal" | "loop",
     paused?: boolean,
+    options?: { objective?: string; tokenBudget?: number; args?: string },
   ): Promise<OmpSetModeResult> {
-    const result = await this.requireOmpModeSession(agentId).setOmpMode(mode, paused);
+    const result = await this.requireOmpModeSession(agentId).setOmpMode(mode, paused, options);
+    this.applyOmpModesResult(agentId, result);
+    return result;
+  }
+
+  /** Pauses, resumes, or drops the active/paused goal directly, bypassing `setOmpMode`'s enter/pause/disable cycle. */
+  async goalAction(agentId: string, action: "pause" | "resume" | "drop"): Promise<OmpModesResult> {
+    const result = await this.requireOmpModeSession(agentId).goalAction(action);
+    this.applyOmpModesResult(agentId, result);
+    return result;
+  }
+
+  private applyOmpModesResult(agentId: string, result: OmpModesResult): void {
     const agent = this.requirePublicAgent(agentId);
     agent.runtimeInfo = {
       ...(agent.runtimeInfo ?? {
@@ -1383,7 +1396,6 @@ export class AgentManager {
       stateKey: "modes",
       state: result as unknown as JsonValue,
     });
-    return result;
   }
 
   /**
@@ -1396,9 +1408,10 @@ export class AgentManager {
     agentId: string,
     mode: "plan" | "goal" | "loop",
     paused?: boolean,
+    options?: { objective?: string; tokenBudget?: number; args?: string },
   ): Promise<OmpSetModeResult> {
     try {
-      return await this.setOmpMode(agentId, mode, paused);
+      return await this.setOmpMode(agentId, mode, paused, options);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (/exit (plan|goal|vibe) mode|mode is paused/i.test(message)) {

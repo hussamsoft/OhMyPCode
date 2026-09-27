@@ -354,3 +354,51 @@ describe("omp ssh tab identity", () => {
     expect(workspaceTabTargetsEqual(target, { ...target, agentId: "agent-2" })).toBe(false);
   });
 });
+
+describe("omp goal tab identity", () => {
+  it("normalizes and deterministically keys by agent id", () => {
+    const target = normalizeWorkspaceTabTarget({
+      kind: "omp_goal",
+      agentId: " agent-1 ",
+    });
+
+    expect(target).toEqual({ kind: "omp_goal", agentId: "agent-1" });
+    expect(buildDeterministicWorkspaceTabId({ kind: "omp_goal", agentId: "agent-1" })).toBe(
+      "omp_goal_7_agent-1",
+    );
+  });
+
+  it("rejects a missing agent id", () => {
+    expect(normalizeWorkspaceTabTarget({ kind: "omp_goal", agentId: "" })).toBeNull();
+  });
+
+  it("treats same-agent targets as equal and different-agent targets as distinct", () => {
+    const target = { kind: "omp_goal", agentId: "agent-1" } as const;
+    expect(workspaceTabTargetsEqual(target, { ...target })).toBe(true);
+    expect(workspaceTabTargetsEqual(target, { ...target, agentId: "agent-2" })).toBe(false);
+  });
+});
+
+describe("omp loop tab identity", () => {
+  it("normalizes and deterministically keys by agent id", () => {
+    const target = normalizeWorkspaceTabTarget({
+      kind: "omp_loop",
+      agentId: " agent-1 ",
+    });
+
+    expect(target).toEqual({ kind: "omp_loop", agentId: "agent-1" });
+    expect(buildDeterministicWorkspaceTabId({ kind: "omp_loop", agentId: "agent-1" })).toBe(
+      "omp_loop_7_agent-1",
+    );
+  });
+
+  it("rejects a missing agent id", () => {
+    expect(normalizeWorkspaceTabTarget({ kind: "omp_loop", agentId: "" })).toBeNull();
+  });
+
+  it("treats same-agent targets as equal and different-agent targets as distinct", () => {
+    const target = { kind: "omp_loop", agentId: "agent-1" } as const;
+    expect(workspaceTabTargetsEqual(target, { ...target })).toBe(true);
+    expect(workspaceTabTargetsEqual(target, { ...target, agentId: "agent-2" })).toBe(false);
+  });
+});

@@ -18,6 +18,8 @@ import { ompKeybindingsPanelRegistration } from "@/panels/omp-keybindings-panel"
 import { ompContextPanelRegistration } from "@/panels/omp-context-panel";
 import { ompMcpPanelRegistration } from "@/panels/omp-mcp-panel";
 import { ompSshPanelRegistration } from "@/panels/omp-ssh-panel";
+import { ompGoalPanelRegistration } from "@/panels/omp-goal-panel";
+import { ompLoopPanelRegistration } from "@/panels/omp-loop-panel";
 import { pullRequestPanelRegistration } from "@/panels/pull-request-panel";
 import { pluginPanelRegistration } from "@/plugins/workspace-panels/panel";
 import { newTabPanelRegistration } from "@/panels/new-tab-panel";
@@ -38,6 +40,8 @@ export function ensurePanelsRegistered(): void {
   registerPanel(ompContextPanelRegistration);
   registerPanel(ompMcpPanelRegistration);
   registerPanel(ompSshPanelRegistration);
+  registerPanel(ompGoalPanelRegistration);
+  registerPanel(ompLoopPanelRegistration);
   registerPanel(setupPanelRegistration);
   registerPanel(terminalPanelRegistration);
   registerPanel(browserPanelRegistration);

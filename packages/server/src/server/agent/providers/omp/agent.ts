@@ -1210,8 +1210,26 @@ export class OmpAgentSession implements AgentSession, OmpVibeSession {
    * Drives OMP's plan/goal/loop mode. Distinct from `setMode`, which sets the
    * agent's approval mode and deliberately refuses to change mid-session.
    */
-  async setOmpMode(mode: "plan" | "goal" | "loop", paused?: boolean): Promise<OmpSetModeResult> {
-    const result = await this.runtimeSession.setMode(mode, paused);
+  async setOmpMode(
+    mode: "plan" | "goal" | "loop",
+    paused?: boolean,
+    options?: { objective?: string; tokenBudget?: number; args?: string },
+  ): Promise<OmpSetModeResult> {
+    const result = await this.runtimeSession.setMode(mode, paused, options);
+    this.supportsOmpModes = true;
+    this.lastModesState = result;
+    this.emit({
+      type: "provider_state_updated",
+      provider: this.provider,
+      stateKey: "modes",
+      state: result as unknown as JsonValue,
+    });
+    return result;
+  }
+
+  /** Pauses, resumes, or drops the active/paused goal directly, bypassing `setOmpMode`'s enter/pause/disable cycle. */
+  async goalAction(action: "pause" | "resume" | "drop"): Promise<OmpModesResult> {
+    const result = await this.runtimeSession.goalAction(action);
     this.supportsOmpModes = true;
     this.lastModesState = result;
     this.emit({

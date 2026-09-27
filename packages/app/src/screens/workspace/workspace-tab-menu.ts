@@ -1,7 +1,7 @@
 import type { WorkspaceTabDescriptor } from "@/screens/workspace/workspace-tabs-types";
 import { i18n } from "@/i18n/i18next";
 import { encodeFilePathForPathSegment, encodeWorkspaceIdForPathSegment } from "@/utils/host-routes";
-import { buildDeterministicWorkspaceTabId } from "@/workspace-tabs/identity";
+import { buildDeterministicWorkspaceTabId, isOmpPanelTarget } from "@/workspace-tabs/identity";
 
 export type WorkspaceTabMenuSurface = "desktop" | "mobile";
 
@@ -162,23 +162,9 @@ function getCloseButtonTestId(tab: WorkspaceTabDescriptor): string {
   if (tab.target.kind === "plugin") {
     return `workspace-plugin-close-${encodeFilePathForPathSegment(buildDeterministicWorkspaceTabId(tab.target))}`;
   }
-  if (tab.target.kind === "omp_vibe") {
-    return `workspace-omp-vibe-close-${encodeFilePathForPathSegment(buildDeterministicWorkspaceTabId(tab.target))}`;
-  }
-  if (tab.target.kind === "omp_settings") {
-    return `workspace-omp-settings-close-${encodeFilePathForPathSegment(buildDeterministicWorkspaceTabId(tab.target))}`;
-  }
-  if (tab.target.kind === "omp_keybindings") {
-    return `workspace-omp-keybindings-close-${encodeFilePathForPathSegment(buildDeterministicWorkspaceTabId(tab.target))}`;
-  }
-  if (tab.target.kind === "omp_context") {
-    return `workspace-omp-context-close-${encodeFilePathForPathSegment(buildDeterministicWorkspaceTabId(tab.target))}`;
-  }
-  if (tab.target.kind === "omp_mcp") {
-    return `workspace-omp-mcp-close-${encodeFilePathForPathSegment(buildDeterministicWorkspaceTabId(tab.target))}`;
-  }
-  if (tab.target.kind === "omp_ssh") {
-    return `workspace-omp-ssh-close-${encodeFilePathForPathSegment(buildDeterministicWorkspaceTabId(tab.target))}`;
+  if (isOmpPanelTarget(tab.target)) {
+    const testKind = tab.target.kind.replace(/_/g, "-");
+    return `workspace-${testKind}-close-${encodeFilePathForPathSegment(buildDeterministicWorkspaceTabId(tab.target))}`;
   }
   if (tab.target.kind === "new_tab") {
     return `workspace-new-tab-close-${tab.tabId}`;

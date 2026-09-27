@@ -43,6 +43,8 @@ const VALID_GUI_HOMES = new Set([
   "omp_context",
   "omp_mcp",
   "omp_ssh",
+  "omp_goal",
+  "omp_loop",
   "/h/[serverId]/settings/collaboration",
   "/usage",
 ]);

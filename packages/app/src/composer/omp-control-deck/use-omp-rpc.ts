@@ -6,6 +6,7 @@ import type {
   OmpKeybindingsSetPayload,
   OmpModesGetPayload,
   OmpModesSetPayload,
+  OmpGoalActionPayload,
   OmpSettingsSetPayload,
 } from "@ohmypcode/client/internal/daemon-client";
 import type {
@@ -148,6 +149,12 @@ export function useOmpModes(
 export interface UseOmpModeSetterInput {
   mode: "plan" | "goal" | "loop";
   paused?: boolean;
+  /** Applied when entering goal mode. */
+  objective?: string;
+  /** Applied when entering goal mode. */
+  tokenBudget?: number;
+  /** Raw `/loop` argument string, applied when entering loop mode. */
+  args?: string;
 }
 
 export interface UseOmpModeSetterResult {
@@ -169,7 +176,11 @@ export function useOmpModeSetter(
       if (!client || !agentId) {
         throw new Error("OMP host client unavailable");
       }
-      return await client.setOmpMode(agentId, input.mode, input.paused);
+      return await client.setOmpMode(agentId, input.mode, input.paused, {
+        objective: input.objective,
+        tokenBudget: input.tokenBudget,
+        args: input.args,
+      });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey });
@@ -186,6 +197,55 @@ export function useOmpModeSetter(
   );
   return {
     setMode,
+    isPending: mutation.isPending,
+    error: mutation.error instanceof Error ? mutation.error : null,
+    lastResult: mutation.data ?? null,
+  };
+}
+
+export interface UseOmpGoalActionResult {
+  goalAction: (action: "pause" | "resume" | "drop") => Promise<OmpGoalActionPayload>;
+  isPending: boolean;
+  error: Error | null;
+  lastResult: OmpGoalActionPayload | null;
+}
+
+/**
+ * Pauses, resumes, or drops the active/paused goal directly. Distinct from
+ * `useOmpModeSetter`'s `mode: "goal"` toggle: reactivating goal mode through
+ * `setOmpMode` starts a *fresh* goal (OMP's own `set_mode` semantics), which
+ * is right for the composer's plan/goal/loop toggle but wrong for a goal
+ * screen's own pause/resume/drop actions, which mean "act on this goal".
+ */
+export function useOmpGoalAction(
+  serverId: string | null | undefined,
+  agentId: string | null | undefined,
+): UseOmpGoalActionResult {
+  const { client, isConnected, supportsOmpModes } = useOmpAgentScope(serverId);
+  const queryClient = useQueryClient();
+  const queryKey = useMemo(() => ompModesQueryKey(serverId, agentId), [serverId, agentId]);
+  const mutation = useMutation({
+    mutationFn: async (action: "pause" | "resume" | "drop"): Promise<OmpGoalActionPayload> => {
+      if (!client || !agentId) {
+        throw new Error("OMP host client unavailable");
+      }
+      return await client.goalAction(agentId, action);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey });
+    },
+  });
+  const goalAction = useCallback(
+    async (action: "pause" | "resume" | "drop"): Promise<OmpGoalActionPayload> => {
+      if (!isConnected || !supportsOmpModes) {
+        throw new Error("OMP modes capability unavailable on this server/agent");
+      }
+      return await mutation.mutateAsync(action);
+    },
+    [isConnected, mutation, supportsOmpModes],
+  );
+  return {
+    goalAction,
     isPending: mutation.isPending,
     error: mutation.error instanceof Error ? mutation.error : null,
     lastResult: mutation.data ?? null,

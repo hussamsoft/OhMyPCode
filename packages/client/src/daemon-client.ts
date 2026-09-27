@@ -108,6 +108,7 @@ import type {
   OmpSettingsSetResponse,
   OmpGetModesResponse,
   OmpSetModeResponse,
+  OmpGoalActionResponse,
   OmpKeybindingsGetResponse,
   OmpKeybindingsSetResponse,
   ListProviderToolsResponseSchema,
@@ -532,6 +533,7 @@ export type OmpSettingsGetPayload = OmpSettingsGetResponse["payload"];
 export type OmpSettingsSetPayload = OmpSettingsSetResponse["payload"];
 export type OmpModesGetPayload = OmpGetModesResponse["payload"];
 export type OmpModesSetPayload = OmpSetModeResponse["payload"];
+export type OmpGoalActionPayload = OmpGoalActionResponse["payload"];
 export type OmpKeybindingsGetPayload = OmpKeybindingsGetResponse["payload"];
 export type OmpKeybindingsSetPayload = OmpKeybindingsSetResponse["payload"];
 type ProviderDiagnosticPayload = ProviderDiagnosticResponseMessage["payload"];
@@ -5474,7 +5476,7 @@ export class DaemonClient {
     agentId: string,
     mode: "plan" | "goal" | "loop",
     paused?: boolean,
-    options?: { requestId?: string },
+    options?: { requestId?: string; objective?: string; tokenBudget?: number; args?: string },
   ): Promise<OmpModesSetPayload> {
     return this.sendNamespacedCorrelatedSessionRequest({
       requestId: options?.requestId,
@@ -5483,7 +5485,22 @@ export class DaemonClient {
         agentId,
         mode,
         ...(paused === undefined ? {} : { paused }),
+        ...(options?.objective === undefined ? {} : { objective: options.objective }),
+        ...(options?.tokenBudget === undefined ? {} : { tokenBudget: options.tokenBudget }),
+        ...(options?.args === undefined ? {} : { args: options.args }),
       },
+    });
+  }
+
+  /** Pauses, resumes, or drops the active/paused goal directly, bypassing `setOmpMode`'s enter/pause/disable cycle. */
+  async goalAction(
+    agentId: string,
+    action: "pause" | "resume" | "drop",
+    options?: { requestId?: string },
+  ): Promise<OmpGoalActionPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.goal.action.request", agentId, action },
     });
   }
 

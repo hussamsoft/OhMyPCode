@@ -780,7 +780,12 @@ export interface OmpVibeSession {
 
 export interface OmpParitySession {
   getOmpModes(): Promise<OmpModesResult>;
-  setOmpMode(mode: "plan" | "goal" | "loop", paused?: boolean): Promise<OmpSetModeResult>;
+  setOmpMode(
+    mode: "plan" | "goal" | "loop",
+    paused?: boolean,
+    options?: { objective?: string; tokenBudget?: number; args?: string },
+  ): Promise<OmpSetModeResult>;
+  goalAction(action: "pause" | "resume" | "drop"): Promise<OmpModesResult>;
   runSlashCommand(name: string, args?: string): Promise<OmpSlashCommandResult>;
   getSettings(): Promise<OmpSettingsResult>;
   setSetting(path: string, value: unknown): Promise<OmpSetSettingResult>;

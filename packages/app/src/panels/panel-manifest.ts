@@ -58,6 +58,16 @@ const manifests = {
     supportedHosts: ["main"],
     resourceKey: (target) => `ompSsh:${target.agentId}`,
   },
+  omp_goal: {
+    kind: "omp_goal",
+    supportedHosts: ["main"],
+    resourceKey: (target) => `ompGoal:${target.agentId}`,
+  },
+  omp_loop: {
+    kind: "omp_loop",
+    supportedHosts: ["main"],
+    resourceKey: (target) => `ompLoop:${target.agentId}`,
+  },
   provider_subagent: {
     kind: "provider_subagent",
     supportedHosts: ["main", "explorer"],

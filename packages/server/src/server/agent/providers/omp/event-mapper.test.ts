@@ -32,6 +32,8 @@ describe("OMP runtime event mapper", () => {
           tokenBudget: 2000,
           tokensUsed: 345,
           timeUsedSeconds: 12,
+          createdAt: 1700000000000,
+          updatedAt: 1700000012000,
         },
         state: {
           enabled: true,

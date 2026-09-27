@@ -130,6 +130,46 @@ export class FakeOmp implements OmpRuntime {
   }
 }
 
+/**
+ * Computes `FakeOmpSession.modesState.goal` for one `setMode` call. Extracted
+ * out of `setMode` itself so the transition logic reads as plain if/else
+ * rather than nested ternaries, and to keep `setMode`'s own complexity
+ * bounded now that it also threads goal/loop options through.
+ */
+function nextFakeGoal(input: {
+  mode: "plan" | "goal" | "loop";
+  entering: boolean;
+  disabling: boolean;
+  current: OmpModesResult["goal"];
+  options?: { objective?: string; tokenBudget?: number };
+}): OmpModesResult["goal"] {
+  if (input.mode !== "goal") return input.current;
+  if (input.entering) {
+    return {
+      id: "fake-goal-1",
+      objective: input.options?.objective ?? "",
+      status: "active",
+      tokenBudget: input.options?.tokenBudget,
+      tokensUsed: 0,
+      timeUsedSeconds: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+  }
+  if (input.disabling) return null;
+  return input.current;
+}
+
+function nextFakeLoop(input: {
+  entering: boolean;
+  disabling: boolean;
+  current: OmpModesResult["loop"];
+}): OmpModesResult["loop"] {
+  if (input.entering) return { state: "running", prompt: undefined };
+  if (input.disabling) return null;
+  return input.current;
+}
+
 export class FakeOmpSession implements OmpRuntimeSession {
   readonly prompts: Array<{ message: string; imageCount: number }> = [];
   readonly compactRequests: Array<{ customInstructions?: string }> = [];
@@ -419,10 +459,21 @@ export class FakeOmpSession implements OmpRuntimeSession {
     return this.modesState;
   }
 
-  async setMode(mode: "plan" | "goal" | "loop", paused?: boolean): Promise<OmpSetModeResult> {
-    this.modeRequests.push({ type: "set_mode", mode, ...(paused === undefined ? {} : { paused }) });
+  async setMode(
+    mode: "plan" | "goal" | "loop",
+    paused?: boolean,
+    options?: { objective?: string; tokenBudget?: number; args?: string },
+  ): Promise<OmpSetModeResult> {
+    this.modeRequests.push({
+      type: "set_mode",
+      mode,
+      ...(paused === undefined ? {} : { paused }),
+      ...options,
+    });
     if (this.setModeError) throw this.setModeError;
     const nextMode = paused ? `${mode}_paused` : mode;
+    const goalWasActive = this.modesState.goalModeEnabled || this.modesState.goalModePaused;
+    const loopWasActive = this.modesState.loopModeEnabled || this.modesState.loopModePaused;
     this.modesState = {
       ...this.modesState,
       mode: nextMode as "none" | "plan" | "plan_paused" | "goal" | "goal_paused" | "loop",
@@ -432,8 +483,51 @@ export class FakeOmpSession implements OmpRuntimeSession {
       goalModePaused: mode === "goal" && !!paused,
       loopModeEnabled: mode === "loop" && !paused,
       loopModePaused: mode === "loop" && !!paused,
+      goal: nextFakeGoal({
+        mode,
+        entering: mode === "goal" && !goalWasActive,
+        disabling: mode === "goal" && goalWasActive && nextMode === "none",
+        current: this.modesState.goal,
+        options,
+      }),
+      loop: nextFakeLoop({
+        entering: mode === "loop" && !loopWasActive,
+        disabling: mode === "loop" && loopWasActive && !paused,
+        current: this.modesState.loop,
+      }),
     };
     return { ...this.modesState, changed: true };
+  }
+
+  async goalAction(action: "pause" | "resume" | "drop"): Promise<OmpModesResult> {
+    this.modeRequests.push({ type: "goal_action", action });
+    if (this.setModeError) throw this.setModeError;
+    if (action === "pause") {
+      this.modesState = {
+        ...this.modesState,
+        mode: "goal_paused",
+        goalModeEnabled: false,
+        goalModePaused: true,
+        goal: this.modesState.goal ? { ...this.modesState.goal, status: "paused" } : null,
+      };
+    } else if (action === "resume") {
+      this.modesState = {
+        ...this.modesState,
+        mode: "goal",
+        goalModeEnabled: true,
+        goalModePaused: false,
+        goal: this.modesState.goal ? { ...this.modesState.goal, status: "active" } : null,
+      };
+    } else {
+      this.modesState = {
+        ...this.modesState,
+        mode: "none",
+        goalModeEnabled: false,
+        goalModePaused: false,
+        goal: null,
+      };
+    }
+    return this.modesState;
   }
 
   async runSlashCommand(command: string, args?: string): Promise<OmpSlashCommandResult> {

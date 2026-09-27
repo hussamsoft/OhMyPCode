@@ -97,7 +97,12 @@ export interface OmpRuntimeSession {
   getToolCatalog(): Promise<OmpToolCatalogEntry[]>;
   setTools(enabledTools: string[]): Promise<OmpToolCatalogEntry[]>;
   getModes(): Promise<OmpModesResult>;
-  setMode(mode: "plan" | "goal" | "loop", paused?: boolean): Promise<OmpSetModeResult>;
+  setMode(
+    mode: "plan" | "goal" | "loop",
+    paused?: boolean,
+    options?: { objective?: string; tokenBudget?: number; args?: string },
+  ): Promise<OmpSetModeResult>;
+  goalAction(action: "pause" | "resume" | "drop"): Promise<OmpModesResult>;
   runSlashCommand(command: string, args?: string): Promise<OmpSlashCommandResult>;
   getSettings(): Promise<OmpSettingsResult>;
   setSetting(path: string, value: unknown): Promise<OmpSetSettingResult>;

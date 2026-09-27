@@ -7441,6 +7441,46 @@ test("OMP parity actions preserve exact fields and correlated responses", async 
       },
     },
     {
+      requestId: "mode-set-2",
+      invoke: () =>
+        client.setOmpMode("agent-1", "goal", undefined, {
+          requestId: "mode-set-2",
+          objective: "ship it",
+          tokenBudget: 50_000,
+        }),
+      request: {
+        type: "omp.modes.set.request",
+        agentId: "agent-1",
+        mode: "goal",
+        objective: "ship it",
+        tokenBudget: 50_000,
+      },
+      responseType: "omp.modes.set.response",
+      payload: {
+        state: {
+          ...modesState,
+          mode: "goal" as const,
+          planModeEnabled: false,
+          goalModeEnabled: true,
+          changed: true,
+        },
+      },
+    },
+    {
+      requestId: "goal-action-1",
+      invoke: () => client.goalAction("agent-1", "pause", { requestId: "goal-action-1" }),
+      request: { type: "omp.goal.action.request", agentId: "agent-1", action: "pause" },
+      responseType: "omp.goal.action.response",
+      payload: {
+        state: {
+          ...modesState,
+          mode: "goal_paused" as const,
+          planModeEnabled: false,
+          goalModePaused: true,
+        },
+      },
+    },
+    {
       requestId: "kb-get-1",
       invoke: () => client.getOmpKeybindings("agent-1", { requestId: "kb-get-1" }),
       request: { type: "omp.keybindings.get.request", agentId: "agent-1" },

@@ -42,6 +42,9 @@ export function normalizeWorkspaceTabTarget(
 }
 
 function normalizeSimpleWorkspaceTabTarget(value: WorkspaceTabTarget): WorkspaceTabTarget | null {
+  if (isOmpPanelTarget(value)) {
+    return normalizeOmpPanelTarget(value);
+  }
   switch (value.kind) {
     case "agent": {
       const agentId = trimNonEmpty(value.agentId);
@@ -59,13 +62,6 @@ function normalizeSimpleWorkspaceTabTarget(value: WorkspaceTabTarget): Workspace
     case "files":
     case "pull_request":
       return { kind: value.kind };
-    case "omp_vibe":
-    case "omp_settings":
-    case "omp_keybindings":
-    case "omp_context":
-    case "omp_mcp":
-    case "omp_ssh":
-      return normalizeOmpPanelTarget(value);
     case "setup": {
       const workspaceId = trimNonEmpty(value.workspaceId);
       return workspaceId ? { kind: "setup", workspaceId } : null;
@@ -90,7 +86,15 @@ function normalizeOmpPanelTarget(
   value: Extract<
     WorkspaceTabTarget,
     {
-      kind: "omp_vibe" | "omp_settings" | "omp_keybindings" | "omp_context" | "omp_mcp" | "omp_ssh";
+      kind:
+        | "omp_vibe"
+        | "omp_settings"
+        | "omp_keybindings"
+        | "omp_context"
+        | "omp_mcp"
+        | "omp_ssh"
+        | "omp_goal"
+        | "omp_loop";
     }
   >,
 ): WorkspaceTabTarget | null {
@@ -219,6 +223,12 @@ function ompPanelTargetsEqual(left: WorkspaceTabTarget, right: WorkspaceTabTarge
   if (left.kind === "omp_ssh" && right.kind === "omp_ssh") {
     return left.agentId === right.agentId;
   }
+  if (left.kind === "omp_goal" && right.kind === "omp_goal") {
+    return left.agentId === right.agentId;
+  }
+  if (left.kind === "omp_loop" && right.kind === "omp_loop") {
+    return left.agentId === right.agentId;
+  }
   return null;
 }
 
@@ -304,7 +314,9 @@ type OmpPanelTargetKind =
   | "omp_keybindings"
   | "omp_context"
   | "omp_mcp"
-  | "omp_ssh";
+  | "omp_ssh"
+  | "omp_goal"
+  | "omp_loop";
 
 /**
  * Every omp_* panel target's deterministic id is `${kind}_${agentId.length}_
@@ -312,7 +324,7 @@ type OmpPanelTargetKind =
  * (this predicate) covers all of them instead of a branch per kind (same
  * reasoning as `normalizeOmpPanelTarget`/`ompPanelTargetsEqual`).
  */
-function isOmpPanelTarget(
+export function isOmpPanelTarget(
   target: WorkspaceTabTarget,
 ): target is Extract<WorkspaceTabTarget, { kind: OmpPanelTargetKind }> {
   return (
@@ -321,7 +333,9 @@ function isOmpPanelTarget(
     target.kind === "omp_keybindings" ||
     target.kind === "omp_context" ||
     target.kind === "omp_mcp" ||
-    target.kind === "omp_ssh"
+    target.kind === "omp_ssh" ||
+    target.kind === "omp_goal" ||
+    target.kind === "omp_loop"
   );
 }
 

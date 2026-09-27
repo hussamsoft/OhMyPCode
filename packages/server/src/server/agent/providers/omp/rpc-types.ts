@@ -354,14 +354,14 @@ export const OmpNoticeEventSchema = z
   .passthrough();
 export const OmpGoalSchema = z
   .object({
-    id: z.string().optional(),
-    objective: z.string().optional(),
-    status: z.string().optional(),
+    id: z.string(),
+    objective: z.string(),
+    status: z.enum(["active", "paused", "budget-limited", "complete", "dropped"]),
     tokenBudget: z.number().optional(),
-    tokensUsed: z.number().optional(),
-    timeUsedSeconds: z.number().optional(),
-    createdAt: z.string().optional(),
-    updatedAt: z.string().optional(),
+    tokensUsed: z.number(),
+    timeUsedSeconds: z.number(),
+    createdAt: z.number(),
+    updatedAt: z.number(),
   })
   .passthrough();
 export const OmpGoalModeStateSchema = z
@@ -492,6 +492,24 @@ export const OmpVibeWaitResultSchema = z
   .passthrough();
 export const OmpVibeListResultSchema = z.array(OmpVibeWorkerSchema);
 
+export const OmpLoopStateSchema = z
+  .object({
+    state: z.enum(["running", "paused"]),
+    limit: z
+      .union([
+        z
+          .object({ kind: z.literal("iterations"), initial: z.number(), remaining: z.number() })
+          .passthrough(),
+        z
+          .object({ kind: z.literal("duration"), durationMs: z.number(), deadlineMs: z.number() })
+          .passthrough(),
+      ])
+      .optional(),
+    condition: z.object({ command: z.string(), until: z.boolean() }).passthrough().optional(),
+    prompt: z.string().optional(),
+  })
+  .passthrough();
+
 export const OmpModesResultSchema = z
   .object({
     mode: z.enum(["none", "plan", "plan_paused", "goal", "goal_paused", "loop"]),
@@ -502,6 +520,8 @@ export const OmpModesResultSchema = z
     loopModeEnabled: z.boolean(),
     loopModePaused: z.boolean(),
     planFilePath: z.string().optional(),
+    goal: OmpGoalSchema.nullable().optional(),
+    loop: OmpLoopStateSchema.nullable().optional(),
     canEnter: z.boolean(),
     /** OMP's own guard message, verbatim. Present only when `canEnter` is false. */
     blockedReason: z.string().optional(),
@@ -745,6 +765,14 @@ export const OmpRpcCommandSchema = z.discriminatedUnion("type", [
     type: z.literal("set_mode"),
     mode: z.enum(["plan", "goal", "loop"]),
     paused: z.boolean().optional(),
+    objective: z.string().optional(),
+    tokenBudget: z.number().optional(),
+    args: z.string().optional(),
+  }),
+  z.object({
+    ...OmpCommandBase,
+    type: z.literal("goal_action"),
+    action: z.enum(["pause", "resume", "drop"]),
   }),
   z.object({
     ...OmpCommandBase,

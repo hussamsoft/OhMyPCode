@@ -90,7 +90,11 @@ import type {
   WorkspacePanelTarget,
 } from "@/keyboard/keyboard-action-dispatcher";
 import { useCreateFlowStore } from "@/stores/create-flow-store";
-import { normalizeWorkspaceTabTarget, workspaceTabTargetsEqual } from "@/workspace-tabs/identity";
+import {
+  isOmpPanelTarget,
+  normalizeWorkspaceTabTarget,
+  workspaceTabTargetsEqual,
+} from "@/workspace-tabs/identity";
 import { useVisibleAgentIds } from "./visible-agent-ids";
 import {
   getHostRuntimeStore,
@@ -301,6 +305,57 @@ function useSyncWorkspaceActiveBrowser(input: {
   }, [focusedBrowserId, input.workspaceId]);
 }
 
+/**
+ * Every omp_* panel's fallback text is one label field lookup — extracted so
+ * `getFallbackTabOptionLabel`/`getFallbackTabOptionDescription` don't each
+ * carry a branch per omp_* kind, bounding complexity as more Phase 10
+ * screens land (same reasoning as `identity.ts`'s `ompPanelTargetsEqual`).
+ * Callers narrow via the shared `isOmpPanelTarget` guard (`identity.ts`)
+ * first, so the switch here is exhaustive and never falls through.
+ */
+type OmpPanelFallbackKind =
+  | "omp_vibe"
+  | "omp_settings"
+  | "omp_keybindings"
+  | "omp_context"
+  | "omp_mcp"
+  | "omp_ssh"
+  | "omp_goal"
+  | "omp_loop";
+
+function getOmpPanelFallbackText(
+  kind: OmpPanelFallbackKind,
+  labels: {
+    vibe: string;
+    settings: string;
+    keybindings: string;
+    context: string;
+    mcp: string;
+    ssh: string;
+    goal: string;
+    loop: string;
+  },
+): string {
+  switch (kind) {
+    case "omp_vibe":
+      return labels.vibe;
+    case "omp_settings":
+      return labels.settings;
+    case "omp_keybindings":
+      return labels.keybindings;
+    case "omp_context":
+      return labels.context;
+    case "omp_mcp":
+      return labels.mcp;
+    case "omp_ssh":
+      return labels.ssh;
+    case "omp_goal":
+      return labels.goal;
+    case "omp_loop":
+      return labels.loop;
+  }
+}
+
 function getFallbackTabOptionLabel(
   tab: WorkspaceTabDescriptor,
   labels: {
@@ -319,6 +374,8 @@ function getFallbackTabOptionLabel(
     context: string;
     mcp: string;
     ssh: string;
+    goal: string;
+    loop: string;
   },
 ): string {
   if (tab.target.kind === "new_tab") {
@@ -351,23 +408,8 @@ function getFallbackTabOptionLabel(
   if (tab.target.kind === "commit_diff") {
     return tab.target.sha.slice(0, 7);
   }
-  if (tab.target.kind === "omp_vibe") {
-    return labels.vibe;
-  }
-  if (tab.target.kind === "omp_settings") {
-    return labels.settings;
-  }
-  if (tab.target.kind === "omp_keybindings") {
-    return labels.keybindings;
-  }
-  if (tab.target.kind === "omp_context") {
-    return labels.context;
-  }
-  if (tab.target.kind === "omp_mcp") {
-    return labels.mcp;
-  }
-  if (tab.target.kind === "omp_ssh") {
-    return labels.ssh;
+  if (isOmpPanelTarget(tab.target)) {
+    return getOmpPanelFallbackText(tab.target.kind, labels);
   }
   return labels.agent;
 }
@@ -390,6 +432,8 @@ function getFallbackTabOptionDescription(
     context: string;
     mcp: string;
     ssh: string;
+    goal: string;
+    loop: string;
   },
 ): string {
   if (tab.target.kind === "new_tab") {
@@ -428,23 +472,8 @@ function getFallbackTabOptionDescription(
   if (tab.target.kind === "plugin") {
     return tab.target.panelId;
   }
-  if (tab.target.kind === "omp_vibe") {
-    return labels.vibe;
-  }
-  if (tab.target.kind === "omp_settings") {
-    return labels.settings;
-  }
-  if (tab.target.kind === "omp_keybindings") {
-    return labels.keybindings;
-  }
-  if (tab.target.kind === "omp_context") {
-    return labels.context;
-  }
-  if (tab.target.kind === "omp_mcp") {
-    return labels.mcp;
-  }
-  if (tab.target.kind === "omp_ssh") {
-    return labels.ssh;
+  if (isOmpPanelTarget(tab.target)) {
+    return getOmpPanelFallbackText(tab.target.kind, labels);
   }
   return tab.target.path;
 }
@@ -656,6 +685,8 @@ function MobileWorkspaceTabOption({
       context: t("panels.ompContext.label"),
       mcp: t("panels.ompMcp.label"),
       ssh: t("panels.ompSsh.label"),
+      goal: t("panels.ompGoal.label"),
+      loop: t("panels.ompLoop.label"),
     }),
     [t],
   );
@@ -2281,6 +2312,8 @@ function WorkspaceScreenContent({
       context: t("panels.ompContext.label"),
       mcp: t("panels.ompMcp.label"),
       ssh: t("panels.ompSsh.label"),
+      goal: t("panels.ompGoal.label"),
+      loop: t("panels.ompLoop.label"),
     }),
     [t],
   );

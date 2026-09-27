@@ -13,6 +13,7 @@ const OMP_PARITY_MESSAGE_TYPES: ReadonlySet<SessionInboundMessage["type"]> = new
   "omp.settings.set.request",
   "omp.modes.get.request",
   "omp.modes.set.request",
+  "omp.goal.action.request",
   "omp.keybindings.get.request",
   "omp.keybindings.set.request",
 ]);
@@ -26,6 +27,7 @@ type OmpParityRequest = Extract<
       | "omp.settings.set.request"
       | "omp.modes.get.request"
       | "omp.modes.set.request"
+      | "omp.goal.action.request"
       | "omp.keybindings.get.request"
       | "omp.keybindings.set.request";
   }
@@ -36,6 +38,7 @@ export interface OmpParitySessionControllerOptions {
     AgentManager,
     | "getOmpModes"
     | "setOmpMode"
+    | "goalAction"
     | "runOmpSlashCommand"
     | "getOmpSettings"
     | "setOmpSetting"
@@ -88,10 +91,11 @@ function mapSlashResult(result: OmpSlashCommandResult): Omit<CommandRunPayload, 
 }
 
 /**
- * Controller dispatching all seven OMP parity requests:
+ * Controller dispatching all eight OMP parity requests:
  * - command execution (`omp.command.run.request`)
  * - settings get/set (`omp.settings.get.request`, `omp.settings.set.request`)
  * - mode control (`omp.modes.get.request`, `omp.modes.set.request`)
+ * - goal actions (`omp.goal.action.request`: pause/resume/drop, bypassing the mode enter/pause/disable cycle)
  * - keybindings get/set (`omp.keybindings.get.request`, `omp.keybindings.set.request`)
  *
  * Mapped error codes:
@@ -158,8 +162,19 @@ export class OmpParitySessionController {
             msg.agentId,
             msg.mode,
             msg.paused,
+            {
+              objective: msg.objective,
+              tokenBudget: msg.tokenBudget,
+              args: msg.args,
+            },
           );
           this.emitResponse("omp.modes.set.response", msg.requestId, { state });
+          return;
+        }
+
+        case "omp.goal.action.request": {
+          const state = await this.options.agentManager.goalAction(msg.agentId, msg.action);
+          this.emitResponse("omp.goal.action.response", msg.requestId, { state });
           return;
         }
 
@@ -192,6 +207,7 @@ export class OmpParitySessionController {
       | "omp.settings.set.response"
       | "omp.modes.get.response"
       | "omp.modes.set.response"
+      | "omp.goal.action.response"
       | "omp.keybindings.get.response"
       | "omp.keybindings.set.response",
     requestId: string,
@@ -219,6 +235,7 @@ export class OmpParitySessionController {
         return "omp_keybinding_failed";
       case "omp.modes.get.request":
       case "omp.modes.set.request":
+      case "omp.goal.action.request":
         return "omp_mode_conflict";
     }
   }

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import {
   ompModesQueryKey,
   ompSettingsQueryKey,
+  useOmpGoalAction,
   useOmpModeSetter,
   useOmpModes,
   useOmpSettingSetter,
@@ -17,6 +18,7 @@ import {
 interface FakeRpcClient {
   getOmpModes?: Mock;
   setOmpMode?: Mock;
+  goalAction?: Mock;
   getOmpSettings?: Mock;
   setOmpSetting?: Mock;
   runOmpSlashCommand?: Mock;
@@ -164,7 +166,11 @@ describe("useOmpModeSetter", () => {
       expect(response.state.mode).toBe("goal");
     });
 
-    expect(setOmpMode).toHaveBeenCalledWith("agent-1", "goal", undefined);
+    expect(setOmpMode).toHaveBeenCalledWith("agent-1", "goal", undefined, {
+      objective: undefined,
+      tokenBudget: undefined,
+      args: undefined,
+    });
     expect(result.current.setter.error).toBeNull();
     expect(result.current.setter.isPending).toBe(false);
   });
@@ -180,6 +186,82 @@ describe("useOmpModeSetter", () => {
       /omp modes capability unavailable/i,
     );
     expect(setOmpMode).not.toHaveBeenCalled();
+  });
+
+  it("passes objective, tokenBudget, and args through to setOmpMode", async () => {
+    installSession("server-1", { ompModes: true });
+    const setOmpMode = vi.fn(async () => ({
+      requestId: "req-3",
+      state: {
+        mode: "goal",
+        planModeEnabled: false,
+        planModePaused: false,
+        goalModeEnabled: true,
+        goalModePaused: false,
+        loopModeEnabled: false,
+        loopModePaused: false,
+        canEnter: true,
+      },
+      changed: true,
+    }));
+    installClient("server-1", { getOmpModes: vi.fn(), setOmpMode });
+
+    const { result } = renderHook(() => useOmpModeSetter("server-1", "agent-1"), { wrapper });
+
+    await act(async () => {
+      await result.current.setMode({ mode: "goal", objective: "ship it", tokenBudget: 50_000 });
+    });
+
+    expect(setOmpMode).toHaveBeenCalledWith("agent-1", "goal", undefined, {
+      objective: "ship it",
+      tokenBudget: 50_000,
+      args: undefined,
+    });
+  });
+});
+
+describe("useOmpGoalAction", () => {
+  it("calls goalAction and invalidates the modes query", async () => {
+    installSession("server-1", { ompModes: true });
+    const goalAction = vi.fn(async () => ({
+      requestId: "req-4",
+      state: {
+        mode: "goal_paused",
+        planModeEnabled: false,
+        planModePaused: false,
+        goalModeEnabled: false,
+        goalModePaused: true,
+        loopModeEnabled: false,
+        loopModePaused: false,
+        canEnter: true,
+      },
+    }));
+    installClient("server-1", { getOmpModes: vi.fn(), goalAction });
+
+    const { result } = renderHook(() => useOmpGoalAction("server-1", "agent-1"), { wrapper });
+
+    let response: Awaited<ReturnType<typeof result.current.goalAction>> | undefined;
+    await act(async () => {
+      response = await result.current.goalAction("pause");
+    });
+
+    expect(goalAction).toHaveBeenCalledWith("agent-1", "pause");
+    expect(response?.state.mode).toBe("goal_paused");
+    expect(result.current.error).toBeNull();
+    expect(result.current.isPending).toBe(false);
+  });
+
+  it("refuses to call when the OMP modes feature is not advertised", async () => {
+    installSession("server-1", { ompModes: false });
+    const goalAction = vi.fn();
+    installClient("server-1", { getOmpModes: vi.fn(), goalAction });
+
+    const { result } = renderHook(() => useOmpGoalAction("server-1", "agent-1"), { wrapper });
+
+    await expect(result.current.goalAction("drop")).rejects.toThrow(
+      /omp modes capability unavailable/i,
+    );
+    expect(goalAction).not.toHaveBeenCalled();
   });
 });
 

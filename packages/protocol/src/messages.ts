@@ -1961,6 +1961,16 @@ export const OmpSetModeRequestSchema = z.object({
   agentId: z.string(),
   mode: z.enum(["plan", "goal", "loop"]),
   paused: z.boolean().optional(),
+  objective: z.string().optional(),
+  tokenBudget: z.number().optional(),
+  args: z.string().optional(),
+  requestId: z.string(),
+});
+
+export const OmpGoalActionRequestSchema = z.object({
+  type: z.literal("omp.goal.action.request"),
+  agentId: z.string(),
+  action: z.enum(["pause", "resume", "drop"]),
   requestId: z.string(),
 });
 
@@ -3579,6 +3589,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   OmpVibeKillRequestSchema,
   OmpGetModesRequestSchema,
   OmpSetModeRequestSchema,
+  OmpGoalActionRequestSchema,
   OmpCommandRunRequestSchema,
   OmpSettingsGetRequestSchema,
   OmpSettingsSetRequestSchema,
@@ -6644,6 +6655,29 @@ export const OmpVibeExitResponseSchema = z.object({
   }),
 });
 
+export const OmpGoalSchema = z.object({
+  id: z.string(),
+  objective: z.string(),
+  status: z.enum(["active", "paused", "budget-limited", "complete", "dropped"]),
+  tokenBudget: z.number().optional(),
+  tokensUsed: z.number(),
+  timeUsedSeconds: z.number(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+
+export const OmpLoopStateSchema = z.object({
+  state: z.enum(["running", "paused"]),
+  limit: z
+    .union([
+      z.object({ kind: z.literal("iterations"), initial: z.number(), remaining: z.number() }),
+      z.object({ kind: z.literal("duration"), durationMs: z.number(), deadlineMs: z.number() }),
+    ])
+    .optional(),
+  condition: z.object({ command: z.string(), until: z.boolean() }).optional(),
+  prompt: z.string().optional(),
+});
+
 export const OmpModesStateSchema = z.object({
   mode: z.enum(["none", "plan", "plan_paused", "goal", "goal_paused", "loop"]),
   planModeEnabled: z.boolean(),
@@ -6653,6 +6687,8 @@ export const OmpModesStateSchema = z.object({
   loopModeEnabled: z.boolean(),
   loopModePaused: z.boolean(),
   planFilePath: z.string().optional(),
+  goal: OmpGoalSchema.nullable().optional(),
+  loop: OmpLoopStateSchema.nullable().optional(),
   canEnter: z.boolean(),
   blockedReason: z.string().optional(),
 });
@@ -6670,6 +6706,14 @@ export const OmpSetModeResponseSchema = z.object({
   payload: z.object({
     requestId: z.string(),
     state: OmpModesStateSchema.extend({ changed: z.boolean() }),
+  }),
+});
+
+export const OmpGoalActionResponseSchema = z.object({
+  type: z.literal("omp.goal.action.response"),
+  payload: z.object({
+    requestId: z.string(),
+    state: OmpModesStateSchema,
   }),
 });
 
@@ -7614,6 +7658,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   OmpVibeKillResponseSchema,
   OmpGetModesResponseSchema,
   OmpSetModeResponseSchema,
+  OmpGoalActionResponseSchema,
   OmpCommandRunResponseSchema,
   OmpSettingsGetResponseSchema,
   OmpSettingsSetResponseSchema,
@@ -7855,9 +7900,13 @@ export type OmpVibeWaitResponse = z.infer<typeof OmpVibeWaitResponseSchema>;
 export type OmpVibeKillRequest = z.infer<typeof OmpVibeKillRequestSchema>;
 export type OmpGetModesRequest = z.infer<typeof OmpGetModesRequestSchema>;
 export type OmpSetModeRequest = z.infer<typeof OmpSetModeRequestSchema>;
+export type OmpGoalActionRequest = z.infer<typeof OmpGoalActionRequestSchema>;
+export type OmpGoal = z.infer<typeof OmpGoalSchema>;
+export type OmpLoopState = z.infer<typeof OmpLoopStateSchema>;
 export type OmpModesState = z.infer<typeof OmpModesStateSchema>;
 export type OmpGetModesResponse = z.infer<typeof OmpGetModesResponseSchema>;
 export type OmpSetModeResponse = z.infer<typeof OmpSetModeResponseSchema>;
+export type OmpGoalActionResponse = z.infer<typeof OmpGoalActionResponseSchema>;
 export type OmpVibeKillResponse = z.infer<typeof OmpVibeKillResponseSchema>;
 export type OmpCommandRunRequest = z.infer<typeof OmpCommandRunRequestSchema>;
 export type OmpCommandRunResponse = z.infer<typeof OmpCommandRunResponseSchema>;

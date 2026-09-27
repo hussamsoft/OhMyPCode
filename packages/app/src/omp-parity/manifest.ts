@@ -6325,10 +6325,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:goal",
     surface: "slash",
     name: "goal",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "omp_goal",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "handleTui-only (no handle), so not reachable via omp.command.run like /context, /mcp, /ssh. Added dedicated omp.modes.set.request (objective/tokenBudget, for entering) and omp.goal.action.request (pause/resume/drop, for acting on an active/paused goal) RPC commands instead; the desktop app's omp_goal panel drives both. Reactivating goal mode through the mode-set toggle starts a fresh goal (OMP's own set_mode semantics), so pause/resume/drop always go through the dedicated goal_action command, never the toggle",
   },
   {
     id: "slash:guided-goal",
@@ -6421,10 +6421,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:loop",
     surface: "slash",
     name: "loop",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "omp_loop",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "handleTui-only (no handle), so not reachable via omp.command.run like /context, /mcp, /ssh. set_mode's loop entry now accepts a raw args string (parsed server-side by the same parseLoopArgs the TUI uses), and toggles off with no args when already enabled; the desktop app's omp_loop panel drives both",
   },
   {
     id: "slash:marketplace",

@@ -297,10 +297,25 @@ class OmpCliRuntimeSession implements OmpRuntimeSession {
     return OmpModesResultSchema.parse(await this.request({ type: "get_modes" }));
   }
 
-  async setMode(mode: "plan" | "goal" | "loop", paused?: boolean): Promise<OmpSetModeResult> {
+  async setMode(
+    mode: "plan" | "goal" | "loop",
+    paused?: boolean,
+    options?: { objective?: string; tokenBudget?: number; args?: string },
+  ): Promise<OmpSetModeResult> {
     return OmpSetModeResultSchema.parse(
-      await this.request({ type: "set_mode", mode, ...(paused === undefined ? {} : { paused }) }),
+      await this.request({
+        type: "set_mode",
+        mode,
+        ...(paused === undefined ? {} : { paused }),
+        ...(options?.objective === undefined ? {} : { objective: options.objective }),
+        ...(options?.tokenBudget === undefined ? {} : { tokenBudget: options.tokenBudget }),
+        ...(options?.args === undefined ? {} : { args: options.args }),
+      }),
     );
+  }
+
+  async goalAction(action: "pause" | "resume" | "drop"): Promise<OmpModesResult> {
+    return OmpModesResultSchema.parse(await this.request({ type: "goal_action", action }));
   }
 
   async runSlashCommand(command: string, args?: string): Promise<OmpSlashCommandResult> {
