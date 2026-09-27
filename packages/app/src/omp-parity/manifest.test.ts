@@ -34,6 +34,7 @@ const VALID_PROTOCOL_CAPABILITIES = new Set(
 // Valid GUI homes that exist in the codebase today
 const VALID_GUI_HOMES = new Set([
   "terminal:omp-tui",
+  "slash-palette",
   "omp-tools-control",
   "omp_vibe",
   "omp_settings",

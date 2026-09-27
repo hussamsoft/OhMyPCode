@@ -6163,10 +6163,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:compact",
     surface: "slash",
     name: "compact",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /compact in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "slash:computer",
@@ -6226,10 +6226,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:dump",
     surface: "slash",
     name: "dump",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /dump in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "slash:exit",
@@ -6244,10 +6244,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:export",
     surface: "slash",
     name: "export",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /export in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "slash:extended-context",
@@ -6307,10 +6307,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:fresh",
     surface: "slash",
     name: "fresh",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /fresh in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "slash:git",
@@ -6343,10 +6343,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:handoff",
     surface: "slash",
     name: "handoff",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /handoff in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "slash:hotkeys",
@@ -6369,10 +6369,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:jobs",
     surface: "slash",
     name: "jobs",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /jobs in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "slash:join",
@@ -6448,10 +6448,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:memory",
     surface: "slash",
     name: "memory",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /memory in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "slash:model",
@@ -6664,10 +6664,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:retry",
     surface: "slash",
     name: "retry",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /retry in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "slash:rewind",
@@ -6682,10 +6682,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:security",
     surface: "slash",
     name: "security",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /security in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "slash:session",
@@ -6717,10 +6717,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:shake",
     surface: "slash",
     name: "shake",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /shake in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "slash:share",
@@ -6804,10 +6804,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:todo",
     surface: "slash",
     name: "todo",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /todo in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "slash:tools",
