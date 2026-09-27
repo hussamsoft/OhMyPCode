@@ -1776,7 +1776,9 @@ export const ListAvailableProvidersRequestMessageSchema = z.object({
 export const GetProvidersSnapshotRequestMessageSchema = z.object({
   type: z.literal("get_providers_snapshot_request"),
   cwd: z.string().optional(),
-  // COMPAT(compactProviderSnapshots): old daemons ignore this field and return a full snapshot.
+  // COMPAT(compactProviderSnapshots): added in v0.2.0; old daemons ignore
+  // this field and return a full snapshot. Remove after 2027-02-12 once
+  // the supported daemon floor is >= v0.2.0.
   ifNoneMatch: z.string().optional(),
   requestId: z.string(),
 });
@@ -4444,17 +4446,18 @@ export const WorkspaceDescriptorPayloadSchema = z
       .optional(),
     scripts: z.array(WorkspaceScriptPayloadSchema).default([]),
     gitRuntime: WorkspaceGitRuntimePayloadSchema,
-    // COMPAT(githubRuntimeName): legacy wire-field name now carries
-    // forge-neutral runtime data. Introduce and migrate to a neutral
-    // forgeRuntime field before consumers stop using this name. Target cleanup
-    // after 2027-01-17 once the supported client floor is >= v0.2.0.
+    // COMPAT(githubRuntimeName): added in v0.2.0; legacy wire-field name
+    // now carries forge-neutral runtime data. Introduce and migrate to a
+    // neutral forgeRuntime field before consumers stop using this name. Target
+    // cleanup after 2027-01-17 once the supported client floor is >= v0.2.0.
     githubRuntime: WorkspaceGitHubRuntimePayloadSchema,
     // COMPAT(forge): added in v0.2.0-beta.1. Treat an absent forge as GitHub
     // until 2027-01-17; remove the consumer fallback once the supported daemon
     // floor is >= v0.2.0.
     forge: z.string().optional(),
     project: ProjectPlacementPayloadSchema.optional(),
-    // COMPAT(directorySync): sequence of this latest directory projection.
+    // COMPAT(directorySync): added in v0.3.x, remove optional after 2027-02-12.
+    // Sequence of the latest directory projection (see directorySync RPC).
     syncSeq: z.number().int().positive().optional(),
   })
   .transform((workspace) => ({
@@ -4534,7 +4537,8 @@ const AgentDirectoryResponseEntrySchema = z.object({
   searchScore: z.number().optional(),
   // Legacy server-generated highlights. Current clients highlight displayed text locally.
   searchMatches: z.array(AgentSearchMatchSchema).optional(),
-  // COMPAT(directorySync): sequence of this latest directory projection.
+  // COMPAT(directorySync): added in v0.3.x, remove optional after 2027-02-12.
+  // Sequence of the latest directory projection (see directorySync RPC).
   syncSeq: z.number().int().positive().optional(),
 });
 
@@ -4601,7 +4605,8 @@ export const WorkspaceProjectDescriptorPayloadSchema = z.object({
   projectIconRevision: z.string().optional(),
   projectRootPath: z.string(),
   projectKind: z.enum(["git", "non_git", "directory"]),
-  // COMPAT(directorySync): sequence of this latest directory projection.
+  // COMPAT(directorySync): added in v0.3.x, remove optional after 2027-02-12.
+  // Sequence of the latest directory projection (see directorySync RPC).
   syncSeq: z.number().int().positive().optional(),
 });
 
@@ -5998,7 +6003,8 @@ const CheckoutPipelineStageSchema = z.object({
 const CheckoutPipelineSchema = z.object({
   id: z.number(),
   status: z.string(),
-  // COMPAT(pipelineRawStatus): see CheckoutPipelineJobSchema.rawStatus.
+  // COMPAT(pipelineRawStatus): peers <= v0.2.0-rc.1 validate rawStatus as
+  // required; see CheckoutPipelineJobSchema.rawStatus for the full lifecycle.
   rawStatus: z.string().optional(),
   url: z.string().nullable().optional().default(null),
   ref: z.string().nullable().optional().default(null),

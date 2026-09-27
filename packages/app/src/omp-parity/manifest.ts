@@ -6183,7 +6183,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_context",
     reason:
-      "Reachable via the headless omp.command.run RPC (real handle, not handleTui-only); the desktop app runs it and shows the pre-formatted text report in the omp_context panel",
+      "Reachable via the headless omp.command.run RPC (real handle, not handleTui-only); the desktop app runs it and shows the pre-formatted text report in the omp_context panel. Capability-gated on the ompContext panel's `supportsOmpSlashCommands` form gate, which checks `supportsOmpSlashCommands` before any /context run is dispatched.",
   },
   {
     id: "slash:copy",
@@ -6327,7 +6327,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_goal",
     reason:
-      "handleTui-only (no handle), so not reachable via omp.command.run like /context, /mcp, /ssh. Added dedicated omp.modes.set.request (objective/tokenBudget, for entering) and omp.goal.action.request (pause/resume/drop, for acting on an active/paused goal) RPC commands instead; the desktop app's omp_goal panel drives both. Reactivating goal mode through the mode-set toggle starts a fresh goal (OMP's own set_mode semantics), so pause/resume/drop always go through the dedicated goal_action command, never the toggle",
+      "handleTui-only (no handle), so not reachable via omp.command.run like /context, /mcp, /ssh. Added dedicated omp.modes.set.request (objective/tokenBudget, for entering) and omp.goal.action.request (pause/resume/drop, for acting on an active/paused goal) RPC commands instead; the desktop app's omp_goal panel drives both. Reactivating goal mode through the mode-set toggle starts a fresh goal (OMP's own set_mode semantics), so pause/resume/drop always go through the dedicated goal_action command, never the toggle. Capability gate: the omp_goal panel checks `supportsOmpModes` (and `supportsOmpSlashCommands` for the in-panel /goal quick-verb) before any RPC is dispatched.",
   },
   {
     id: "slash:guided-goal",
@@ -6423,7 +6423,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_loop",
     reason:
-      "handleTui-only (no handle), so not reachable via omp.command.run like /context, /mcp, /ssh. set_mode's loop entry now accepts a raw args string (parsed server-side by the same parseLoopArgs the TUI uses), and toggles off with no args when already enabled; the desktop app's omp_loop panel drives both",
+      "handleTui-only (no handle), so not reachable via omp.command.run like /context, /mcp, /ssh. set_mode's loop entry now accepts a raw args string (parsed server-side by the same parseLoopArgs the TUI uses), and toggles off with no args when already enabled; the desktop app's omp_loop panel drives both. Capability gate: the omp_loop panel checks `supportsOmpModes` before any RPC is dispatched (and `supportsOmpSlashCommands` for the in-panel /loop quick-verb).",
   },
   {
     id: "slash:marketplace",
@@ -6441,7 +6441,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_mcp",
     reason:
-      "Reachable via the headless omp.command.run RPC (handle: handleMcpAcp covers list/enable/disable/remove/reload/resources/prompts/test/add/smithery-search); the desktop app's omp_mcp console runs subcommands and shows the text output. Five OAuth/browser-flow verbs (reauth, unauth, smithery-login, smithery-logout, reconnect) are rejected server-side with a clear message and stay TUI-only",
+      "Reachable via the headless omp.command.run RPC (handle: handleMcpAcp covers list/enable/disable/remove/reload/resources/prompts/test/add/smithery-search); the desktop app's omp_mcp console runs subcommands and shows the text output. Five OAuth/browser-flow verbs (reauth, unauth, smithery-login, smithery-logout, reconnect) are rejected server-side with a clear message and stay TUI-only. Capability gate: the omp_mcp form checks `supported` from `useOmpSlashCommand` (which surfaces `supportsOmpSlashCommands`) before any run.",
   },
   {
     id: "slash:memory",
@@ -6558,7 +6558,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_plugins",
     reason:
-      "Headless `handle` in fork `slash-commands/builtin-marketplace.ts` (`list`/`enable <name@marketplace> --scope user|project`/`disable <name@marketplace> --scope user|project`); runs through the plain `omp.command.run` RPC and is surfaced in the `omp_plugins` desktop panel.",
+      "Headless `handle` in fork `slash-commands/builtin-marketplace.ts` (`list`/`enable <name@marketplace> --scope user|project`/`disable <name@marketplace> --scope user|project`); runs through the plain `omp.command.run` RPC and is surfaced in the `omp_plugins` desktop panel. Capability gate: the omp_plugins form checks `supported` from `useOmpSlashCommand` (which surfaces `supportsOmpSlashCommands`) before any run.",
   },
   {
     id: "slash:prewalk",
@@ -6639,7 +6639,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "rename-modal",
     reason:
-      "The desktop app's existing tab-rename modal calls client.updateAgent for the app-level label, then also fires omp.command.run(\"rename\", ...) to keep OMP's own session title in sync (use-workspace-tab-rename.tsx)",
+      "The desktop app's existing tab-rename modal calls client.updateAgent for the app-level label, then also fires omp.command.run(\"rename\", ...) to keep OMP's own session title in sync (use-workspace-tab-rename.tsx). Capability gate: shouldSyncRenameToOmp gates the /rename dispatch on the agent's `ompSlashCommands` capability flag -- if the OMP build lacks slash-command support, only the app-level label updates.",
   },
   {
     id: "slash:restart",
@@ -6736,7 +6736,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_skills",
     reason:
-      "Headless `handle` in fork `slash-commands/builtin-modes.ts` (`status`/`on`/`off`/toggle); runs through the plain `omp.command.run` RPC and is surfaced in the `omp_skills` desktop panel.",
+      "Headless `handle` in fork `slash-commands/builtin-modes.ts` (`status`/`on`/`off`/toggle); runs through the plain `omp.command.run` RPC and is surfaced in the `omp_skills` desktop panel. Capability gate: the omp_skills form checks `supported` from `useOmpSlashCommand` (which surfaces `supportsOmpSlashCommands`) before any run; the persisted-default line is gated on the `ompSettings` capability via `useOmpSettings`.",
   },
   {
     id: "slash:skills",
@@ -6763,7 +6763,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_ssh",
     reason:
-      "Reachable via the headless omp.command.run RPC (handle: handleSshAcp covers list/add/remove); the desktop app's omp_ssh console runs subcommands and shows the text output. Distinct from OMP's standalone `omp ssh` CLI subcommand (see subcommand:ssh), which is a separate, session-less codepath and stays TUI-only",
+      "Reachable via the headless omp.command.run RPC (handle: handleSshAcp covers list/add/remove); the desktop app's omp_ssh console runs subcommands and shows the text output. Distinct from OMP's standalone `omp ssh` CLI subcommand (see subcommand:ssh), which is a separate, session-less codepath and stays TUI-only. Capability gate: the omp_ssh form checks `supported` from `useOmpSlashCommand` (which surfaces `supportsOmpSlashCommands`) before any run.",
   },
   {
     id: "slash:stats",

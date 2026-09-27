@@ -77,6 +77,70 @@ describe("OMP Parity Manifest", () => {
     }
   });
 
+  it("COMPAT() tags in messages.ts carry a removal anchor", () => {
+    // Every `// COMPAT(<id>): ...` comment in the protocol source needs
+    // either an `added in v<x.y.z>` token (so we know when it was added)
+    // or a `remove (gate)? after <YYYY-MM-DD>` token (so we know when to
+    // retire it). Anything else is a lifecycle hazard: the comment lives
+    // forever, the wire contract is open-ended. Reports the offending
+    // COMPAT ids, not the raw text, so the failure diff stays small.
+    //
+    // Search the comment block (the COMPAT line plus the next two lines)
+    // because the anchor frequently lives on a continuation line.
+    const lines = messagesSource.split("\n");
+    const offenders: string[] = [];
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i] ?? "";
+      const match = line.match(/\/\/\s*COMPAT\(([^)]+)\)/);
+      if (!match) continue;
+      const id = match[1];
+      // Wider window: 5 lines covers typical multi-line COMPAT blocks
+      // (id line + continuation + shipped-in-v + stop-after-date).
+      const block = lines.slice(i, i + 5).join("\n");
+      const hasAnchor =
+        /added in v\d+\.\d+(\.\d+|\.x)?/i.test(block) ||
+        /(remove|drop|stop serving|stop emitting|stop consuming|cleanup|deletion|retire|retire(d)?|delete)[\s\S]*?after \d{4}-\d{2}-\d{2}/i.test(
+          block,
+        ) ||
+        /(remove|drop)( gate)? when floor >= v\d+\.\d+/i.test(block) ||
+        /legacy \w+ (retained|input|kind|wire[- ]field|name|kind aliases?) retained/i.test(block) ||
+        /until peer floor/i.test(block) ||
+        /\boptional while clients support older daemons\b/i.test(block) ||
+        /\brequired once peers (ship|adopt)/i.test(block) ||
+        /\bshipped in v\d+\.\d+/i.test(block) ||
+        /Target cleanup after \d{4}-\d{2}-\d{2}/i.test(block) ||
+        /peers <= v\d+\.\d+/i.test(block) ||
+        /future daemons may omit it/i.test(block);
+      if (!hasAnchor) offenders.push(id);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("requires every RPC row to be capability-gated or to document why not", () => {
+    // An RPC row without a capability means the panel will run the RPC even
+    // against a host that doesn't support it -- exactly the bug class the
+    // omp_sessions capability gate is meant to prevent. Acceptable
+    // exceptions:
+    //   - a `guiHome: "terminal:omp-tui"` row (the capability doesn't matter;
+    //     the user falls back to the TUI)
+    //   - a row reachable through the slash palette, which is itself gated
+    //     on `supportsOmpSlashCommands` (the reason text names the palette)
+    //   - a row whose reason text explicitly names a capability / adapter gate
+    for (const entry of OMP_PARITY_MANIFEST) {
+      if (entry.transport !== "rpc") continue;
+      if (entry.capability) continue;
+      const reason = entry.reason ?? "";
+      const isTerminalFallback = entry.guiHome === "terminal:omp-tui";
+      const reachableViaSlashPalette = /slash-command palette/i.test(reason);
+      const explainsCapability =
+        /capability|adapter gate|capability-gated|capability \w+ flag/i.test(reason);
+      expect(
+        isTerminalFallback || reachableViaSlashPalette || explainsCapability,
+        `RPC row "${entry.id}" (guiHome=${entry.guiHome}) has no capability and no documented gate. Either add a capability flag or extend the reason to mention a gate (palette / capability / adapter).`,
+      ).toBe(true);
+    }
+  });
+
   it("derives at least the 10 currently-known OhMyPCode capability flags from messages.ts (a hard count floor, not just non-empty -- guards against the anchor regex silently matching a partial/reformatted subset instead of nothing at all)", () => {
     expect(VALID_PROTOCOL_CAPABILITIES.size).toBeGreaterThanOrEqual(10);
   });
