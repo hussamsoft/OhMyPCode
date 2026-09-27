@@ -4,6 +4,8 @@ import { useSessionStore } from "@/stores/session-store";
 export interface OmpCapabilityState {
   canUseVibe: boolean;
   canSelectTools: boolean;
+  canUseModes: boolean;
+  canUseSettings: boolean;
 }
 
 export function selectOmpCapabilityState(input: {
@@ -12,12 +14,16 @@ export function selectOmpCapabilityState(input: {
   supportsOmpToolSelection: boolean | undefined;
   serverSupportsVibe: boolean | undefined;
   serverSupportsTools: boolean | undefined;
+  serverSupportsModes: boolean | undefined;
+  serverSupportsSettings: boolean | undefined;
 }): OmpCapabilityState {
   const isOmp = input.provider === "omp";
   const hasServerFeatures = input.serverSupportsVibe === true && input.serverSupportsTools === true;
   return {
     canUseVibe: isOmp && hasServerFeatures && input.supportsOmpVibe === true,
     canSelectTools: isOmp && hasServerFeatures && input.supportsOmpToolSelection === true,
+    canUseModes: isOmp && input.serverSupportsModes === true,
+    canUseSettings: isOmp && input.serverSupportsSettings === true,
   };
 }
 
@@ -35,6 +41,8 @@ export function useOmpCapabilities(
         supportsOmpToolSelection: agent?.capabilities.supportsOmpToolSelection,
         serverSupportsVibe: session?.serverInfo?.features?.ompVibe,
         serverSupportsTools: session?.serverInfo?.features?.ompToolSelection,
+        serverSupportsModes: session?.serverInfo?.features?.ompModes,
+        serverSupportsSettings: session?.serverInfo?.features?.ompSettings,
       });
     }),
   );

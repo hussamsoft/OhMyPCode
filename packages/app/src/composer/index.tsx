@@ -115,6 +115,7 @@ import { createMessageSubmissionWriter } from "@/composer/submission/writer";
 import { ComposerKeyboardScopeProvider, useComposerKeyboardScope } from "@/composer/keyboard-scope";
 import { useAppSettings } from "@/hooks/use-settings";
 import { useOmpSlashCommand } from "@/composer/omp-control-deck/use-omp-rpc";
+import { useOmpCapabilities } from "@/hooks/use-omp-capabilities";
 import { openOmpVibeTarget } from "@/workspace-tabs/open-omp-vibe-target";
 import type { OmpCommandRunPayload } from "@ohmypcode/client/internal/daemon-client";
 import type { ToastApi } from "@/components/toast-host";
@@ -2310,6 +2311,12 @@ function ComposerContentImpl({
     [attachments, setSelectedAttachments, setGithubSearchQuery, setIsGithubPickerOpen],
   );
 
+  const ompComposerCapabilities = useOmpCapabilities(serverId, agentId);
+  const hasUsableOmpDeck =
+    ompComposerCapabilities.canUseModes ||
+    ompComposerCapabilities.canUseSettings ||
+    ompComposerCapabilities.canUseVibe ||
+    ompComposerCapabilities.canSelectTools;
   const leftContent = useMemo(
     () =>
       renderLeftContent({
@@ -2319,13 +2326,22 @@ function ComposerContentImpl({
         focusInput,
         isCompactLayout,
         showAgentControls: mode.showAgentControls,
-        isOmpProvider: agentState.provider === "omp",
+        // Gate on an actually-usable OMP deck capability, not just the
+        // provider string: an OMP session whose runtime doesn't advertise
+        // any of modes/settings/vibe/tools would otherwise render the deck
+        // with controls that either throw on interaction (mode segments) or
+        // silently misreport (the access chip falls back to displaying
+        // "yolo" as if it were the confirmed current value when settings
+        // are unavailable). Falling back to the legacy AgentControls keeps
+        // the composer working instead of visibly-present-but-broken.
+        isOmpProvider: agentState.provider === "omp" && hasUsableOmpDeck,
       }),
     [
       agentControls,
       agentId,
       agentState.provider,
       focusInput,
+      hasUsableOmpDeck,
       isCompactLayout,
       mode.showAgentControls,
       serverId,
