@@ -179,7 +179,8 @@ export type OmpParityErrorCode =
   | "omp_command_failed"
   | "omp_setting_failed"
   | "omp_keybinding_failed"
-  | "omp_goal_action_failed";
+  | "omp_goal_action_failed"
+  | "omp_session_switch_failed";
 
 export class AgentManagerOmpParityError extends Error {
   constructor(
@@ -199,6 +200,7 @@ const OMP_PARITY_ERROR_CODES: ReadonlySet<string> = new Set<OmpParityErrorCode>(
   "omp_setting_failed",
   "omp_keybinding_failed",
   "omp_goal_action_failed",
+  "omp_session_switch_failed",
 ]);
 
 export function isOmpParityErrorCode(value: unknown): value is OmpParityErrorCode {
@@ -1380,6 +1382,22 @@ export class AgentManager {
     const result = await this.requireOmpModeSession(agentId).goalAction(action);
     this.applyOmpModesResult(agentId, result);
     return result;
+  }
+
+  /**
+   * In-place session switch for an OMP agent. Re-binds the live agent's
+   * runtime session to `sessionPath` (an absolute OMP `.jsonl` file) -- the
+   * runtime returns `true` on success and `false` if a `session_before_switch`
+   * extension hook cancels, which the protocol surfaces as `{ cancelled: true }`.
+   * Distinct from `importProviderSession`, which spawns a *new* agent over the
+   * same session file. Mirrors the OMP CLI's `/switch` slash command and the
+   * fork's `switch_session` RPC command (see `vendor/oh-my-pi/packages/coding-agent/src/modes/rpc/rpc-mode.ts`).
+   */
+  async switchOmpAgentSession(
+    agentId: string,
+    sessionPath: string,
+  ): Promise<{ cancelled: boolean }> {
+    return await this.requireOmpModeSession(agentId).switchOmpSession(sessionPath);
   }
 
   private applyOmpModesResult(agentId: string, result: OmpModesResult): void {

@@ -241,6 +241,7 @@ export interface AgentCapabilityFlags {
   supportsOmpSettings?: boolean;
   supportsOmpModes?: boolean;
   supportsOmpKeybindings?: boolean;
+  supportsOmpSessionSwitch?: boolean;
 }
 
 export interface AgentPersistenceHandle {
@@ -622,6 +623,13 @@ export interface ListImportableSessionsOptions {
 
 export interface ImportableProviderSession {
   providerHandleId: string;
+  /**
+   * Absolute path to the on-disk session file when the provider exposes one
+   * (today: OMP). Opaque to non-provider callers -- only providers with a
+   * concrete file artifact expose it, and consumers should fall back to
+   * `providerHandleId` when this is undefined.
+   */
+  filePath?: string;
   cwd: string;
   title: string | null;
   firstPromptPreview: string | null;
@@ -791,6 +799,17 @@ export interface OmpParitySession {
   setSetting(path: string, value: unknown): Promise<OmpSetSettingResult>;
   getKeybindings(): Promise<OmpKeybindingsResult>;
   setKeybinding(id: string, keys: string): Promise<OmpSetKeybindingResult>;
+  /**
+   * In-place switch of the live agent's runtime session to `sessionPath`.
+   * Returns `{ cancelled: true }` when the runtime's switch is rolled back
+   * (extension `session_before_switch` hook, or cwd-change refusal) and
+   * `{ cancelled: false }` after the runtime adopted the target session and
+   * the host has dispatched its `timeline_replacement` to clients. The
+   * caller is responsible for the timeline rewind + persistence
+   * bookkeeping on the success path; the runtime itself only mutates the
+   * in-memory agent.
+   */
+  switchOmpSession(sessionPath: string): Promise<{ cancelled: boolean }>;
 }
 export type OmpModeSession = OmpParitySession;
 

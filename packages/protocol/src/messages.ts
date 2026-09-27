@@ -893,6 +893,12 @@ export const RecentProviderSessionDescriptorPayloadSchema = z.object({
   providerId: z.string(),
   providerLabel: z.string(),
   providerHandleId: z.string(),
+  /**
+   * On-disk session file path when the provider exposes one (OMP today).
+   * Opaque to non-provider consumers; absent for providers that don't store
+   * sessions as a file artifact (e.g. hosted Codex threads).
+   */
+  filePath: z.string().optional(),
   cwd: z.string(),
   title: z.string().nullable(),
   firstPromptPreview: z.string().nullable(),
@@ -2008,6 +2014,42 @@ export const OmpKeybindingsSetRequestSchema = z.object({
   id: z.string(),
   keys: z.string(),
   requestId: z.string(),
+});
+
+/**
+ * In-place session switch over the existing agent: drop the runtime's
+ * current session and adopt the contents of `sessionPath` (an absolute
+ * `.jsonl` file on the same OMP filesystem). Distinct from `import_agent`
+ * which spawns a fresh agent — this re-binds the *same* agent's runtime
+ * session, exactly like the OMP CLI's `/switch` slash command and the
+ * `switch_session` RPC command in the fork's `modes/rpc/rpc-mode.ts`.
+ *
+ * Backed by the runtime's `AgentSession.switchSession(sessionPath)` which
+ * returns `{ cancelled: boolean }` (cancellation comes from the
+ * `session_before_switch` extension hook). The desktop surfaces the result
+ * through the `omp_sessions` panel's "Resume here" action.
+ */
+export const OmpSessionSwitchRequestMessageSchema = z.object({
+  type: z.literal("omp.session.switch.request"),
+  agentId: z.string(),
+  sessionPath: z.string(),
+  requestId: z.string(),
+});
+
+export const OmpSessionSwitchResponseMessageSchema = z.object({
+  type: z.literal("omp.session.switch.response"),
+  payload: z.object({
+    requestId: z.string(),
+    /**
+     * `true` if the switch was rolled back by a `session_before_switch`
+     * extension hook or by a refusal to change cwd (the fork's runtime
+     * surfaces both as a `{ cancelled: true }` result from
+     * `AgentSession.switchSession`). `false` if the runtime adopted the
+     * target session and the host's timeline replacement has been
+     * dispatched.
+     */
+    cancelled: z.boolean(),
+  }),
 });
 
 export const OmpStatisticsRequestMessageSchema = z.object({
@@ -3595,6 +3637,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   OmpSettingsSetRequestSchema,
   OmpKeybindingsGetRequestSchema,
   OmpKeybindingsSetRequestSchema,
+  OmpSessionSwitchRequestMessageSchema,
   OmpProvidersListRequestSchema,
   OmpProviderLoginStartRequestSchema,
   OmpProviderLoginRespondRequestSchema,
@@ -3997,6 +4040,10 @@ export const ServerInfoStatusPayloadSchema = z
         ompSettings: z.boolean().optional(),
         ompModes: z.boolean().optional(),
         ompKeybindings: z.boolean().optional(),
+        // Whether the host supports in-place `switch_session` over the wire
+        // (the `omp_sessions` panel). Server capability gates the
+        // omp.session.switch.request RPC.
+        ompSessionSwitch: z.boolean().optional(),
         // Whether this host can launch the OMP CLI (bundled runtime or PATH).
         ompRuntime: z.boolean().optional(),
         // COMPAT(agentDetach): added in v0.1.98, remove gate after 2026-12-19 once daemon floor >= v0.1.98.
@@ -7664,6 +7711,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   OmpSettingsSetResponseSchema,
   OmpKeybindingsGetResponseSchema,
   OmpKeybindingsSetResponseSchema,
+  OmpSessionSwitchResponseMessageSchema,
   OmpCollabHostsListResponseSchema,
   OmpCollabLinkCreateResponseSchema,
   OmpCollabSessionShareResponseSchema,
@@ -7918,6 +7966,8 @@ export type OmpKeybindingsGetRequest = z.infer<typeof OmpKeybindingsGetRequestSc
 export type OmpKeybindingsGetResponse = z.infer<typeof OmpKeybindingsGetResponseSchema>;
 export type OmpKeybindingsSetRequest = z.infer<typeof OmpKeybindingsSetRequestSchema>;
 export type OmpKeybindingsSetResponse = z.infer<typeof OmpKeybindingsSetResponseSchema>;
+export type OmpSessionSwitchRequest = z.infer<typeof OmpSessionSwitchRequestMessageSchema>;
+export type OmpSessionSwitchResponse = z.infer<typeof OmpSessionSwitchResponseMessageSchema>;
 export type ChatCreateResponse = z.infer<typeof ChatCreateResponseSchema>;
 export type ChatListResponse = z.infer<typeof ChatListResponseSchema>;
 export type ChatInspectResponse = z.infer<typeof ChatInspectResponseSchema>;

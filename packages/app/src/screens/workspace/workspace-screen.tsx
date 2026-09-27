@@ -324,7 +324,8 @@ type OmpPanelFallbackKind =
   | "omp_loop"
   | "omp_plugins"
   | "omp_skills"
-  | "omp_agents_hub";
+  | "omp_agents_hub"
+  | "omp_sessions";
 
 function getOmpPanelFallbackText(
   kind: OmpPanelFallbackKind,
@@ -340,6 +341,7 @@ function getOmpPanelFallbackText(
     plugins: string;
     skills: string;
     agentsHub: string;
+    sessions: string;
   },
 ): string {
   switch (kind) {
@@ -365,6 +367,8 @@ function getOmpPanelFallbackText(
       return labels.skills;
     case "omp_agents_hub":
       return labels.agentsHub;
+    case "omp_sessions":
+      return labels.sessions;
   }
 }
 
@@ -391,6 +395,7 @@ function getFallbackTabOptionLabel(
     plugins: string;
     skills: string;
     agentsHub: string;
+    sessions: string;
   },
 ): string {
   if (tab.target.kind === "new_tab") {
@@ -452,6 +457,7 @@ function getFallbackTabOptionDescription(
     plugins: string;
     skills: string;
     agentsHub: string;
+    sessions: string;
   },
 ): string {
   if (tab.target.kind === "new_tab") {
@@ -708,6 +714,7 @@ function MobileWorkspaceTabOption({
       plugins: t("panels.ompPlugins.label"),
       skills: t("panels.ompSkills.label"),
       agentsHub: t("panels.ompAgentsHub.label"),
+      sessions: t("panels.ompSessions.label"),
     }),
     [t],
   );
@@ -2338,6 +2345,7 @@ function WorkspaceScreenContent({
       plugins: t("panels.ompPlugins.label"),
       skills: t("panels.ompSkills.label"),
       agentsHub: t("panels.ompAgentsHub.label"),
+      sessions: t("panels.ompSessions.label"),
     }),
     [t],
   );

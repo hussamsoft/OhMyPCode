@@ -112,6 +112,18 @@ export interface OmpRuntimeSession {
   sendHostToolUpdate(update: OmpRpcHostToolUpdate): void;
   branch(entryId: string): Promise<{ text: string }>;
   getBranchMessages(): Promise<Array<{ entryId: string; text: string }>>;
+  /**
+   * In-place session switch (mirrors the fork's `AgentSession.switchSession`).
+   * Returns `true` if the runtime adopted the target session, `false` if
+   * the switch was rolled back by an extension `session_before_switch` hook
+   * or a cwd-change refusal. Optional extension hook signature matches the
+   * fork (collab guest adoption uses `preserveLocalCwd`); the desktop host
+   * never passes options.
+   */
+  switchSession(
+    sessionPath: string,
+    options?: { onCwdChange?: (newCwd: string, previousCwd: string) => Promise<boolean> },
+  ): Promise<boolean>;
   activeBranchEntryId?: string;
   steer(message: string, images?: Array<{ type: "image"; data: string; mimeType: string }>): void;
   followUp(

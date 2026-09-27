@@ -451,6 +451,23 @@ export class OmpHarness {
     await this.requireSession().revertConversation({ messageId });
   }
 
+  async switchOmpSession(sessionPath: string): Promise<{ cancelled: boolean }> {
+    return await this.requireSession().switchOmpSession(sessionPath);
+  }
+
+  async switchOmpSessionCancelled(): Promise<{ cancelled: boolean }> {
+    this.omp.latestSession().switchSessionResponse = false;
+    try {
+      return await this.requireSession().switchOmpSession("ignored");
+    } finally {
+      this.omp.latestSession().switchSessionResponse = true;
+    }
+  }
+
+  switchSessionRequests(): string[] {
+    return this.omp.latestSession().switchSessionRequests;
+  }
+
   branchRequests(): string[] {
     return this.omp.latestSession().branchRequests;
   }

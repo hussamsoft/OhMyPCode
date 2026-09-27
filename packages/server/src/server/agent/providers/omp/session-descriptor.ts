@@ -227,6 +227,7 @@ async function readOmpImportableSession(
 
   return {
     providerHandleId: filePath,
+    filePath,
     cwd: descriptor.cwd,
     title: descriptor.title,
     firstPromptPreview: normalizePromptPreview(descriptor.firstUserMessage),

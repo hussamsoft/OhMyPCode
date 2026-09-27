@@ -23,6 +23,7 @@ import { ompLoopPanelRegistration } from "@/panels/omp-loop-panel";
 import { ompPluginsPanelRegistration } from "@/panels/omp-plugins-panel";
 import { ompSkillsPanelRegistration } from "@/panels/omp-skills-panel";
 import { ompAgentsHubPanelRegistration } from "@/panels/omp-agents-hub-panel";
+import { ompSessionsPanelRegistration } from "@/panels/omp-sessions-panel";
 import { pullRequestPanelRegistration } from "@/panels/pull-request-panel";
 import { pluginPanelRegistration } from "@/plugins/workspace-panels/panel";
 import { newTabPanelRegistration } from "@/panels/new-tab-panel";
@@ -48,6 +49,7 @@ export function ensurePanelsRegistered(): void {
   registerPanel(ompPluginsPanelRegistration);
   registerPanel(ompSkillsPanelRegistration);
   registerPanel(ompAgentsHubPanelRegistration);
+  registerPanel(ompSessionsPanelRegistration);
   registerPanel(setupPanelRegistration);
   registerPanel(terminalPanelRegistration);
   registerPanel(browserPanelRegistration);

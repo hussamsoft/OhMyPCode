@@ -16,6 +16,7 @@ const OMP_PARITY_MESSAGE_TYPES: ReadonlySet<SessionInboundMessage["type"]> = new
   "omp.goal.action.request",
   "omp.keybindings.get.request",
   "omp.keybindings.set.request",
+  "omp.session.switch.request",
 ]);
 
 type OmpParityRequest = Extract<
@@ -29,7 +30,8 @@ type OmpParityRequest = Extract<
       | "omp.modes.set.request"
       | "omp.goal.action.request"
       | "omp.keybindings.get.request"
-      | "omp.keybindings.set.request";
+      | "omp.keybindings.set.request"
+      | "omp.session.switch.request";
   }
 >;
 
@@ -44,6 +46,7 @@ export interface OmpParitySessionControllerOptions {
     | "setOmpSetting"
     | "getOmpKeybindings"
     | "setOmpKeybinding"
+    | "switchOmpAgentSession"
   >;
   emit: (message: SessionOutboundMessage) => void;
   logger: pino.Logger;
@@ -195,6 +198,17 @@ export class OmpParitySessionController {
           });
           return;
         }
+
+        case "omp.session.switch.request": {
+          const result = await this.options.agentManager.switchOmpAgentSession(
+            msg.agentId,
+            msg.sessionPath,
+          );
+          this.emitResponse("omp.session.switch.response", msg.requestId, {
+            cancelled: result.cancelled,
+          });
+          return;
+        }
       }
     } catch (error) {
       this.emitError(msg, error);
@@ -210,7 +224,8 @@ export class OmpParitySessionController {
       | "omp.modes.set.response"
       | "omp.goal.action.response"
       | "omp.keybindings.get.response"
-      | "omp.keybindings.set.response",
+      | "omp.keybindings.set.response"
+      | "omp.session.switch.response",
     requestId: string,
     payload: Record<string, unknown>,
   ): void {
@@ -242,6 +257,11 @@ export class OmpParitySessionController {
         // itself failed" (e.g. resumeGoal() throwing "No paused goal."),
         // not "OMP refused a mode transition because another mode is active".
         return "omp_goal_action_failed";
+      case "omp.session.switch.request":
+        // In-place switch reuses the same parity machinery; a manager-side
+        // failure (file missing, runtime refused, hooks rejected) surfaces
+        // here rather than as a generic `omp_parity_unavailable` bucket.
+        return "omp_session_switch_failed";
     }
   }
 

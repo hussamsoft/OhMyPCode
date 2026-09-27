@@ -35,6 +35,7 @@ import {
   type ImportProviderSessionInput,
   type ListImportableSessionsOptions,
   type ProviderCatalog,
+  type OmpParitySession,
   type OmpVibeSession,
   type ProviderRefreshContext,
   type ToolCallDetail,
@@ -516,6 +517,7 @@ function withOmpCapabilities(): AgentCapabilityFlags {
     supportsOmpSettings: false,
     supportsOmpModes: false,
     supportsOmpKeybindings: false,
+    supportsOmpSessionSwitch: false,
   };
 }
 
@@ -891,7 +893,7 @@ function createRuntime(
   });
 }
 
-export class OmpAgentSession implements AgentSession, OmpVibeSession {
+export class OmpAgentSession implements AgentSession, OmpParitySession, OmpVibeSession {
   readonly provider: AgentProvider = OMP_PROVIDER;
   private supportsOmpVibe = false;
   private supportsOmpToolSelection = false;
@@ -899,6 +901,7 @@ export class OmpAgentSession implements AgentSession, OmpVibeSession {
   private supportsOmpSettings = false;
   private supportsOmpSlashCommands = false;
   private supportsOmpKeybindings = false;
+  private supportsOmpSessionSwitch = false;
   private lastVibeState: VibeStateResult | null = null;
   private lastVibeRevision = -1;
   private lastModesState: OmpModesResult | null = null;
@@ -912,6 +915,7 @@ export class OmpAgentSession implements AgentSession, OmpVibeSession {
       supportsOmpSettings: this.supportsOmpSettings,
       supportsOmpSlashCommands: this.supportsOmpSlashCommands,
       supportsOmpKeybindings: this.supportsOmpKeybindings,
+      supportsOmpSessionSwitch: this.supportsOmpSessionSwitch,
     };
   }
   private readonly subscribers = new Set<(event: AgentStreamEvent) => void>();
@@ -1165,6 +1169,14 @@ export class OmpAgentSession implements AgentSession, OmpVibeSession {
     this.supportsOmpSettings = settings.status === "fulfilled";
     this.supportsOmpSlashCommands = true;
     this.supportsOmpKeybindings = keybindings.status === "fulfilled";
+    // The fork's runtime exposes `switchSession` for the lifetime of this
+    // session; it returns `false` (not throws) when an extension hook
+    // cancels, so the capability is binary on whether the method itself
+    // exists at probe time. If the runtime surface lacks it, the host
+    // treats the panel as unsupported and renders a placeholder rather
+    // than a disabled button.
+    const runtimeRecord = this.runtimeSession as unknown as Record<string, unknown>;
+    this.supportsOmpSessionSwitch = typeof runtimeRecord["switchSession"] === "function";
   }
 
   async listTools(): Promise<AgentToolDefinition[]> {
@@ -1394,8 +1406,51 @@ export class OmpAgentSession implements AgentSession, OmpVibeSession {
       throw new Error("OMP rewind requires a user message id");
     }
     await this.runtimeSession.branch(target);
+    // The manager's `rewind()` flow calls `invokeRewindCapability` and then
+    // performs the timeline-replacement / persistence / state-refresh dance
+    // for the agent (see agent-manager.ts:3556-3602). We do an equivalent
+    // local refresh here so the session is internally consistent even if a
+    // future caller invokes `revertConversation` outside that wrapper --
+    // previously this method left `this.state` stale until the next turn.
     await this.refreshState();
+    void this.refreshModes();
     this.activeToolCalls.clear();
+  }
+
+  /**
+   * In-place switch of the live agent's runtime session to `sessionPath`
+   * (an absolute OMP `.jsonl` file). Mirrors the OMP CLI's `/switch` slash
+   * command and the fork's `switch_session` RPC command; returns
+   * `{ cancelled: true }` when the runtime refuses (e.g. an extension's
+   * `session_before_switch` hook cancels, or cwd mismatch), in which case
+   * the local runtime state is left untouched.
+   *
+   * The manager's `switchOmpAgentSession` wrapper dispatches the host-side
+   * `timeline_replacement` and refreshes persisted state on the success
+   * path; this method only concerns itself with the runtime mutation and
+   * its own cached state.
+   */
+  async switchOmpSession(sessionPath: string): Promise<{ cancelled: boolean }> {
+    const target = sessionPath.trim();
+    if (!target) {
+      throw new Error("OMP session switch requires a session path");
+    }
+    if (this.activeTurnId) {
+      throw new Error("Cannot switch the OMP session while a turn is active");
+    }
+    const runtimeRecord = this.runtimeSession as unknown as Record<string, unknown>;
+    if (typeof runtimeRecord["switchSession"] !== "function") {
+      throw new Error("OMP runtime does not expose switchSession on this build");
+    }
+    const success = await this.runtimeSession.switchSession(target);
+    if (!success) {
+      return { cancelled: true };
+    }
+    this.supportsOmpSessionSwitch = true;
+    await this.refreshState();
+    void this.refreshModes();
+    this.activeToolCalls.clear();
+    return { cancelled: false };
   }
 
   async close(): Promise<void> {
@@ -2680,6 +2735,7 @@ export class OmpAgentClient implements AgentClient {
   private supportsOmpSettings = false;
   private supportsOmpSlashCommands = false;
   private supportsOmpKeybindings = false;
+  private supportsOmpSessionSwitch = false;
 
   private readonly logger: Logger;
   private readonly runtimeSettings?: ProviderRuntimeSettings;
@@ -2699,6 +2755,7 @@ export class OmpAgentClient implements AgentClient {
       supportsOmpSettings: this.supportsOmpSettings,
       supportsOmpSlashCommands: this.supportsOmpSlashCommands,
       supportsOmpKeybindings: this.supportsOmpKeybindings,
+      supportsOmpSessionSwitch: this.supportsOmpSessionSwitch,
     };
   }
 
@@ -2716,6 +2773,8 @@ export class OmpAgentClient implements AgentClient {
       this.supportsOmpSettings = settings.status === "fulfilled";
       this.supportsOmpKeybindings = keybindings.status === "fulfilled";
       this.supportsOmpSlashCommands = true;
+      const runtimeRecord = runtimeSession as unknown as Record<string, unknown>;
+      this.supportsOmpSessionSwitch = typeof runtimeRecord["switchSession"] === "function";
     } finally {
       await runtimeSession.close();
     }

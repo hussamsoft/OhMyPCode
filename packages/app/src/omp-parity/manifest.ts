@@ -2303,9 +2303,8 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     surface: "rpc",
     name: "switch_session",
     transport: "rpc",
-    guiHome: "terminal:omp-tui",
-    reason:
-      "OMP RPC command; escape hatch via bundled OMP TUI terminal until native host dispatch lands",
+    guiHome: "omp_sessions",
+    capability: "ompSessionSwitch",
   },
   {
     id: "rpc:vibe_enter",

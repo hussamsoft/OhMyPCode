@@ -272,7 +272,7 @@ Total tracked entries: **864**.
 | `rpc` | `set_todos` | `rpc` | `terminal:omp-tui` | — |
 | `rpc` | `set_tool_selection` | `rpc` | `omp-tools-control` | `ompToolSelection` |
 | `rpc` | `steer` | `rpc` | `terminal:omp-tui` | — |
-| `rpc` | `switch_session` | `rpc` | `terminal:omp-tui` | — |
+| `rpc` | `switch_session` | `rpc` | `omp_sessions` | `ompSessionSwitch` |
 | `rpc` | `vibe_enter` | `rpc` | `omp_vibe` | `ompVibe` |
 | `rpc` | `vibe_exit` | `rpc` | `omp_vibe` | `ompVibe` |
 | `rpc` | `vibe_kill` | `rpc` | `omp_vibe` | `ompVibe` |

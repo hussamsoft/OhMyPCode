@@ -167,6 +167,7 @@ export interface AgentCapabilityFlags {
   supportsOmpSettings?: boolean;
   supportsOmpModes?: boolean;
   supportsOmpKeybindings?: boolean;
+  supportsOmpSessionSwitch?: boolean;
   supportsRewindFiles?: boolean;
   supportsRewindBoth?: boolean;
 }

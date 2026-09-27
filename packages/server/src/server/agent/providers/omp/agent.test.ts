@@ -575,6 +575,45 @@ describe("OMP agent client and session", () => {
     expect(omp.isClosed()).toBe(true);
   });
 
+  test("switches the live session to a target file and refreshes internal state", async () => {
+    const omp = new OmpHarness();
+    await omp.start();
+
+    expect(omp.switchSessionRequests()).toEqual([]);
+    const result = await omp.switchOmpSession("/var/folders/abc/session.jsonl");
+    expect(result).toEqual({ cancelled: false });
+    expect(omp.switchSessionRequests()).toEqual(["/var/folders/abc/session.jsonl"]);
+
+    await omp.close();
+    expect(omp.isClosed()).toBe(true);
+  });
+
+  test("surfaces a runtime-side cancel as { cancelled: true } without touching internal state", async () => {
+    const omp = new OmpHarness();
+    await omp.start();
+
+    const result = await omp.switchOmpSessionCancelled();
+    expect(result).toEqual({ cancelled: true });
+    expect(omp.switchSessionRequests()).toEqual(["ignored"]);
+
+    await omp.close();
+    expect(omp.isClosed()).toBe(true);
+  });
+
+  test("rejects an in-flight switch while a turn is active", async () => {
+    const omp = new OmpHarness();
+    await omp.start();
+    await omp.requireStartTurn("still streaming");
+
+    await expect(omp.switchOmpSession("/tmp/whatever.jsonl")).rejects.toThrow(
+      /while a turn is active/,
+    );
+    expect(omp.switchSessionRequests()).toEqual([]);
+
+    await omp.close();
+    expect(omp.isClosed()).toBe(true);
+  });
+
   test("interrupt terminalizes in-flight tool calls and running subagents", async () => {
     const omp = new OmpHarness();
     await omp.start();

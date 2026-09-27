@@ -2139,6 +2139,24 @@ export const en = {
       cancelled: "cancelled",
       placeholderMissingServer: "Agent subagents require an active OMP session.",
     },
+    ompSessions: {
+      label: "Sessions",
+      subtitle: "OMP session history",
+      tooltip: "Browse and resume prior OMP sessions for this agent's cwd",
+      header: "Resume a prior OMP session",
+      empty: "No prior OMP sessions for this agent's working directory.",
+      loading: "Loading sessions…",
+      error: "Couldn't load OMP sessions.",
+      refresh: "Refresh sessions",
+      resume: "Resume here",
+      resumeHint: "Drop the live agent's current session and adopt this one",
+      resumeUnavailableHint:
+        "This entry doesn't expose a switchable session file (non-OMP provider or hosted session).",
+      resumeCancelled: "The OMP runtime cancelled the switch (extension hook or cwd mismatch).",
+      placeholderMissingAgent: "OMP sessions require an active agent.",
+      placeholderCapabilityMissing:
+        "This OMP build does not expose in-place session switch on this agent.",
+    },
     pullRequest: {
       label: "Pull request",
       subtitle: "Pull request details",

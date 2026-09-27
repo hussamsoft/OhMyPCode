@@ -47,6 +47,8 @@ const VALID_GUI_HOMES = new Set([
   "omp_loop",
   "omp_plugins",
   "omp_skills",
+  "omp_agents_hub",
+  "omp_sessions",
   "/h/[serverId]/settings/collaboration",
   "/usage",
 ]);

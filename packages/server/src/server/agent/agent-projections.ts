@@ -284,6 +284,7 @@ export function toRecentProviderSessionDescriptorPayload(
     providerId: session.provider,
     providerLabel: options.providerLabel,
     providerHandleId: session.providerHandleId,
+    ...(session.filePath ? { filePath: session.filePath } : {}),
     cwd: session.cwd,
     title: session.title,
     firstPromptPreview: session.firstPromptPreview,

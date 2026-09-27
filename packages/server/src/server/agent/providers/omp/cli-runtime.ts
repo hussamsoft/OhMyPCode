@@ -14,6 +14,7 @@ import {
 import {
   OmpBranchMessagesResultSchema,
   OmpBranchResultSchema,
+  OmpSwitchSessionResultSchema,
   OmpCommandsResultSchema,
   OmpFastModeResultSchema,
   OmpHostToolsResultSchema,
@@ -419,6 +420,20 @@ class OmpCliRuntimeSession implements OmpRuntimeSession {
       await this.request({ type: "get_branch_messages" }),
     );
     return data.messages ?? [];
+  }
+
+  async switchSession(
+    sessionPath: string,
+    _options?: { onCwdChange?: (newCwd: string, previousCwd: string) => Promise<boolean> },
+  ): Promise<boolean> {
+    // The OMP CLI's RPC `switch_session` command returns
+    // `{ data: { cancelled: boolean } }`. Mirrors the fork's
+    // `AgentSession.switchSession` proxy in
+    // `vendor/oh-my-pi/packages/coding-agent/src/modes/rpc/rpc-mode.ts`.
+    const response = OmpSwitchSessionResultSchema.parse(
+      await this.request({ type: "switch_session", sessionPath }),
+    );
+    return response.cancelled !== true;
   }
 
   steer(message: string, images?: Array<{ type: "image"; data: string; mimeType: string }>): void {

@@ -221,6 +221,8 @@ export class FakeOmpSession implements OmpRuntimeSession {
   branchResponse: { text?: string; cancelled?: boolean } = { text: "" };
   branchMessages: Array<{ entryId: string; text: string }> = [];
   readonly branchRequests: string[] = [];
+  switchSessionResponse: boolean = true;
+  readonly switchSessionRequests: string[] = [];
   activeBranchEntryId?: string;
   closed = false;
   vibeState: VibeStateResult = { revision: 0, enabled: false, workers: [] };
@@ -664,6 +666,14 @@ export class FakeOmpSession implements OmpRuntimeSession {
 
   async getBranchMessages(): Promise<Array<{ entryId: string; text: string }>> {
     return this.branchMessages;
+  }
+
+  async switchSession(
+    sessionPath: string,
+    _options?: { onCwdChange?: (newCwd: string, previousCwd: string) => Promise<boolean> },
+  ): Promise<boolean> {
+    this.switchSessionRequests.push(sessionPath);
+    return this.switchSessionResponse;
   }
 
   steer(message: string, images?: Array<{ type: "image"; data: string; mimeType: string }>): void {

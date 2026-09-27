@@ -833,6 +833,11 @@ export const OmpRpcCommandSchema = z.discriminatedUnion("type", [
   }),
   z.object({ ...OmpCommandBase, type: z.literal("branch"), entryId: z.string() }),
   z.object({ ...OmpCommandBase, type: z.literal("get_branch_messages") }),
+  z.object({
+    ...OmpCommandBase,
+    type: z.literal("switch_session"),
+    sessionPath: z.string().min(1),
+  }),
   z.object({ ...OmpCommandBase, type: z.literal("get_login_providers") }),
   z.object({ ...OmpCommandBase, type: z.literal("login"), providerId: z.string().min(1) }),
   z.object({
@@ -863,6 +868,9 @@ export const OmpHostToolsResultSchema = z
   .passthrough();
 export const OmpBranchResultSchema = z
   .object({ text: z.string().optional(), cancelled: z.boolean().optional() })
+  .passthrough();
+export const OmpSwitchSessionResultSchema = z
+  .object({ cancelled: z.boolean().optional() })
   .passthrough();
 export const OmpBranchMessagesResultSchema = z
   .object({

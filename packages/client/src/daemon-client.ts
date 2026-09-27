@@ -111,6 +111,7 @@ import type {
   OmpGoalActionResponse,
   OmpKeybindingsGetResponse,
   OmpKeybindingsSetResponse,
+  OmpSessionSwitchResponse,
   ListProviderToolsResponseSchema,
   ListAgentToolsResponseSchema,
   SetAgentToolsResponseSchema,
@@ -536,6 +537,7 @@ export type OmpModesSetPayload = OmpSetModeResponse["payload"];
 export type OmpGoalActionPayload = OmpGoalActionResponse["payload"];
 export type OmpKeybindingsGetPayload = OmpKeybindingsGetResponse["payload"];
 export type OmpKeybindingsSetPayload = OmpKeybindingsSetResponse["payload"];
+export type OmpSessionSwitchPayload = OmpSessionSwitchResponse["payload"];
 type ProviderDiagnosticPayload = ProviderDiagnosticResponseMessage["payload"];
 type ProviderUsageListPayload = ProviderUsageListResponseMessage["payload"];
 type OmpStatisticsPayload = OmpStatisticsResponseMessage["payload"];
@@ -5523,6 +5525,29 @@ export class DaemonClient {
     return this.sendNamespacedCorrelatedSessionRequest({
       requestId: options?.requestId,
       message: { type: "omp.keybindings.set.request", agentId, id, keys },
+    });
+  }
+
+  /**
+   * In-place session switch for an OMP agent: drop the live agent's
+   * runtime session and adopt the contents of `sessionPath` (an absolute
+   * OMP `.jsonl` file). Returns `{ cancelled: true }` when an extension's
+   * `session_before_switch` hook cancels (or cwd mismatch), and
+   * `{ cancelled: false }` after the host has dispatched its
+   * `timeline_replacement` to subscribers. Distinct from `importAgent`,
+   * which spawns a *new* agent over the same session file.
+   *
+   * Mirrors the OMP CLI's `/switch` slash command and the fork's
+   * `switch_session` RPC command.
+   */
+  async switchSessionAgent(
+    agentId: string,
+    sessionPath: string,
+    options?: { requestId?: string },
+  ): Promise<OmpSessionSwitchPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.session.switch.request", agentId, sessionPath },
     });
   }
 
