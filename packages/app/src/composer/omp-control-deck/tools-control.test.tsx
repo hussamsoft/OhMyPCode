@@ -33,6 +33,48 @@ vi.mock("@/components/ui/combobox", () => ({
 vi.mock("@/composer/agent-controls/mode-control", () => ({
   AgentModeControl: () => null,
 }));
+vi.mock("./use-omp-rpc", () => ({
+  useOmpModes: () => ({
+    modes: {
+      mode: "none",
+      planModeEnabled: false,
+      planModePaused: false,
+      goalModeEnabled: false,
+      goalModePaused: false,
+      loopModeEnabled: false,
+      loopModePaused: false,
+      canEnter: true,
+    },
+    isLoading: false,
+    isFetching: false,
+    error: null,
+    refresh: async () => {},
+  }),
+  useOmpModeSetter: () => ({
+    setMode: async () => {
+      throw new Error("not used in this test");
+    },
+    isPending: false,
+    error: null,
+    lastResult: null,
+  }),
+  useOmpSettings: () => ({
+    settings: [],
+    revision: 0,
+    isLoading: false,
+    isFetching: false,
+    error: null,
+    refresh: async () => {},
+  }),
+  useOmpSettingSetter: () => ({
+    setSetting: async () => {
+      throw new Error("not used in this test");
+    },
+    isPending: false,
+    error: null,
+    lastResult: null,
+  }),
+}));
 vi.mock("lucide-react-native", () => {
   const MockIcon = () => null;
   const mock: Record<string, unknown> = {};
@@ -146,13 +188,6 @@ const tools: AgentToolDefinition[] = [
 const MODEL_SELECTOR = <span>model</span>;
 const EMPTY_THINKING_OPTIONS: readonly { id: string; label: string }[] = [];
 const NOOP_THINKING = () => {};
-const ACCESS_PROPS = {
-  provider: "omp" as const,
-  providerDefinitions: [],
-  modeOptions: [],
-  selectedModeId: null,
-  onSelectMode: () => {},
-};
 const VIBE_PROPS = {
   enabled: true,
   canUse: true,
@@ -168,10 +203,11 @@ function renderDeck(controls: OmpToolControls) {
     wrap(
       <OmpControlDeck
         source="draft"
+        serverId="srv-1"
+        agentId="agent-1"
         modelSelector={MODEL_SELECTOR}
         thinkingOptions={EMPTY_THINKING_OPTIONS}
         onSelectThinking={NOOP_THINKING}
-        access={ACCESS_PROPS}
         vibe={VIBE_PROPS}
         tools={controls}
       />,

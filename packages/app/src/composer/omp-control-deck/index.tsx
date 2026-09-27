@@ -18,7 +18,6 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { AgentFeature, AgentToolDefinition } from "@ohmypcode/protocol/agent-types";
 import { resolveToolCallIcon, type ToolCallIconComponent } from "@/utils/tool-call-icon";
 import { useComposerControlLayout } from "@/composer/agent-controls/layout-context";
-import { type AgentModeControlValue } from "@/composer/agent-controls/mode-control";
 import { toErrorMessage } from "@/utils/error-messages";
 import { ControlChip } from "./control-chip";
 import { OmpSettingsForm } from "@/omp-settings/omp-settings-form";
@@ -43,7 +42,8 @@ import {
   useOmpSettingSetter,
   useOmpSettings,
 } from "./use-omp-rpc";
-export { OMP_VIBE_FEATURE_ID, resolveOmpEnabledTools } from "./model";
+export { OMP_VIBE_FEATURE_ID, OMP_APPROVAL_MODE_PATH, resolveOmpEnabledTools } from "./model";
+export type { OmpApprovalMode } from "./model";
 
 export type OmpDeckSource = "live" | "draft";
 
@@ -76,7 +76,6 @@ export interface OmpControlDeckProps {
   thinkingOptions: readonly { id: string; label: string }[];
   selectedThinkingId?: string;
   onSelectThinking(id: string): void;
-  access: AgentModeControlValue;
   features?: readonly AgentFeature[];
   onSetFeature?: (featureId: string, value: unknown) => void;
   vibe: OmpVibeControls;
@@ -167,6 +166,7 @@ function OmpModeSegmentChip({
   label,
   selected,
   pending,
+  disabled,
   disabledReason,
   onPress,
 }: {
@@ -174,6 +174,7 @@ function OmpModeSegmentChip({
   label: string;
   selected: boolean;
   pending: boolean;
+  disabled: boolean;
   disabledReason?: string;
   onPress(): void;
 }) {
@@ -183,7 +184,6 @@ function OmpModeSegmentChip({
   const accessibilityLabel = disabledReason
     ? `${baseAccessibilityLabel}. ${disabledReason}`
     : baseAccessibilityLabel;
-  const isDisabled = Boolean(disabledReason);
   return (
     <View style={styles.modeSegmentSlot}>
       <ControlChip
@@ -194,7 +194,7 @@ function OmpModeSegmentChip({
         accessibilityLabel={accessibilityLabel}
         selected={selected}
         accentSelected
-        disabled={isDisabled}
+        disabled={disabled}
         onPress={onPress}
         testID={segment.testID}
       />
@@ -203,7 +203,7 @@ function OmpModeSegmentChip({
   );
 }
 
-function OmpModeControl({
+export function OmpModeControl({
   vibe,
   serverId,
   agentId,
@@ -215,7 +215,7 @@ function OmpModeControl({
   const { t } = useTranslation();
   const modesQuery = useOmpModes(serverId ?? null, agentId ?? null);
   const modeSetter = useOmpModeSetter(serverId ?? null, agentId ?? null);
-  const { modes, isLoading: modesLoading, error: modesError } = modesQuery;
+  const { modes, error: modesError } = modesQuery;
   const [pendingMode, setPendingMode] = useState<OmpMode | null>(null);
   const [optimisticMode, setOptimisticMode] = useState<OmpMode | null>(null);
   const [segmentError, setSegmentError] = useState<{ mode: OmpMode; message: string } | null>(
@@ -282,30 +282,18 @@ function OmpModeControl({
   const segmentMeta = useMemo(() => {
     return OMP_MODE_SEGMENTS.map((segment) => {
       const label = t(segment.labelKey);
-      const isPlanOrGoalOrLoop =
-        segment.id === "plan" || segment.id === "goal" || segment.id === "loop";
-      const enabledFlag = isPlanOrGoalOrLoop
-        ? modes
-          ? segment.id === "plan"
-            ? modes.planModeEnabled
-            : segment.id === "goal"
-              ? modes.goalModeEnabled
-              : modes.loopModeEnabled
-          : false
-        : null;
-      const localBlocked =
-        canEnterAll === false
-          ? globalBlockedReason
-          : enabledFlag === false && isPlanOrGoalOrLoop && !modesLoading
-            ? t("agentControls.omp.modeDisabledForAgent")
-            : undefined;
+      // Per-segment blocked reason: only the global `canEnter` gate suppresses
+      // the segment. The per-mode `*Enabled` flags describe the current state,
+      // not whether the user can pick that segment — toggling to a different
+      // mode is exactly the action these controls enable.
+      const localBlocked = canEnterAll === false ? globalBlockedReason : undefined;
       const isPending = pendingMode === segment.id;
       const isSelected = committedMode === segment.id;
       const isBusy = Boolean(pendingMode);
       const isDisabled = Boolean(localBlocked) || (isBusy && !isPending);
       return { segment, label, isPending, isSelected, isDisabled, disabledReason: localBlocked };
     });
-  }, [canEnterAll, committedMode, globalBlockedReason, modes, modesLoading, pendingMode, t]);
+  }, [canEnterAll, committedMode, globalBlockedReason, pendingMode, t]);
   const visibleError = segmentError;
   const headerAccessibilityLabel = t("agentControls.omp.selectMode", {
     value: committedMode,
@@ -324,7 +312,8 @@ function OmpModeControl({
             label={entry.label}
             selected={entry.isSelected}
             pending={entry.isPending}
-            disabledReason={entry.isDisabled ? entry.disabledReason : undefined}
+            disabled={entry.isDisabled}
+            disabledReason={entry.disabledReason}
             onPress={() => void transitionTo(entry.segment.id)}
           />
         ))}
@@ -855,7 +844,7 @@ function OmpToolsSheet({
   );
 }
 
-function OmpAccessControl({
+export function OmpAccessControl({
   serverId,
   agentId,
   showLabel,
@@ -1017,7 +1006,6 @@ export function OmpControlDeck({
   thinkingOptions,
   selectedThinkingId,
   onSelectThinking,
-  access: _access,
   features,
   onSetFeature,
   vibe,
