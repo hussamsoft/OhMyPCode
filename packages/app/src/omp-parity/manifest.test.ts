@@ -35,6 +35,7 @@ const VALID_PROTOCOL_CAPABILITIES = new Set(
 const VALID_GUI_HOMES = new Set([
   "terminal:omp-tui",
   "slash-palette",
+  "rename-modal",
   "omp-tools-control",
   "omp_vibe",
   "omp_settings",

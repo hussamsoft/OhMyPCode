@@ -6074,10 +6074,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:add-dir",
     surface: "slash",
     name: "add-dir",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /add-dir in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "slash:advisor",
@@ -6217,10 +6217,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:dirs",
     surface: "slash",
     name: "dirs",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /dirs in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "slash:dump",
@@ -6628,19 +6628,19 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:remove-dir",
     surface: "slash",
     name: "remove-dir",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /remove-dir in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "slash:rename",
     surface: "slash",
     name: "rename",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "rename-modal",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "The desktop app's existing tab-rename modal calls client.updateAgent for the app-level label, then also fires omp.command.run(\"rename\", ...) to keep OMP's own session title in sync (use-workspace-tab-rename.tsx)",
   },
   {
     id: "slash:restart",
@@ -6863,10 +6863,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:wt",
     surface: "slash",
     name: "wt",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "slash-palette",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Has a real handle (not handleTui-only); reachable today by typing /wt in the composer's slash-command palette (Phase 9), which shows output as a toast. No dedicated button/panel affordance yet",
   },
   {
     id: "subcommand:__complete",
