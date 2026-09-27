@@ -6556,10 +6556,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:plugins",
     surface: "slash",
     name: "plugins",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "omp_plugins",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Headless `handle` in fork `slash-commands/builtin-marketplace.ts` (`list`/`enable <name@marketplace> --scope user|project`/`disable <name@marketplace> --scope user|project`); runs through the plain `omp.command.run` RPC and is surfaced in the `omp_plugins` desktop panel.",
   },
   {
     id: "slash:prewalk",

@@ -746,7 +746,7 @@ Total tracked entries: **864**.
 | `slash` | `plan` | `terminal` | `terminal:omp-tui` | — |
 | `slash` | `plan-review` | `terminal` | `terminal:omp-tui` | — |
 | `slash` | `plugin` | `terminal` | `terminal:omp-tui` | — |
-| `slash` | `plugins` | `terminal` | `terminal:omp-tui` | — |
+| `slash` | `plugins` | `rpc` | `omp_plugins` | — |
 | `slash` | `prewalk` | `terminal` | `terminal:omp-tui` | — |
 | `slash` | `providers` | `terminal` | `terminal:omp-tui` | — |
 | `slash` | `q` | `terminal` | `terminal:omp-tui` | — |

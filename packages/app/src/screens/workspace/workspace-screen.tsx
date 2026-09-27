@@ -321,7 +321,8 @@ type OmpPanelFallbackKind =
   | "omp_mcp"
   | "omp_ssh"
   | "omp_goal"
-  | "omp_loop";
+  | "omp_loop"
+  | "omp_plugins";
 
 function getOmpPanelFallbackText(
   kind: OmpPanelFallbackKind,
@@ -334,6 +335,7 @@ function getOmpPanelFallbackText(
     ssh: string;
     goal: string;
     loop: string;
+    plugins: string;
   },
 ): string {
   switch (kind) {
@@ -353,6 +355,8 @@ function getOmpPanelFallbackText(
       return labels.goal;
     case "omp_loop":
       return labels.loop;
+    case "omp_plugins":
+      return labels.plugins;
   }
 }
 
@@ -376,6 +380,7 @@ function getFallbackTabOptionLabel(
     ssh: string;
     goal: string;
     loop: string;
+    plugins: string;
   },
 ): string {
   if (tab.target.kind === "new_tab") {
@@ -434,6 +439,7 @@ function getFallbackTabOptionDescription(
     ssh: string;
     goal: string;
     loop: string;
+    plugins: string;
   },
 ): string {
   if (tab.target.kind === "new_tab") {
@@ -687,6 +693,7 @@ function MobileWorkspaceTabOption({
       ssh: t("panels.ompSsh.label"),
       goal: t("panels.ompGoal.label"),
       loop: t("panels.ompLoop.label"),
+      plugins: t("panels.ompPlugins.label"),
     }),
     [t],
   );
@@ -2314,6 +2321,7 @@ function WorkspaceScreenContent({
       ssh: t("panels.ompSsh.label"),
       goal: t("panels.ompGoal.label"),
       loop: t("panels.ompLoop.label"),
+      plugins: t("panels.ompPlugins.label"),
     }),
     [t],
   );

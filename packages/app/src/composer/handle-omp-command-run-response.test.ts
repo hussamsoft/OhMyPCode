@@ -13,6 +13,7 @@ function buildOpeners(overrides: Partial<OmpOverlayOpeners> = {}): OmpOverlayOpe
     openOmpContextTarget: vi.fn(() => "tab-context"),
     openOmpMcpTarget: vi.fn(() => "tab-mcp"),
     openOmpSshTarget: vi.fn(() => "tab-ssh"),
+    openOmpPluginsTarget: vi.fn(() => "tab-plugins"),
     ...overrides,
   };
 }
@@ -165,6 +166,24 @@ describe("handleOmpCommandRunResponse", () => {
     });
 
     expect(openers.openOmpSshTarget).toHaveBeenCalledWith({ agentId: "agent-1" });
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it("opens the plugins panel for a non-overlay plugins response instead of toasting", () => {
+    const openers = buildOpeners();
+    const showToast = vi.fn();
+    handleOmpCommandRunResponse({
+      response: buildResponse({
+        output: "plugin-a v1.0.0 [user]\nplugin-b v2.1.0 [project]",
+      }),
+      commandName: "plugins",
+      agentId: "agent-1",
+      showToast,
+      setSendError: vi.fn(),
+      openers,
+    });
+
+    expect(openers.openOmpPluginsTarget).toHaveBeenCalledWith({ agentId: "agent-1" });
     expect(showToast).not.toHaveBeenCalled();
   });
 

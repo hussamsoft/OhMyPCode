@@ -17,6 +17,7 @@ export interface OmpOverlayOpeners {
   openOmpContextTarget: (target: { agentId: string }) => string | null;
   openOmpMcpTarget: (target: { agentId: string }) => string | null;
   openOmpSshTarget: (target: { agentId: string }) => string | null;
+  openOmpPluginsTarget: (target: { agentId: string }) => string | null;
 }
 
 function openOmpOverlayTarget(target: OverlayTarget, openers: OmpOverlayOpeners): string | null {
@@ -52,6 +53,9 @@ function resolveNonOverlayPanelOpener(
   }
   if (commandName === "ssh") {
     return openers.openOmpSshTarget;
+  }
+  if (commandName === "plugins") {
+    return openers.openOmpPluginsTarget;
   }
   return null;
 }
