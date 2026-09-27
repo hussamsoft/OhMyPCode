@@ -39,6 +39,7 @@ export type WorkspaceTabTarget =
   | { kind: "omp_vibe"; agentId: string; workerId: string | null }
   | { kind: "omp_settings"; agentId: string }
   | { kind: "omp_keybindings"; agentId: string }
+  | { kind: "omp_context"; agentId: string }
   | { kind: "provider_subagent"; parentAgentId: string; subagentId: string }
   | { kind: "terminal"; terminalId: string }
   | { kind: "browser"; browserId: string }

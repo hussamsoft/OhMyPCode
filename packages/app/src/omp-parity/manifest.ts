@@ -6181,10 +6181,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:context",
     surface: "slash",
     name: "context",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "omp_context",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Reachable via the headless omp.command.run RPC (real handle, not handleTui-only); the desktop app runs it and shows the pre-formatted text report in the omp_context panel",
   },
   {
     id: "slash:copy",

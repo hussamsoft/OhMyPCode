@@ -119,9 +119,8 @@ import { useOmpCapabilities } from "@/hooks/use-omp-capabilities";
 import { openOmpVibeTarget } from "@/workspace-tabs/open-omp-vibe-target";
 import { openOmpSettingsTarget } from "@/workspace-tabs/open-omp-settings-target";
 import { openOmpKeybindingsTarget } from "@/workspace-tabs/open-omp-keybindings-target";
-import { resolveOmpCommandOverlayTarget } from "@/composer/resolve-omp-command-overlay-target";
-import type { OmpCommandRunPayload } from "@ohmypcode/client/internal/daemon-client";
-import type { ToastApi } from "@/components/toast-host";
+import { openOmpContextTarget } from "@/workspace-tabs/open-omp-context-target";
+import { handleOmpCommandRunResponse } from "@/composer/handle-omp-command-run-response";
 import { RenderProfile } from "@/utils/render-profiler";
 import { AfterPaintPublication } from "@/composer/after-paint-publication";
 import { isWeb, isNative } from "@/constants/platform";
@@ -508,58 +507,6 @@ function resolveErrorMessage(error: unknown): string | null {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
   return null;
-}
-
-interface HandleOmpCommandRunResponseArgs {
-  response: OmpCommandRunPayload;
-  agentId: string;
-  toast: ToastApi;
-  setSendError: (error: string | null) => void;
-  reportUnknownOverlay?: (name: string) => void;
-}
-
-function openOmpOverlayTarget(
-  target:
-    | { kind: "omp_vibe"; agentId: string; workerId: string | null }
-    | { kind: "omp_settings"; agentId: string }
-    | { kind: "omp_keybindings"; agentId: string },
-): string | null {
-  if (target.kind === "omp_vibe") {
-    return openOmpVibeTarget(target);
-  }
-  if (target.kind === "omp_settings") {
-    return openOmpSettingsTarget(target);
-  }
-  return openOmpKeybindingsTarget(target);
-}
-
-function handleOmpCommandRunResponse(args: HandleOmpCommandRunResponseArgs): void {
-  const { response, agentId, toast, setSendError, reportUnknownOverlay } = args;
-  const ui = response.ui;
-  if (ui?.kind === "overlay") {
-    const target = resolveOmpCommandOverlayTarget({ name: ui.name, agentId });
-    if (target) {
-      const openedTabId = openOmpOverlayTarget(target);
-      if (openedTabId) {
-        if (response.output) {
-          toast.show(response.output);
-        }
-        return;
-      }
-      // Layout store refused to open (no workspace owning this agent) — fall
-      // back to surface output inline rather than swallow the result.
-    } else {
-      reportUnknownOverlay?.(ui.name);
-    }
-  }
-
-  if (response.output) {
-    toast.show(response.output);
-    return;
-  }
-  if (!response.agentInvoked && !response.stateChange) {
-    setSendError(null);
-  }
 }
 
 interface AttemptStartRealtimeVoiceArgs {
@@ -1517,13 +1464,20 @@ function ComposerContentImpl({
         const response = await ompSlash.run({ name: input.name, args: input.args });
         handleOmpCommandRunResponse({
           response,
+          commandName: input.name,
           agentId,
-          toast,
+          showToast: toast.show,
           setSendError,
           reportUnknownOverlay: (name) =>
             console.warn(
               `[Composer] OMP command "${input.name}" returned unhandled overlay "${name}"; rendering output inline.`,
             ),
+          openers: {
+            openOmpVibeTarget,
+            openOmpSettingsTarget,
+            openOmpKeybindingsTarget,
+            openOmpContextTarget,
+          },
         });
       } catch (error) {
         console.error("[Composer] Failed to run OMP slash command:", error);

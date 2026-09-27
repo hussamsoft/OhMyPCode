@@ -62,6 +62,7 @@ function normalizeSimpleWorkspaceTabTarget(value: WorkspaceTabTarget): Workspace
     case "omp_vibe":
     case "omp_settings":
     case "omp_keybindings":
+    case "omp_context":
       return normalizeOmpPanelTarget(value);
     case "setup": {
       const workspaceId = trimNonEmpty(value.workspaceId);
@@ -84,7 +85,10 @@ function normalizeSimpleWorkspaceTabTarget(value: WorkspaceTabTarget): Workspace
  * grow with every new omp_* screen registered.
  */
 function normalizeOmpPanelTarget(
-  value: Extract<WorkspaceTabTarget, { kind: "omp_vibe" | "omp_settings" | "omp_keybindings" }>,
+  value: Extract<
+    WorkspaceTabTarget,
+    { kind: "omp_vibe" | "omp_settings" | "omp_keybindings" | "omp_context" }
+  >,
 ): WorkspaceTabTarget | null {
   const agentId = trimNonEmpty(value.agentId);
   if (!agentId) return null;
@@ -259,6 +263,9 @@ export function buildDeterministicWorkspaceTabId(target: WorkspaceTabTarget): st
   }
   if (target.kind === "omp_keybindings") {
     return `omp_keybindings_${target.agentId.length}_${target.agentId}`;
+  }
+  if (target.kind === "omp_context") {
+    return `omp_context_${target.agentId.length}_${target.agentId}`;
   }
   return `file_${target.path}`;
 }

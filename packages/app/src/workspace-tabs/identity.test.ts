@@ -262,3 +262,21 @@ describe("omp keybindings tab identity", () => {
     expect(normalizeWorkspaceTabTarget({ kind: "omp_keybindings", agentId: "" })).toBeNull();
   });
 });
+
+describe("omp context tab identity", () => {
+  it("normalizes and deterministically keys by agent id", () => {
+    const target = normalizeWorkspaceTabTarget({
+      kind: "omp_context",
+      agentId: " agent-1 ",
+    });
+
+    expect(target).toEqual({ kind: "omp_context", agentId: "agent-1" });
+    expect(buildDeterministicWorkspaceTabId({ kind: "omp_context", agentId: "agent-1" })).toBe(
+      "omp_context_7_agent-1",
+    );
+  });
+
+  it("rejects a missing agent id", () => {
+    expect(normalizeWorkspaceTabTarget({ kind: "omp_context", agentId: "" })).toBeNull();
+  });
+});

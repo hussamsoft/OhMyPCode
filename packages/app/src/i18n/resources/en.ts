@@ -279,6 +279,10 @@ export const en = {
       noKeybindings: "No keybindings match this filter.",
       keybindingsFilterLabel: "Filter keybindings",
       keybindingsFilterPlaceholder: "Filter by id, action, or keys",
+      contextUnavailable: "Context usage is not available for this agent.",
+      contextLoading: "Loading context usage...",
+      contextRetry: "Retry",
+      contextRefresh: "Refresh",
       credentialField: "{{label}} (credential)",
       booleanField: "{{label}} (boolean)",
     },
@@ -2037,6 +2041,11 @@ export const en = {
       label: "Keybindings",
       subtitle: "OMP keybindings",
       tooltip: "Browse and edit OMP keybindings",
+    },
+    ompContext: {
+      label: "Context",
+      subtitle: "OMP context usage",
+      tooltip: "View OMP context window usage",
     },
     pullRequest: {
       label: "Pull request",

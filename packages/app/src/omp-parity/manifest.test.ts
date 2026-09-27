@@ -38,6 +38,7 @@ const VALID_GUI_HOMES = new Set([
   "omp_vibe",
   "omp_settings",
   "omp_keybindings",
+  "omp_context",
   "/h/[serverId]/settings/collaboration",
   "/usage",
 ]);
