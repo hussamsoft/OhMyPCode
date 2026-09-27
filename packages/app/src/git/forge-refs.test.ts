@@ -101,4 +101,27 @@ describe("extractForgeRefs", () => {
     expect(extractForgeRefs("", "git@github.com:getpaseo/paseo.git")).toEqual([]);
     expect(extractForgeRefs("https://github.com/getpaseo/paseo/pull/1", null)).toEqual([]);
   });
+
+  it("emits both issue and change_request candidates for a bare #<number> reference", () => {
+    expect(extractForgeRefs("see #123 for context", "git@github.com:getpaseo/paseo.git")).toEqual([
+      { kind: "issue", number: 123 },
+      { kind: "change_request", number: 123 },
+    ]);
+  });
+
+  it("does not match # mid-word, in markdown headings, or without a trailing digit boundary", () => {
+    const remote = "git@github.com:getpaseo/paseo.git";
+    expect(extractForgeRefs("## Heading 123", remote)).toEqual([]);
+    expect(extractForgeRefs("abc#123", remote)).toEqual([]);
+    expect(extractForgeRefs("#123abc", remote)).toEqual([]);
+    expect(extractForgeRefs("##123", remote)).toEqual([]);
+  });
+
+  it("does not duplicate a bare #<number> already matched via a pasted URL", () => {
+    const text = "https://github.com/getpaseo/paseo/pull/123 (also #123)";
+    expect(extractForgeRefs(text, "git@github.com:getpaseo/paseo.git")).toEqual([
+      { kind: "change_request", number: 123 },
+      { kind: "issue", number: 123 },
+    ]);
+  });
 });

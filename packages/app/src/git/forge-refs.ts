@@ -9,6 +9,13 @@ export interface ForgeRef {
 }
 
 const WEB_URL_PATTERN = /https?:\/\/[^\s<>"'`)\]]+/giu;
+// `#<number>` shorthand (GitHub-style issue/PR reference in prose). Requires a
+// word boundary on both sides so it doesn't match mid-word tokens, markdown
+// headings ("# Heading"), or numbers immediately followed by letters. This is
+// a heuristic: a short numeric hex color literal (e.g. "#123") in chat text
+// would also match and produce two lookups that both resolve to no item,
+// which is harmless (nothing gets attached) rather than a false attach.
+const HASH_NUMBER_PATTERN = /(?<![#\w])#(\d+)(?!\w)/gu;
 const TRAILING_SENTENCE_PUNCTUATION = /[.,;:!]+$/u;
 
 interface RemoteReferenceTarget {
@@ -56,6 +63,25 @@ export function extractForgeRefs(
         refs.push(ref);
       }
       break;
+    }
+  }
+  for (const match of body.matchAll(HASH_NUMBER_PATTERN)) {
+    const number = Number(match[1]);
+    if (!Number.isInteger(number) || number < 1) {
+      continue;
+    }
+    // Kind is unresolved from the text alone -- emit both candidates and let
+    // the composer's existing per-ref forge-search lookup keep whichever one
+    // actually resolves to a real item (see forge-auto-attach.ts:attachRef).
+    // The two candidates share one search query (same repo, same number), so
+    // react-query dedupes them into a single network request.
+    for (const kind of ["issue", "change_request"] as const) {
+      const ref: ForgeRef = { kind, number };
+      const key = forgeRefKey(ref);
+      if (!seen.has(key)) {
+        seen.add(key);
+        refs.push(ref);
+      }
     }
   }
   return refs;
