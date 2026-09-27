@@ -3,13 +3,36 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
 
-import { listOmpImportableSessions, readOmpImportSessionConfig } from "./session-descriptor.js";
+import {
+  listOmpImportableSessions,
+  readOmpImportSessionConfig,
+  resolveOmpSessionPathByHandle,
+} from "./session-descriptor.js";
 
 async function writeSession(root: string, relativePath: string, lines: unknown[]): Promise<string> {
   const filePath = path.join(root, "sessions", relativePath);
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, `${lines.map((line) => JSON.stringify(line)).join("\n")}\n`, "utf8");
   return filePath;
+}
+
+async function expectAllHandlesResolve(handles: string[], sessionDir: string): Promise<void> {
+  for (const handle of handles) {
+    const resolved = await resolveOmpSessionPathByHandle(handle, { sessionDir });
+    expect(path.resolve(resolved)).toBe(path.resolve(handle));
+  }
+}
+
+async function setupSymmetryFixture(): Promise<{ sessionsDir: string; targetHandle: string }> {
+  const root = await mkdtemp(path.join(tmpdir(), "paseo-omp-resolve-symmetry-"));
+  const sessionsDir = path.join(root, "sessions");
+  const target = await writeSession(root, "audit/run.jsonl", [
+    { type: "session", id: "audit-run", timestamp: "2026-06-10", cwd: "/tmp/cwd" },
+  ]);
+  await writeSession(root, "noise/other.jsonl", [
+    { type: "session", id: "noise", timestamp: "2026-05-01", cwd: "/tmp/other" },
+  ]);
+  return { sessionsDir, targetHandle: target };
 }
 
 describe("OMP session descriptor", () => {
@@ -144,5 +167,58 @@ describe("OMP session descriptor", () => {
     await expect(listOmpImportableSessions({ homeDir: home, env: {} })).resolves.toEqual([
       expect.objectContaining({ providerHandleId: sessionFile, cwd }),
     ]);
+  });
+});
+
+describe("resolveOmpSessionPathByHandle", () => {
+  test("returns the realpath of a session file under the configured dir", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "paseo-omp-resolve-ok-"));
+    const sessionsDir = path.join(root, "sessions");
+    const sessionFile = await writeSession(root, "ops/repo.jsonl", [
+      { type: "session", id: "ops-repo", timestamp: "2026-06-10", cwd: "/tmp/cwd" },
+    ]);
+
+    const resolved = await resolveOmpSessionPathByHandle(sessionFile, {
+      sessionDir: sessionsDir,
+    });
+    // realpath can normalize separators on Windows; compare resolved paths.
+    expect(path.resolve(resolved)).toBe(path.resolve(sessionFile));
+  });
+
+  test("rejects a path outside the configured sessions dir", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "paseo-omp-resolve-outside-"));
+    const sessionsDir = path.join(root, "sessions");
+    await mkdir(sessionsDir, { recursive: true });
+    // File lives in `<root>/elsewhere.jsonl` -- outside the configured
+    // sessionsDir -- even though the test creates a separate sessionsDir.
+    const outside = path.join(root, "elsewhere.jsonl");
+    await writeFile(
+      outside,
+      `${JSON.stringify({ type: "session", id: "evil", timestamp: "2026-06-10" })}\n`,
+      "utf8",
+    );
+
+    await expect(
+      resolveOmpSessionPathByHandle(outside, { sessionDir: sessionsDir }),
+    ).rejects.toThrow(/not a session under the configured dir/);
+  });
+
+  test("rejects an empty handle", async () => {
+    await expect(
+      resolveOmpSessionPathByHandle("", { sessionDir: "/tmp/anything" }),
+    ).rejects.toThrow(/session handle is required/);
+  });
+
+  test("agrees with listImportableSessions when both use the same sessionDir", async () => {
+    // Regression for the asymmetry where listing used sessionDir but the
+    // resolver ignored it -- agents with an explicit sessionDir had the
+    // panel list sessions that the switch then rejected. Now both paths
+    // use the same configured dir.
+    const { sessionsDir, targetHandle } = await setupSymmetryFixture();
+    const listed = await listOmpImportableSessions({ sessionDir: sessionsDir });
+    const handles = listed.map((s) => s.providerHandleId);
+    expect(handles).toContain(targetHandle);
+
+    await expectAllHandlesResolve(handles, sessionsDir);
   });
 });

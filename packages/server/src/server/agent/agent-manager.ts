@@ -1420,7 +1420,20 @@ export class AgentManager {
     providerHandleId: string,
   ): Promise<{ cancelled: boolean }> {
     const agent = this.requirePublicAgent(agentId);
-    const result = await this.requireOmpModeSession(agentId).switchOmpSession(providerHandleId);
+    // Resolve the handle on the client (not the session) so the configured
+    // sessionDir is honored -- agents launched with an explicit session
+    // dir would otherwise have the listing and switch disagree about which
+    // directory is authoritative. The validated absolute path is what the
+    // session receives; the session itself does no path validation.
+    const client = this.clients.get("omp");
+    if (!client?.resolveOmpSessionPath) {
+      throw new AgentManagerOmpParityError(
+        "omp_parity_unavailable",
+        `Agent '${agentId}' does not expose OMP session resolution`,
+      );
+    }
+    const sessionPath = await client.resolveOmpSessionPath(providerHandleId);
+    const result = await this.requireOmpModeSession(agentId).switchOmpSession(sessionPath);
     if (result.cancelled) {
       return result;
     }

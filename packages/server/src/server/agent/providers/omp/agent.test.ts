@@ -696,7 +696,7 @@ describe("OMP agent client and session", () => {
     await expect(omp.runPrompt("hello OMP", "hello from OMP")).resolves.toMatchObject({
       finalText: "hello from OMP",
     });
-    // OMP can re-send message_end for an entry it already surfaced.
+    // OMP can re-emit message_end for an entry it already surfaced.
     omp.runtime().acceptPrompt("hello OMP", "user-1");
     expect(omp.timeline().filter((item) => item.type === "user_message")).toEqual([
       { type: "user_message", text: "hello OMP", messageId: "user-1" },

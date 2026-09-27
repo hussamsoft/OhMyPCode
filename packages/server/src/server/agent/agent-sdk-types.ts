@@ -793,16 +793,18 @@ export interface OmpParitySession {
   getKeybindings(): Promise<OmpKeybindingsResult>;
   setKeybinding(id: string, keys: string): Promise<OmpSetKeybindingResult>;
   /**
-   * In-place switch of the live agent's runtime session to `sessionPath`.
+   * In-place switch of the live agent's runtime session to `sessionPath`
+   * (an already-resolved, already-validated absolute OMP `.jsonl` path).
+   * The validation lives one layer up -- `OmpAgentClient.resolveOmpSessionPath`
+   * resolves a host-supplied handle against the configured sessions dir
+   * with containment/realpath checks; this method assumes the caller has
+   * already done that work and just mutates the in-memory agent.
+   *
    * Returns `{ cancelled: true }` when the runtime's switch is rolled back
    * (extension `session_before_switch` hook, or cwd-change refusal) and
-   * `{ cancelled: false }` after the runtime adopted the target session and
-   * the host has dispatched its `timeline_replacement` to clients. The
-   * caller is responsible for the timeline rewind + persistence
-   * bookkeeping on the success path; the runtime itself only mutates the
-   * in-memory agent.
+   * `{ cancelled: false }` after the runtime adopted the target session.
    */
-  switchOmpSession(providerHandleId: string): Promise<{ cancelled: boolean }>;
+  switchOmpSession(sessionPath: string): Promise<{ cancelled: boolean }>;
 }
 export type OmpModeSession = OmpParitySession;
 
@@ -879,6 +881,14 @@ export interface AgentClient {
   listImportableSessions?(
     options?: ListImportableSessionsOptions,
   ): Promise<ImportableProviderSession[]>;
+  /**
+   * Resolve a host-supplied session handle to a validated absolute path
+   * on disk. Used by in-place session switching. Symmetric with
+   * `listImportableSessions` so any session the panel can list is also
+   * accepted for in-place switching. Providers without an explicit on-disk
+   * session artifact (e.g. hosted Codex threads) don't need this.
+   */
+  resolveOmpSessionPath?(handle: string): Promise<string>;
   importSession?(
     input: ImportProviderSessionInput,
     context: ImportProviderSessionContext,
