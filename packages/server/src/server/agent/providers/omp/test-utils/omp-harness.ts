@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setImmediate as waitForImmediate } from "node:timers/promises";
@@ -58,6 +58,26 @@ async function writeOmpHistory(history: OmpResumeHistory): Promise<string> {
   ];
   await writeFile(sessionFile, entries.map((entry) => JSON.stringify(entry)).join("\n"), "utf8");
   return sessionFile;
+}
+
+/**
+ * Create a temp directory and export its `OMP_SESSION_DIR` so the harness's
+ * `resolveOmpSessionsDir` call resolves to it. Returns the directory path.
+ * The harness stores this path internally so switch tests can build real
+ * session files inside it -- required by `resolveOmpSessionPathByHandle`,
+ * which refuses to validate against a path that isn't in the walked set.
+ */
+async function makeConfiguredSessionDir(): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "paseo-omp-sessions-"));
+  process.env.OMP_SESSION_DIR = dir;
+  return dir;
+}
+
+async function writeSessionFileUnder(dir: string, name: string): Promise<string> {
+  await mkdir(dir, { recursive: true });
+  const file = join(dir, `${Date.now()}_${name}.jsonl`);
+  await writeFile(file, '{"type":"session","id":"root"}\n', "utf8");
+  return file;
 }
 
 export class OmpHarness {
@@ -455,10 +475,24 @@ export class OmpHarness {
     return await this.requireSession().switchOmpSession(sessionPath);
   }
 
-  async switchOmpSessionCancelled(): Promise<{ cancelled: boolean }> {
+  /**
+   * Stage a real session file inside a temp `OMP_SESSION_DIR` so
+   * `resolveOmpSessionPathByHandle` accepts the path. Returns the absolute
+   * path. Must be called before `start()` so the env var is set when the
+   * session's runtime settings are captured -- or after start, in which
+   * case the next `switchOmpSession` call picks up the new env via the
+   * runtimeSettings accessor (handled by OmpAgentClient.runtimeSettings
+   * snapshotted at construction).
+   */
+  async stageSwitchableSession(suffix: string = "switch-target"): Promise<string> {
+    const dir = await makeConfiguredSessionDir();
+    return await writeSessionFileUnder(dir, suffix);
+  }
+
+  async switchOmpSessionCancelled(sessionPath: string): Promise<{ cancelled: boolean }> {
     this.omp.latestSession().switchSessionResponse = false;
     try {
-      return await this.requireSession().switchOmpSession("ignored");
+      return await this.requireSession().switchOmpSession(sessionPath);
     } finally {
       this.omp.latestSession().switchSessionResponse = true;
     }

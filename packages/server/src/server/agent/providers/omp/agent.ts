@@ -214,6 +214,13 @@ interface OmpAgentSessionOptions {
   usagePollScheduler?: OmpUsagePollScheduler;
   paseoTools?: PaseoToolCatalog;
   /**
+   * The host-supplied runtime settings (env, command overrides, etc.) used
+   * to resolve the OMP sessions directory for `switchOmpSession`. Same
+   * value `OmpAgentClient.runtimeSettings` holds; passed in here so the
+   * session can resolve session paths without re-deriving them.
+   */
+  runtimeSettings?: ProviderRuntimeSettings;
+  /**
    * When false (resumed sessions), replayed session events are dropped until
    * the first prompt or agent_start so history is not re-emitted as live
    * timeline items.
@@ -945,6 +952,7 @@ export class OmpAgentSession implements AgentSession, OmpParitySession, OmpVibeS
   private lastTodoItem: Extract<AgentTimelineItem, { type: "todo" }> | null = null;
   private state: OmpSessionState;
   private readonly currentModeId: string | null;
+  private readonly runtimeSettings?: ProviderRuntimeSettings;
   private readonly providerIdleScheduler: OmpProviderIdleScheduler;
   private readonly noTurnScheduler: OmpNoTurnScheduler;
   private readonly usagePoller: OmpUsagePoller;
@@ -963,6 +971,7 @@ export class OmpAgentSession implements AgentSession, OmpParitySession, OmpVibeS
     this.logger = options.logger;
     this.paseoTools = options.paseoTools;
     this.live = options.live ?? true;
+    this.runtimeSettings = options.runtimeSettings;
     this.providerIdleScheduler = options.providerIdleScheduler ?? createOmpProviderIdleScheduler();
     this.noTurnScheduler = options.noTurnScheduler ?? createOmpNoTurnScheduler();
     this.usagePoller = new OmpUsagePoller({
@@ -1418,22 +1427,29 @@ export class OmpAgentSession implements AgentSession, OmpParitySession, OmpVibeS
   }
 
   /**
-   * In-place switch of the live agent's runtime session to `sessionPath`
-   * (an absolute OMP `.jsonl` file). Mirrors the OMP CLI's `/switch` slash
+   * In-place switch of the live agent's runtime session to the OMP session
+   * identified by `providerHandleId`. Mirrors the OMP CLI's `/switch` slash
    * command and the fork's `switch_session` RPC command; returns
    * `{ cancelled: true }` when the runtime refuses (e.g. an extension's
    * `session_before_switch` hook cancels, or cwd mismatch), in which case
    * the local runtime state is left untouched.
+   *
+   * SECURITY: the host-side `omp.session.switch` wire carries
+   * `providerHandleId` (the OMP session id), NOT a raw filesystem path.
+   * This method resolves the handle via `resolveOmpSessionPathByHandle`
+   * against the configured OMP sessions directory — realpath-resolved and
+   * containment-checked — before handing it to the fork. The wire
+   * primitive therefore cannot be coerced into an arbitrary-path read/write.
    *
    * The manager's `switchOmpAgentSession` wrapper dispatches the host-side
    * `timeline_replacement` and refreshes persisted state on the success
    * path; this method only concerns itself with the runtime mutation and
    * its own cached state.
    */
-  async switchOmpSession(sessionPath: string): Promise<{ cancelled: boolean }> {
-    const target = sessionPath.trim();
-    if (!target) {
-      throw new Error("OMP session switch requires a session path");
+  async switchOmpSession(providerHandleId: string): Promise<{ cancelled: boolean }> {
+    const handle = typeof providerHandleId === "string" ? providerHandleId.trim() : "";
+    if (!handle) {
+      throw new Error("OMP session switch requires a session handle");
     }
     if (this.activeTurnId) {
       throw new Error("Cannot switch the OMP session while a turn is active");
@@ -1442,7 +1458,12 @@ export class OmpAgentSession implements AgentSession, OmpParitySession, OmpVibeS
     if (typeof runtimeRecord["switchSession"] !== "function") {
       throw new Error("OMP runtime does not expose switchSession on this build");
     }
-    const success = await this.runtimeSession.switchSession(target);
+    const { resolveOmpSessionPathByHandle } = await import("./session-descriptor.js");
+    const sessionPath = await resolveOmpSessionPathByHandle(handle, {
+      cwd: this.config.cwd,
+      runtimeSettings: this.runtimeSettings,
+    });
+    const success = await this.runtimeSession.switchSession(sessionPath);
     if (!success) {
       return { cancelled: true };
     }
@@ -2890,6 +2911,7 @@ export class OmpAgentClient implements AgentClient {
         providerIdleScheduler: this.providerIdleScheduler,
         noTurnScheduler: this.noTurnScheduler,
         usagePollScheduler: this.usagePollScheduler,
+        runtimeSettings: this.runtimeSettings,
         paseoTools: launchContext?.paseoTools,
       });
       await session.initializeCapabilities();
@@ -2940,6 +2962,7 @@ export class OmpAgentClient implements AgentClient {
         providerIdleScheduler: this.providerIdleScheduler,
         noTurnScheduler: this.noTurnScheduler,
         usagePollScheduler: this.usagePollScheduler,
+        runtimeSettings: this.runtimeSettings,
         paseoTools: launchContext?.paseoTools,
         live: false,
       });

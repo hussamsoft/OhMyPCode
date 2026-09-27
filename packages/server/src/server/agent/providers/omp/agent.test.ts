@@ -577,12 +577,15 @@ describe("OMP agent client and session", () => {
 
   test("switches the live session to a target file and refreshes internal state", async () => {
     const omp = new OmpHarness();
+    // Stage the target session file BEFORE start() so the env var is set
+    // when the agent session captures the runtimeSettings accessor.
+    const targetPath = await omp.stageSwitchableSession("switch-target");
     await omp.start();
 
     expect(omp.switchSessionRequests()).toEqual([]);
-    const result = await omp.switchOmpSession("/var/folders/abc/session.jsonl");
+    const result = await omp.switchOmpSession(targetPath);
     expect(result).toEqual({ cancelled: false });
-    expect(omp.switchSessionRequests()).toEqual(["/var/folders/abc/session.jsonl"]);
+    expect(omp.switchSessionRequests()).toEqual([targetPath]);
 
     await omp.close();
     expect(omp.isClosed()).toBe(true);
@@ -590,11 +593,12 @@ describe("OMP agent client and session", () => {
 
   test("surfaces a runtime-side cancel as { cancelled: true } without touching internal state", async () => {
     const omp = new OmpHarness();
+    const targetPath = await omp.stageSwitchableSession("cancel-target");
     await omp.start();
 
-    const result = await omp.switchOmpSessionCancelled();
+    const result = await omp.switchOmpSessionCancelled(targetPath);
     expect(result).toEqual({ cancelled: true });
-    expect(omp.switchSessionRequests()).toEqual(["ignored"]);
+    expect(omp.switchSessionRequests()).toEqual([targetPath]);
 
     await omp.close();
     expect(omp.isClosed()).toBe(true);
@@ -602,12 +606,11 @@ describe("OMP agent client and session", () => {
 
   test("rejects an in-flight switch while a turn is active", async () => {
     const omp = new OmpHarness();
+    const targetPath = await omp.stageSwitchableSession("busy-target");
     await omp.start();
     await omp.requireStartTurn("still streaming");
 
-    await expect(omp.switchOmpSession("/tmp/whatever.jsonl")).rejects.toThrow(
-      /while a turn is active/,
-    );
+    await expect(omp.switchOmpSession(targetPath)).rejects.toThrow(/while a turn is active/);
     expect(omp.switchSessionRequests()).toEqual([]);
 
     await omp.close();

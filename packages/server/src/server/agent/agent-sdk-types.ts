@@ -623,13 +623,6 @@ export interface ListImportableSessionsOptions {
 
 export interface ImportableProviderSession {
   providerHandleId: string;
-  /**
-   * Absolute path to the on-disk session file when the provider exposes one
-   * (today: OMP). Opaque to non-provider callers -- only providers with a
-   * concrete file artifact expose it, and consumers should fall back to
-   * `providerHandleId` when this is undefined.
-   */
-  filePath?: string;
   cwd: string;
   title: string | null;
   firstPromptPreview: string | null;
@@ -809,7 +802,7 @@ export interface OmpParitySession {
    * bookkeeping on the success path; the runtime itself only mutates the
    * in-memory agent.
    */
-  switchOmpSession(sessionPath: string): Promise<{ cancelled: boolean }>;
+  switchOmpSession(providerHandleId: string): Promise<{ cancelled: boolean }>;
 }
 export type OmpModeSession = OmpParitySession;
 

@@ -4,16 +4,20 @@
  * Lists OMP sessions for the agent's cwd (filtered server-side via
  * `fetchRecentProviderSessions({ providers: ["omp"], cwd })`) and lets
  * the user resume any one of them in-place -- the live agent's runtime
- * session gets re-bound to the selected `.jsonl` file via the
- * `omp.session.switch.request` RPC. Distinct from the import sheet,
- * which spawns a *new* agent over the same file.
+ * session gets re-bound to the selected session via the
+ * `omp.session.switch.request` RPC, which carries a `providerHandleId`
+ * (the OMP session id), NOT a raw filesystem path. The host resolves the
+ * handle against the configured OMP sessions directory and
+ * containment-validates the resolved path before handing it to the fork.
+ * Distinct from the import sheet, which spawns a *new* agent over the
+ * same file.
  *
  * Capability-gating:
  *  - missing serverId/agentId -> placeholder
  *  - no `supportsOmpSessionSwitch` capability on the live agent
  *    -> placeholder with the same translation key
- *  - entry without `filePath` -> Resume button disabled with a tooltip
- *    explaining that the host's entry doesn't carry a switchable artifact
+ *  - entry without `providerHandleId` (impossible per the wire schema,
+ *    but checked defensively) -> Resume button disabled
  *
  * Mirrors the structure of `omp-plugins-form.tsx` and `omp-skills-form.tsx`
  * (refresh button, row layout, capability-gate via host-runtime lookups)
@@ -156,11 +160,11 @@ function OmpSessionsBody({ serverId, agentId, cwd, client, isConnected }: OmpSes
   }, [enabled, sessionsQuery]);
 
   const handleResume = useCallback(
-    async (filePath: string) => {
+    async (providerHandleId: string) => {
       if (!client) return;
       setResumeError(null);
       try {
-        const result = await client.switchSessionAgent(agentId, filePath);
+        const result = await client.switchSessionAgent(agentId, providerHandleId);
         if (result.cancelled) {
           setResumeError(t("panels.ompSessions.resumeCancelled"));
         }
@@ -259,20 +263,21 @@ function SessionsStatus({ isLoading, isError, hasRows }: SessionsStatusProps) {
 interface SessionRowProps {
   entry: FetchRecentProviderSessionEntry;
   disabled: boolean;
-  onResume: (filePath: string) => Promise<void>;
+  onResume: (providerHandleId: string) => Promise<void>;
 }
 
 function SessionRow({ entry, disabled, onResume }: SessionRowProps) {
   const { t } = useTranslation();
   const label = resolveEntryLabel(entry);
   const subtitle = resolveEntrySubtitle(entry);
-  const filePath = entry.filePath;
-  const canResume = Boolean(filePath) && !disabled;
+  const providerHandleId = entry.providerHandleId;
+  const isOmpEntry = entry.providerId === "omp";
+  const canResume = isOmpEntry && Boolean(providerHandleId) && !disabled;
 
   const handlePress = useCallback(() => {
-    if (!filePath) return;
-    void onResume(filePath);
-  }, [filePath, onResume]);
+    if (!providerHandleId) return;
+    void onResume(providerHandleId);
+  }, [providerHandleId, onResume]);
 
   return (
     <View style={styles.row} testID={`omp-sessions-form-row-${entry.providerHandleId}`}>
@@ -289,18 +294,20 @@ function SessionRow({ entry, disabled, onResume }: SessionRowProps) {
           </Text>
         ) : null}
       </View>
-      <Button
-        testID={`omp-sessions-form-row-${entry.providerHandleId}-resume`}
-        disabled={!canResume}
-        accessibilityHint={
-          filePath
-            ? t("panels.ompSessions.resumeHint")
-            : t("panels.ompSessions.resumeUnavailableHint")
-        }
-        onPress={canResume ? handlePress : undefined}
-      >
-        {t("panels.ompSessions.resume")}
-      </Button>
+      {isOmpEntry ? (
+        <Button
+          testID={`omp-sessions-form-row-${entry.providerHandleId}-resume`}
+          disabled={!canResume}
+          accessibilityHint={
+            providerHandleId
+              ? t("panels.ompSessions.resumeHint")
+              : t("panels.ompSessions.resumeUnavailableHint")
+          }
+          onPress={canResume ? handlePress : undefined}
+        >
+          {t("panels.ompSessions.resume")}
+        </Button>
+      ) : null}
     </View>
   );
 }

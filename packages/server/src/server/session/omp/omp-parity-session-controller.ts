@@ -202,7 +202,7 @@ export class OmpParitySessionController {
         case "omp.session.switch.request": {
           const result = await this.options.agentManager.switchOmpAgentSession(
             msg.agentId,
-            msg.sessionPath,
+            msg.providerHandleId,
           );
           this.emitResponse("omp.session.switch.response", msg.requestId, {
             cancelled: result.cancelled,

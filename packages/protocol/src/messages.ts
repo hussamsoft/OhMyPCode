@@ -893,12 +893,6 @@ export const RecentProviderSessionDescriptorPayloadSchema = z.object({
   providerId: z.string(),
   providerLabel: z.string(),
   providerHandleId: z.string(),
-  /**
-   * On-disk session file path when the provider exposes one (OMP today).
-   * Opaque to non-provider consumers; absent for providers that don't store
-   * sessions as a file artifact (e.g. hosted Codex threads).
-   */
-  filePath: z.string().optional(),
   cwd: z.string(),
   title: z.string().nullable(),
   firstPromptPreview: z.string().nullable(),
@@ -2028,11 +2022,18 @@ export const OmpKeybindingsSetRequestSchema = z.object({
  * returns `{ cancelled: boolean }` (cancellation comes from the
  * `session_before_switch` extension hook). The desktop surfaces the result
  * through the `omp_sessions` panel's "Resume here" action.
+ *
+ * SECURITY: the wire carries `providerHandleId` (the OMP session id), NOT a
+ * raw filesystem path. The server resolves the handle via
+ * `resolveOmpSessionPathByHandle` against the configured OMP sessions
+ * directory, realpath-validates containment, and only then hands the
+ * resolved absolute path to the fork. This prevents the host from being
+ * asked to read/write arbitrary files under arbitrary paths via this RPC.
  */
 export const OmpSessionSwitchRequestMessageSchema = z.object({
   type: z.literal("omp.session.switch.request"),
   agentId: z.string(),
-  sessionPath: z.string(),
+  providerHandleId: z.string(),
   requestId: z.string(),
 });
 

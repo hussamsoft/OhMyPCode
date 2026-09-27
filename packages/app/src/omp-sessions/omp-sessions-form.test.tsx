@@ -114,7 +114,7 @@ describe("OmpSessionsForm", () => {
     });
   });
 
-  it("renders rows and surfaces the Resume-here action when filePath is present", async () => {
+  it("renders rows and surfaces the Resume-here action for an OMP session", async () => {
     runtime.capabilitiesSupportsOmpSessionSwitch = true;
     setupClient();
     runtime.fetchRecentProviderSessions.mockResolvedValue({
@@ -122,8 +122,7 @@ describe("OmpSessionsForm", () => {
         {
           providerId: "omp",
           providerLabel: "OMP",
-          providerHandleId: "/var/folders/abc.jsonl",
-          filePath: "/var/folders/abc.jsonl",
+          providerHandleId: "abc-session",
           cwd: "/tmp/cwd",
           title: "audit run",
           firstPromptPreview: "audit",
@@ -133,16 +132,16 @@ describe("OmpSessionsForm", () => {
       ],
     });
     render(<OmpSessionsForm serverId="server-1" agentId="agent-1" />, { wrapper });
-    const row = await screen.findByTestId("omp-sessions-form-row-/var/folders/abc.jsonl");
-    const resume = await screen.findByTestId("omp-sessions-form-row-/var/folders/abc.jsonl-resume");
+    const row = await screen.findByTestId("omp-sessions-form-row-abc-session");
+    const resume = await screen.findByTestId("omp-sessions-form-row-abc-session-resume");
     expect(row.textContent).toContain("audit run");
     fireEvent.click(resume);
     await waitFor(() => {
-      expect(runtime.switchSessionAgent).toHaveBeenCalledWith("agent-1", "/var/folders/abc.jsonl");
+      expect(runtime.switchSessionAgent).toHaveBeenCalledWith("agent-1", "abc-session");
     });
   });
 
-  it("disables the Resume button when an entry lacks a filePath", async () => {
+  it("disables the Resume button when an entry lacks a providerHandleId", async () => {
     runtime.capabilitiesSupportsOmpSessionSwitch = true;
     setupClient();
     runtime.fetchRecentProviderSessions.mockResolvedValue({
@@ -160,12 +159,13 @@ describe("OmpSessionsForm", () => {
       ],
     });
     render(<OmpSessionsForm serverId="server-1" agentId="agent-1" />, { wrapper });
-    const resume = await screen.findByTestId("omp-sessions-form-row-thread-1-resume");
-    expect(resume).toBeTruthy();
-    fireEvent.click(resume);
-    await waitFor(() => {
-      expect(runtime.switchSessionAgent).not.toHaveBeenCalled();
-    });
+    // Code rows pass through too (provider filter is applied server-side);
+    // the Resume action is gated on provider === "omp".
+    const row = await screen.findByTestId("omp-sessions-form-row-thread-1");
+    expect(row.textContent).toBeTruthy();
+    const resume = screen.queryByTestId("omp-sessions-form-row-thread-1-resume");
+    expect(resume == null).toBe(true);
+    expect(runtime.switchSessionAgent).not.toHaveBeenCalled();
   });
 
   it("surfaces the runtime's cancel verdict in the resume error line", async () => {
@@ -177,8 +177,7 @@ describe("OmpSessionsForm", () => {
         {
           providerId: "omp",
           providerLabel: "OMP",
-          providerHandleId: "/var/folders/cancel.jsonl",
-          filePath: "/var/folders/cancel.jsonl",
+          providerHandleId: "cancel-session",
           cwd: "/tmp/cwd",
           title: "needs approval",
           firstPromptPreview: "x",
@@ -188,9 +187,7 @@ describe("OmpSessionsForm", () => {
       ],
     });
     render(<OmpSessionsForm serverId="server-1" agentId="agent-1" />, { wrapper });
-    const resume = await screen.findByTestId(
-      "omp-sessions-form-row-/var/folders/cancel.jsonl-resume",
-    );
+    const resume = await screen.findByTestId("omp-sessions-form-row-cancel-session-resume");
     fireEvent.click(resume);
     await waitFor(() => {
       expect(runtime.switchSessionAgent).toHaveBeenCalled();

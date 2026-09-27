@@ -5530,24 +5530,31 @@ export class DaemonClient {
 
   /**
    * In-place session switch for an OMP agent: drop the live agent's
-   * runtime session and adopt the contents of `sessionPath` (an absolute
-   * OMP `.jsonl` file). Returns `{ cancelled: true }` when an extension's
+   * runtime session and adopt the contents of the OMP session identified
+   * by `providerHandleId` (the OMP session id, NOT a raw filesystem path).
+   * Returns `{ cancelled: true }` when an extension's
    * `session_before_switch` hook cancels (or cwd mismatch), and
    * `{ cancelled: false }` after the host has dispatched its
    * `timeline_replacement` to subscribers. Distinct from `importAgent`,
    * which spawns a *new* agent over the same session file.
+   *
+   * SECURITY: the host never sees a filesystem path. The server resolves
+   * the handle against the configured OMP sessions directory, realpath-
+   * validates containment, and only then hands the resolved absolute path
+   * to the fork -- so this RPC primitive cannot be coerced into an
+   * arbitrary-path read/write.
    *
    * Mirrors the OMP CLI's `/switch` slash command and the fork's
    * `switch_session` RPC command.
    */
   async switchSessionAgent(
     agentId: string,
-    sessionPath: string,
+    providerHandleId: string,
     options?: { requestId?: string },
   ): Promise<OmpSessionSwitchPayload> {
     return this.sendNamespacedCorrelatedSessionRequest({
       requestId: options?.requestId,
-      message: { type: "omp.session.switch.request", agentId, sessionPath },
+      message: { type: "omp.session.switch.request", agentId, providerHandleId },
     });
   }
 

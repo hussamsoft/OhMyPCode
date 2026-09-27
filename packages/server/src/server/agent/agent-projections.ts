@@ -280,11 +280,13 @@ export function toRecentProviderSessionDescriptorPayload(
   session: ImportableProviderSession & { provider: string },
   options: RecentProviderSessionProjectionOptions,
 ): RecentProviderSessionDescriptorPayload {
+  // SECURITY: do not leak the on-disk session file path over the wire. Hosts
+  // reach in-place session switching via `providerHandleId` and the server
+  // resolves it through `resolveOmpSessionPathByHandle` (realpath + containment).
   return {
     providerId: session.provider,
     providerLabel: options.providerLabel,
     providerHandleId: session.providerHandleId,
-    ...(session.filePath ? { filePath: session.filePath } : {}),
     cwd: session.cwd,
     title: session.title,
     firstPromptPreview: session.firstPromptPreview,

@@ -1386,18 +1386,84 @@ export class AgentManager {
 
   /**
    * In-place session switch for an OMP agent. Re-binds the live agent's
-   * runtime session to `sessionPath` (an absolute OMP `.jsonl` file) -- the
-   * runtime returns `true` on success and `false` if a `session_before_switch`
-   * extension hook cancels, which the protocol surfaces as `{ cancelled: true }`.
-   * Distinct from `importProviderSession`, which spawns a *new* agent over the
-   * same session file. Mirrors the OMP CLI's `/switch` slash command and the
-   * fork's `switch_session` RPC command (see `vendor/oh-my-pi/packages/coding-agent/src/modes/rpc/rpc-mode.ts`).
+   * runtime session to the OMP session identified by `providerHandleId`
+   * (the absolute path-as-handle that matches the import flow's
+   * pre-existing contract). The OMP agent session resolves the handle
+   * against the configured OMP sessions directory, realpath-validates
+   * containment, and only then hands the resolved path to the runtime —
+   * the wire primitive therefore cannot be coerced into an arbitrary-path
+   * read/write.
+   *
+   * On success (`{ cancelled: false }`), this method performs the same
+   * host-side bookkeeping as `rewind()`: re-hydrate the timeline from the
+   * runtime's current history (which is now the new session's), bump the
+   * timeline epoch, dispatch `timeline_replacement`, refresh the
+   * persisted descriptor, refresh the agent's state, persist a snapshot,
+   * and emit state to subscribers. Without this, the app would keep
+   * rendering the previous conversation against the freshly-switched
+   * session file, and the agent descriptor's `sessionId`/`sessionFile`
+   * would stay stale until the next prompt.
+   *
+   * On cancel (`{ cancelled: true }`, e.g. an extension
+   * `session_before_switch` hook cancels), the runtime mutates nothing and
+   * neither does the host — the live agent is left pointing at the prior
+   * session, no timeline replacement is dispatched, and the persisted
+   * descriptor is untouched.
+   *
+   * Distinct from `importProviderSession`, which spawns a *new* agent over
+   * the same session file. Mirrors the OMP CLI's `/switch` slash command
+   * and the fork's `switch_session` RPC command (see
+   * `vendor/oh-my-pi/packages/coding-agent/src/modes/rpc/rpc-mode.ts`).
    */
   async switchOmpAgentSession(
     agentId: string,
-    sessionPath: string,
+    providerHandleId: string,
   ): Promise<{ cancelled: boolean }> {
-    return await this.requireOmpModeSession(agentId).switchOmpSession(sessionPath);
+    const agent = this.requirePublicAgent(agentId);
+    const result = await this.requireOmpModeSession(agentId).switchOmpSession(providerHandleId);
+    if (result.cancelled) {
+      return result;
+    }
+
+    // Mirror the rewind success path: re-hydrate the timeline against the
+    // new session, bump the epoch so clients refresh, then propagate the
+    // new persistence descriptor to subscribers.
+    const lock = this.runs.createPendingRun(agentId);
+    try {
+      this.logger.info(
+        { agentId, provider: agent.provider, providerHandleId },
+        "agent.session_switch.start",
+      );
+      await this.hydrateTimelineFromProvider(agentId, {
+        force: true,
+        broadcast: true,
+        broadcastTimeline: false,
+      });
+      this.dispatch({
+        type: "timeline_replacement",
+        agentId,
+        epoch: this.timelineStore.getEpoch(agentId),
+      });
+      this.refreshSessionPersistence(agent);
+      await this.refreshSessionState(agent, { emit: false });
+      await this.persistSnapshot(agent);
+      this.emitState(agent, { persist: false });
+      this.logger.info(
+        { agentId, provider: agent.provider, providerHandleId },
+        "agent.session_switch.complete",
+      );
+    } catch (error) {
+      this.logger.warn(
+        { err: error, agentId, provider: agent.provider, providerHandleId },
+        "agent.session_switch.failed",
+      );
+      // The runtime has already swapped sessions; if bookkeeping fails the
+      // best we can do is log and return the cancelled=false result so the
+      // caller still learns that the switch went through.
+    } finally {
+      this.runs.settleForegroundRun(agentId, lock.token);
+    }
+    return result;
   }
 
   private applyOmpModesResult(agentId: string, result: OmpModesResult): void {

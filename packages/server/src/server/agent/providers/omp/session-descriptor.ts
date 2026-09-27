@@ -110,6 +110,90 @@ export async function readOmpImportSessionConfig(
   return toOmpImportSessionConfig(descriptor);
 }
 
+/**
+ * Resolve a host-supplied OMP session `providerHandleId` (the absolute
+ * session file path, matching the import flow's pre-existing handle
+ * contract) to a validated, realpath-resolved path inside the configured
+ * OMP sessions directory.
+ *
+ * SECURITY: this is the *only* place that turns a host-supplied handle
+ * into a path the fork is allowed to read. The validation is layered:
+ *
+ *   1. The input must be a non-empty string. We do NOT enforce a path
+ *      shape here -- the existing import flow has always carried
+ *      absolute paths in this field and switching the on-the-wire
+ *      contract would break the `agentStorage.listByProviderSession`
+ *      dedup and the "Provider session is already imported" guard in
+ *      `import-sessions.ts`. The handle contract stays a path; the
+ *      security boundary is validation below.
+ *   2. `path.resolve` to canonicalize traversal (`..`), double slashes,
+ *      and symlink components that the realpath step won't see.
+ *   3. `fs.realpath` to follow any remaining symlinks.
+ *   4. The realpath must be `path.relative`-inside the configured
+ *      sessions dir (and not `..` out of it). Plain `startsWith` is
+ *      insufficient: `/sessions-evil/...` would satisfy
+ *      `startsWith('/sessions')`.
+ *   5. The original input (pre-realpath) MUST already be in the walked
+ *      set of `.jsonl` files under the configured sessions dir --
+ *      catches symlinks that point to legitimate session files but
+ *      were renamed into the dir, and rejects anything that didn't
+ *      originate from OMP's own session-dir walk.
+ *
+ * Throws if any of the above fail. The fork only ever sees the
+ * validated path on success.
+ */
+export async function resolveOmpSessionPathByHandle(
+  providerHandleId: string,
+  options: OmpSessionDescriptorOptions = {},
+): Promise<string> {
+  if (typeof providerHandleId !== "string" || !providerHandleId.trim()) {
+    throw new Error("OMP session handle is required");
+  }
+  const sessionsDir = await resolveOmpSessionsDir(options);
+  const walkedFiles = await walkJsonlFiles(sessionsDir);
+  const walkedSet = new Set(walkedFiles.map((file) => path.resolve(file)));
+
+  const dirResolved = path.resolve(sessionsDir);
+  const inputResolved = path.resolve(providerHandleId);
+
+  // Step 1: the input must already be in the walked set under the
+  // configured sessions dir. This is the cheap rejection that catches
+  // most arbitrary-path probes before we even touch realpath.
+  if (!walkedSet.has(inputResolved)) {
+    throw new Error("OMP session handle is not a session under the configured dir");
+  }
+
+  // Step 2: follow any remaining symlinks via realpath. The realpath
+  // target must still resolve inside the configured sessions dir.
+  const { realpath } = await import("node:fs/promises");
+  let realResolved: string;
+  try {
+    realResolved = await realpath(inputResolved);
+  } catch {
+    // The file disappeared between the walk and the realpath call --
+    // refuse the switch rather than silently fall back to the lexically
+    // resolved path.
+    throw new Error("OMP session file is no longer accessible");
+  }
+
+  const relative = path.relative(dirResolved, realResolved);
+  const insideDir = !!relative && !relative.startsWith("..") && !path.isAbsolute(relative);
+  if (!insideDir) {
+    throw new Error("OMP session path escapes the configured sessions dir");
+  }
+
+  // Final cross-check: the realpath target must also be in the walked
+  // set. A symlink could point to a legitimate file under sessionsDir
+  // (allowed), or to one outside it (rejected by the containment
+  // check). If the realpath resolves to a file the walk didn't list --
+  // e.g. a file that was added after the walk -- refuse.
+  if (!walkedSet.has(realResolved)) {
+    throw new Error("OMP session realpath is not a session under the configured dir");
+  }
+
+  return realResolved;
+}
+
 async function resolveOmpSessionsDir(options: OmpSessionDescriptorOptions): Promise<string> {
   const env = options.env ?? process.env;
   const homeDir = options.homeDir ?? homedir();
@@ -225,9 +309,15 @@ async function readOmpImportableSession(
   const descriptor = await readOmpSessionDescriptor(filePath);
   if (!descriptor) return null;
 
+  // `providerHandleId` is the absolute session file path. This matches the
+  // shape the import flow has always used and lets the host round-trip
+  // `fetchRecentProviderSessions -> switch_session` without a separate id
+  // resolution step. SECURITY: hosts never get to influence what gets
+  // resolved -- `resolveOmpSessionPathByHandle` realpath-validates the
+  // handle and asserts containment under the configured sessions dir
+  // before the fork is asked to read it.
   return {
     providerHandleId: filePath,
-    filePath,
     cwd: descriptor.cwd,
     title: descriptor.title,
     firstPromptPreview: normalizePromptPreview(descriptor.firstUserMessage),
