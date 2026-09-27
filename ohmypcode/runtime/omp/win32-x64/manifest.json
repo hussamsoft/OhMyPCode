@@ -1,0 +1,7 @@
+{
+  "ompVersion": "18.3.1",
+  "sourceCommit": "ffa50151f10b2b40eff191e8f4f231de54007875",
+  "bunVersion": "1.4.2",
+  "target": "bun-windows-x64-baseline",
+  "sha256": "79ddcd517bd6772fde3f6543223490e38dcf350fc4b6ff5cb4a9a6a8769b1a69"
+}
