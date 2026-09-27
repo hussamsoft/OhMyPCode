@@ -226,7 +226,6 @@ describe("OmpAgentsHubForm", () => {
           name: "zeta",
           description: "Project custom agent",
           source: "project",
-          filePath: "/repo/.omp/agents/zeta.md",
         },
         {
           name: "alpha",
@@ -238,7 +237,6 @@ describe("OmpAgentsHubForm", () => {
           name: "beta",
           description: "User-defined researcher",
           source: "user",
-          filePath: "/home/user/.omp/agents/beta.md",
           model: ["opus"],
         },
       ],

@@ -260,7 +260,6 @@ interface CatalogRowProps {
 
 function CatalogRow({ agent, t }: CatalogRowProps) {
   const sourceKey = resolveCatalogSourceLabelKey(agent.source);
-  const filePath = typeof agent.filePath === "string" ? agent.filePath : null;
   const tools = agent.tools ?? [];
   const models = agent.model ?? [];
   return (
@@ -280,11 +279,6 @@ function CatalogRow({ agent, t }: CatalogRowProps) {
         </Text>
       ) : null}
       <View style={styles.catalogRowMeta}>
-        {filePath ? (
-          <Text style={styles.catalogRowMetaItem} numberOfLines={1}>
-            {t("panels.ompAgentsHub.catalog.filePathLabel")}: {filePath}
-          </Text>
-        ) : null}
         {tools.length > 0 ? (
           <Text style={styles.catalogRowMetaItem} numberOfLines={1}>
             {t("panels.ompAgentsHub.catalog.toolsLabel")}: {tools.join(", ")}

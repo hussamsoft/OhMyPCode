@@ -2143,7 +2143,6 @@ export const en = {
         sourceBundled: "Bundled",
         sourceUser: "User",
         sourceProject: "Project",
-        filePathLabel: "Path",
         toolsLabel: "Tools",
         modelsLabel: "Models",
         spawnDisabledTooltip:
