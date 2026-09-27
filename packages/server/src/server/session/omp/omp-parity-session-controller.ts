@@ -17,6 +17,7 @@ const OMP_PARITY_MESSAGE_TYPES: ReadonlySet<SessionInboundMessage["type"]> = new
   "omp.keybindings.get.request",
   "omp.keybindings.set.request",
   "omp.session.switch.request",
+  "omp.agents.list.request",
 ]);
 
 type OmpParityRequest = Extract<
@@ -31,7 +32,8 @@ type OmpParityRequest = Extract<
       | "omp.goal.action.request"
       | "omp.keybindings.get.request"
       | "omp.keybindings.set.request"
-      | "omp.session.switch.request";
+      | "omp.session.switch.request"
+      | "omp.agents.list.request";
   }
 >;
 
@@ -47,6 +49,7 @@ export interface OmpParitySessionControllerOptions {
     | "getOmpKeybindings"
     | "setOmpKeybinding"
     | "switchOmpAgentSession"
+    | "listOmpAgentCatalog"
   >;
   emit: (message: SessionOutboundMessage) => void;
   logger: pino.Logger;
@@ -209,6 +212,12 @@ export class OmpParitySessionController {
           });
           return;
         }
+
+        case "omp.agents.list.request": {
+          const agents = await this.options.agentManager.listOmpAgentCatalog(msg.agentId);
+          this.emitResponse("omp.agents.list.response", msg.requestId, { agents });
+          return;
+        }
       }
     } catch (error) {
       this.emitError(msg, error);
@@ -225,7 +234,8 @@ export class OmpParitySessionController {
       | "omp.goal.action.response"
       | "omp.keybindings.get.response"
       | "omp.keybindings.set.response"
-      | "omp.session.switch.response",
+      | "omp.session.switch.response"
+      | "omp.agents.list.response",
     requestId: string,
     payload: Record<string, unknown>,
   ): void {
@@ -262,6 +272,11 @@ export class OmpParitySessionController {
         // failure (file missing, runtime refused, hooks rejected) surfaces
         // here rather than as a generic `omp_parity_unavailable` bucket.
         return "omp_session_switch_failed";
+      case "omp.agents.list.request":
+        // Read-only catalog. Manager-side failure (e.g. runtime rejected the
+        // RPC) is bucketed here so a host can tell the catalog load from
+        // a generic parity-unavailable.
+        return "omp_agents_list_failed";
     }
   }
 

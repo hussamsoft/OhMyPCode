@@ -2138,6 +2138,21 @@ export const en = {
       failed: "failed",
       cancelled: "cancelled",
       placeholderMissingServer: "Agent subagents require an active OMP session.",
+      catalog: {
+        heading: "Available agents",
+        sourceBundled: "Bundled",
+        sourceUser: "User",
+        sourceProject: "Project",
+        filePathLabel: "Path",
+        toolsLabel: "Tools",
+        modelsLabel: "Models",
+        spawnDisabledTooltip:
+          "Spawning from the catalog is not yet supported over the wire. Use the OMP TUI to launch one.",
+        emptyCatalog: "No agents discovered for this session.",
+        loadingCatalog: "Loading available agents…",
+        errorCatalog: "Couldn't load the available agent catalog.",
+        unsupportedCaption: "Agent catalog requires a launchable OMP runtime.",
+      },
     },
     ompSessions: {
       label: "Sessions",

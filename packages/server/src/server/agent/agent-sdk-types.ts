@@ -16,6 +16,7 @@ import type {
   OmpSettingsResult,
   OmpSetSettingResult,
   OmpSlashCommandResult,
+  OmpAvailableAgentCatalogEntry,
   VibeEnterResult,
   VibeExitResult,
   VibeKillResult,
@@ -32,6 +33,7 @@ export type {
   OmpSettingsResult,
   OmpSetSettingResult,
   OmpSlashCommandResult,
+  OmpAvailableAgentCatalogEntry,
   VibeEnterResult,
   VibeExitResult,
   VibeKillResult,
@@ -40,6 +42,14 @@ export type {
   VibeStateResult,
   VibeWaitResult,
 };
+
+/**
+ * Host-facing agent-catalog row. Mirrors the fork's `get_available_agents`
+ * response (omitting `systemPrompt` because prompts are large and the host
+ * only needs metadata to render a list cell). Spawn/execute is intentionally
+ * absent — the fork does not expose it over RPC yet.
+ */
+export type OmpAgentCatalogEntry = OmpAvailableAgentCatalogEntry;
 
 export type { AgentProviderNotice, AgentTaskItem };
 
@@ -242,6 +252,7 @@ export interface AgentCapabilityFlags {
   supportsOmpModes?: boolean;
   supportsOmpKeybindings?: boolean;
   supportsOmpSessionSwitch?: boolean;
+  supportsOmpAgentCatalog?: boolean;
 }
 
 export interface AgentPersistenceHandle {
@@ -787,6 +798,13 @@ export interface OmpParitySession {
     options?: { objective?: string; tokenBudget?: number; args?: string },
   ): Promise<OmpSetModeResult>;
   goalAction(action: "pause" | "resume" | "drop"): Promise<OmpModesResult>;
+  /**
+   * Read-only catalog of agents the host can render in a list cell. Mirrors
+   * the fork's `get_available_agents` RPC: bundled + user + project +
+   * extension-package agents, session-local model mentions appended. Does
+   * NOT expose spawn/execute — that capability is a separate slice.
+   */
+  listAvailableAgents(): Promise<OmpAgentCatalogEntry[]>;
   runSlashCommand(name: string, args?: string): Promise<OmpSlashCommandResult>;
   getSettings(): Promise<OmpSettingsResult>;
   setSetting(path: string, value: unknown): Promise<OmpSetSettingResult>;

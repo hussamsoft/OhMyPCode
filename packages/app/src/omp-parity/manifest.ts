@@ -1910,6 +1910,16 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
       "OMP RPC command; escape hatch via bundled OMP TUI terminal until native host dispatch lands",
   },
   {
+    id: "rpc:get_available_agents",
+    surface: "rpc",
+    name: "get_available_agents",
+    transport: "rpc",
+    guiHome: "omp_agents_hub",
+    capability: "ompAgentCatalog",
+    reason:
+      "Read-only catalog of bundled + user + project + extension-package agents; powers the available-agents list cell in the omp_agents_hub panel. Spawn/execute is intentionally NOT modelled here -- the fork does not expose it over RPC yet, and any spawn action stays TUI-only.",
+  },
+  {
     id: "rpc:get_available_commands",
     surface: "rpc",
     name: "get_available_commands",
@@ -2067,6 +2077,16 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     guiHome: "terminal:omp-tui",
     reason:
       "OMP RPC command; escape hatch via bundled OMP TUI terminal until native host dispatch lands",
+  },
+  {
+    id: "rpc:goal_action",
+    surface: "rpc",
+    name: "goal_action",
+    transport: "rpc",
+    guiHome: "omp_goal",
+    capability: "ompModes",
+    reason:
+      "Pauses, resumes, or drops an active or paused goal directly. Distinct from the mode-set cycle: this command calls the goal runtime's pause/resume/drop directly (matching `/goal pause` / `/goal resume` / `/goal drop` in the OMP TUI). Reactivating goal mode through the mode-set toggle starts a fresh goal (OMP's own `set_mode` semantics), so pause/resume/drop always go through this dedicated command. Capability gate: `omp_goal` checks `supportsOmpModes` (and `supportsOmpSlashCommands` for the in-panel `/goal` quick-verb) before dispatching this RPC.",
   },
   {
     id: "rpc:handoff",

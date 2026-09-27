@@ -12,6 +12,7 @@ import type {
   OmpSubagentSubscriptionLevel,
   OmpThinkingLevel,
   OmpToolCatalogEntry,
+  OmpAvailableAgentCatalogEntry,
   OmpVibeEnterResult,
   OmpVibeExitResult,
   OmpVibeKillResult,
@@ -96,6 +97,13 @@ export interface OmpRuntimeSession {
   listVibeWorkers(): Promise<OmpVibeListResult>;
   getToolCatalog(): Promise<OmpToolCatalogEntry[]>;
   setTools(enabledTools: string[]): Promise<OmpToolCatalogEntry[]>;
+  /**
+   * Read-only catalog of available agents (bundled + user + project +
+   * extension-package + session-local model mentions). Hosts render a list
+   * cell from the result. Spawn/execute is intentionally not exposed by the
+   * fork over RPC yet.
+   */
+  getAvailableAgents(): Promise<OmpAvailableAgentCatalogEntry[]>;
   getModes(): Promise<OmpModesResult>;
   setMode(
     mode: "plan" | "goal" | "loop",

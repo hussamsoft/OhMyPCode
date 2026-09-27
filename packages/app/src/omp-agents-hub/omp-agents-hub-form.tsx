@@ -22,6 +22,8 @@ import { usePaneContext } from "@/panels/pane-context";
 import { useSubagentsForParent, type ProviderSubagentRow } from "@/subagents/select";
 import { providerSubagentLifecycleStatus } from "@/subagents/provider-store";
 import { deriveSidebarStateBucket } from "@/utils/sidebar-agent-state";
+import { useOmpAgentCatalog } from "@/composer/omp-control-deck/use-omp-rpc";
+import type { OmpAvailableAgent } from "@ohmypcode/protocol/messages";
 import type { Theme } from "@/styles/theme";
 
 const ThemedUsers = withUnistyles(Users);
@@ -62,6 +64,47 @@ function resolveProviderRowStyle({ pressed }: { pressed: boolean }) {
   return pressed ? [styles.row, styles.rowPressed] : styles.row;
 }
 
+// Source-order priority for the available-agents catalog. Bundled first
+// because those ship with the runtime and are always available; project and
+// user roots come next because they describe agent local to the current
+// work; unknown values (defensive — the protocol caps the enum) fall to the
+// bottom rather than throwing so a future fork addition does not break the
+// panel.
+const CATALOG_SOURCE_ORDER: Record<OmpAvailableAgent["source"], number> = {
+  bundled: 0,
+  user: 1,
+  project: 2,
+};
+
+function resolveCatalogSourceOrder(source: OmpAvailableAgent["source"]): number {
+  if (source === "bundled" || source === "user" || source === "project") {
+    return CATALOG_SOURCE_ORDER[source];
+  }
+  return 99;
+}
+
+function sortCatalog(agents: readonly OmpAvailableAgent[]): OmpAvailableAgent[] {
+  return [...agents].sort((left, right) => {
+    const order = resolveCatalogSourceOrder(left.source) - resolveCatalogSourceOrder(right.source);
+    if (order !== 0) return order;
+    return left.name.localeCompare(right.name);
+  });
+}
+
+function resolveCatalogSourceLabelKey(
+  source: OmpAvailableAgent["source"],
+): "sourceBundled" | "sourceUser" | "sourceProject" {
+  if (source === "user") return "sourceUser";
+  if (source === "project") return "sourceProject";
+  return "sourceBundled";
+}
+
+function resolveCatalogSpawnButtonStyle({ pressed }: { pressed: boolean }) {
+  return pressed
+    ? [styles.catalogSpawnButton, styles.catalogSpawnButtonPressed]
+    : styles.catalogSpawnButton;
+}
+
 export interface OmpAgentsHubFormProps {
   serverId?: string | null;
   agentId?: string | null;
@@ -80,6 +123,14 @@ export function OmpAgentsHubForm({ serverId, agentId }: OmpAgentsHubFormProps) {
     () =>
       sortProviderRows(rows.filter((row): row is ProviderSubagentRow => row.kind === "provider")),
     [rows],
+  );
+  const catalog = useOmpAgentCatalog(
+    enabled ? (serverId as string) : null,
+    enabled ? (agentId as string) : null,
+  );
+  const sortedCatalog = useMemo<OmpAvailableAgent[]>(
+    () => (catalog.data ? sortCatalog(catalog.data) : []),
+    [catalog.data],
   );
 
   const openProviderChild = useCallback(
@@ -106,6 +157,13 @@ export function OmpAgentsHubForm({ serverId, agentId }: OmpAgentsHubFormProps) {
         <Text style={styles.headerText}>{t("panels.ompAgentsHub.header")}</Text>
       </View>
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+        <CatalogSection
+          supported={catalog.supported}
+          isLoading={catalog.isLoading}
+          error={catalog.error}
+          agents={sortedCatalog}
+          t={t}
+        />
         {providerRows.length === 0 ? (
           <View style={styles.emptyState} testID="omp-agents-hub-form-empty">
             <Text style={styles.emptyText}>{t("panels.ompAgentsHub.empty")}</Text>
@@ -122,6 +180,137 @@ export function OmpAgentsHubForm({ serverId, agentId }: OmpAgentsHubFormProps) {
           ))
         )}
       </ScrollView>
+    </View>
+  );
+}
+
+interface CatalogSectionProps {
+  supported: boolean;
+  isLoading: boolean;
+  error: Error | null;
+  agents: readonly OmpAvailableAgent[];
+  t: (key: string) => string;
+}
+
+/**
+ * Renders the read-only available-agents catalog. The section is rendered
+ * even when the server has not advertised the capability so the panel can
+ * surface a precise "unsupported" caption (rather than silently dropping it).
+ * Spawn/execute is intentionally absent — the fork does not expose it over
+ * RPC yet, so each row's "Spawn" button is rendered disabled with a tooltip.
+ */
+function CatalogSection({ supported, isLoading, error, agents, t }: CatalogSectionProps) {
+  const body = resolveCatalogSectionBody({ supported, isLoading, error, agents, t });
+  return (
+    <View style={styles.catalogSection} testID="omp-agents-hub-catalog">
+      <Text style={styles.catalogHeading}>{t("panels.ompAgentsHub.catalog.heading")}</Text>
+      {body}
+    </View>
+  );
+}
+
+function resolveCatalogSectionBody({
+  supported,
+  isLoading,
+  error,
+  agents,
+  t,
+}: CatalogSectionProps): React.ReactNode {
+  if (!supported) {
+    return (
+      <Text style={styles.catalogCaption} testID="omp-agents-hub-catalog-unsupported">
+        {t("panels.ompAgentsHub.catalog.unsupportedCaption")}
+      </Text>
+    );
+  }
+  if (isLoading) {
+    return (
+      <Text style={styles.catalogCaption} testID="omp-agents-hub-catalog-loading">
+        {t("panels.ompAgentsHub.catalog.loadingCatalog")}
+      </Text>
+    );
+  }
+  if (error) {
+    return (
+      <Text style={styles.catalogCaption} testID="omp-agents-hub-catalog-error">
+        {t("panels.ompAgentsHub.catalog.errorCatalog")}
+      </Text>
+    );
+  }
+  if (agents.length === 0) {
+    return (
+      <Text style={styles.catalogCaption} testID="omp-agents-hub-catalog-empty">
+        {t("panels.ompAgentsHub.catalog.emptyCatalog")}
+      </Text>
+    );
+  }
+  return (
+    <View style={styles.catalogList}>
+      {agents.map((agent) => (
+        <CatalogRow key={`${agent.source}:${agent.name}`} agent={agent} t={t} />
+      ))}
+    </View>
+  );
+}
+
+interface CatalogRowProps {
+  agent: OmpAvailableAgent;
+  t: (key: string) => string;
+}
+
+function CatalogRow({ agent, t }: CatalogRowProps) {
+  const sourceKey = resolveCatalogSourceLabelKey(agent.source);
+  const filePath = typeof agent.filePath === "string" ? agent.filePath : null;
+  const tools = agent.tools ?? [];
+  const models = agent.model ?? [];
+  return (
+    <View
+      style={styles.catalogRow}
+      testID={`omp-agents-hub-catalog-row-${agent.source}-${agent.name}`}
+    >
+      <View style={styles.catalogRowHeader}>
+        <Text style={styles.catalogRowName} numberOfLines={1}>
+          {agent.name}
+        </Text>
+        <Text style={styles.catalogRowSource}>{t(`panels.ompAgentsHub.catalog.${sourceKey}`)}</Text>
+      </View>
+      {agent.description ? (
+        <Text style={styles.catalogRowDescription} numberOfLines={2}>
+          {agent.description}
+        </Text>
+      ) : null}
+      <View style={styles.catalogRowMeta}>
+        {filePath ? (
+          <Text style={styles.catalogRowMetaItem} numberOfLines={1}>
+            {t("panels.ompAgentsHub.catalog.filePathLabel")}: {filePath}
+          </Text>
+        ) : null}
+        {tools.length > 0 ? (
+          <Text style={styles.catalogRowMetaItem} numberOfLines={1}>
+            {t("panels.ompAgentsHub.catalog.toolsLabel")}: {tools.join(", ")}
+          </Text>
+        ) : null}
+        {models.length > 0 ? (
+          <Text style={styles.catalogRowMetaItem} numberOfLines={1}>
+            {t("panels.ompAgentsHub.catalog.modelsLabel")}: {models.join(", ")}
+          </Text>
+        ) : null}
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={DISABLED_PRESSABLE_STATE}
+        accessibilityLabel={t("panels.ompAgentsHub.catalog.spawnDisabledTooltip")}
+        testID={`omp-agents-hub-catalog-row-${agent.source}-${agent.name}-spawn`}
+        // No spawn handler: the fork does not expose spawn/execute over RPC
+        // yet. The button is rendered as an honest placeholder so the host
+        // does not invent a fake action.
+        disabled
+        style={resolveCatalogSpawnButtonStyle}
+      >
+        <Text style={styles.catalogSpawnButtonText}>
+          {t("panels.ompAgentsHub.catalog.spawnDisabledTooltip")}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -182,6 +371,10 @@ function ProviderRow({ serverId, row, onPress, t }: ProviderRowProps) {
 // Plain hex keeps the icon component prop types happy without dragging the
 // theme into the row. Mirrors `foregroundMuted` semantic foreground.
 const FOREGROUND_MUTED_COLOR = "#6b7280";
+
+// Hoisted out of the JSX so the prop stays referentially stable across
+// re-renders (react-perf's jsx-no-new-object-as-prop).
+const DISABLED_PRESSABLE_STATE = { disabled: true };
 
 const styles = StyleSheet.create((theme) => ({
   container: {
@@ -278,5 +471,82 @@ const styles = StyleSheet.create((theme) => ({
     alignSelf: "stretch",
     borderRadius: theme.borderRadius.sm,
     backgroundColor: theme.colors.palette.red[500],
+  },
+  catalogSection: {
+    marginBottom: theme.spacing[4],
+    paddingHorizontal: theme.spacing[3],
+    paddingTop: theme.spacing[3],
+    paddingBottom: theme.spacing[2],
+    borderRadius: theme.borderRadius.md,
+    borderWidth: theme.borderWidth[1],
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface1,
+  },
+  catalogHeading: {
+    fontSize: theme.fontSize.base,
+    fontWeight: "600",
+    color: theme.colors.foreground,
+    marginBottom: theme.spacing[2],
+  },
+  catalogCaption: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foregroundMuted,
+  },
+  catalogList: {
+    gap: theme.spacing[2],
+  },
+  catalogRow: {
+    paddingVertical: theme.spacing[2],
+    borderBottomWidth: theme.borderWidth[1],
+    borderBottomColor: theme.colors.border,
+  },
+  catalogRowHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: theme.spacing[2],
+  },
+  catalogRowName: {
+    flexShrink: 1,
+    fontSize: theme.fontSize.base,
+    color: theme.colors.foreground,
+    fontWeight: "500",
+  },
+  catalogRowSource: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foregroundMuted,
+    fontFamily: theme.fontFamily.mono,
+  },
+  catalogRowDescription: {
+    marginTop: 2,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foregroundMuted,
+  },
+  catalogRowMeta: {
+    marginTop: theme.spacing[2],
+    gap: 2,
+  },
+  catalogRowMetaItem: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foregroundMuted,
+    fontFamily: theme.fontFamily.mono,
+  },
+  catalogSpawnButton: {
+    marginTop: theme.spacing[2],
+    paddingVertical: theme.spacing[2],
+    paddingHorizontal: theme.spacing[3],
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: theme.borderWidth[1],
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface2,
+    opacity: 0.6,
+  },
+  catalogSpawnButtonPressed: {
+    backgroundColor: theme.colors.surface1,
+  },
+  catalogSpawnButtonText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foregroundMuted,
+    textAlign: "center",
   },
 }));

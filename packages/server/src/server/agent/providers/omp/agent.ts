@@ -37,6 +37,7 @@ import {
   type ProviderCatalog,
   type OmpParitySession,
   type OmpVibeSession,
+  type OmpAgentCatalogEntry,
   type ProviderRefreshContext,
   type ToolCallDetail,
 } from "../../agent-sdk-types.js";
@@ -522,6 +523,7 @@ function withOmpCapabilities(): AgentCapabilityFlags {
     supportsOmpModes: false,
     supportsOmpKeybindings: false,
     supportsOmpSessionSwitch: false,
+    supportsOmpAgentCatalog: false,
   };
 }
 
@@ -906,6 +908,7 @@ export class OmpAgentSession implements AgentSession, OmpParitySession, OmpVibeS
   private supportsOmpSlashCommands = false;
   private supportsOmpKeybindings = false;
   private supportsOmpSessionSwitch = false;
+  private supportsOmpAgentCatalog = false;
   private lastVibeState: VibeStateResult | null = null;
   private lastVibeRevision = -1;
   private lastModesState: OmpModesResult | null = null;
@@ -920,6 +923,7 @@ export class OmpAgentSession implements AgentSession, OmpParitySession, OmpVibeS
       supportsOmpSlashCommands: this.supportsOmpSlashCommands,
       supportsOmpKeybindings: this.supportsOmpKeybindings,
       supportsOmpSessionSwitch: this.supportsOmpSessionSwitch,
+      supportsOmpAgentCatalog: this.supportsOmpAgentCatalog,
     };
   }
   private readonly subscribers = new Set<(event: AgentStreamEvent) => void>();
@@ -1255,6 +1259,19 @@ export class OmpAgentSession implements AgentSession, OmpParitySession, OmpVibeS
       state: result as unknown as JsonValue,
     });
     return result;
+  }
+
+  /**
+   * Read-only catalog of agents the host can render in a list cell.
+   * Bundled + user + project + extension-package agents plus session-local
+   * model-mention agents. Capability-gated: a successful call flips
+   * `supportsOmpAgentCatalog` so the UI knows the host can render the panel.
+   * Spawn/execute is NOT exposed — the fork does not surface it over RPC yet.
+   */
+  async listAvailableAgents(): Promise<OmpAgentCatalogEntry[]> {
+    const defs = await this.runtimeSession.getAvailableAgents();
+    this.supportsOmpAgentCatalog = true;
+    return defs;
   }
 
   async runSlashCommand(command: string, args?: string): Promise<OmpSlashCommandResult> {
@@ -2746,6 +2763,7 @@ export class OmpAgentClient implements AgentClient {
   private supportsOmpSlashCommands = false;
   private supportsOmpKeybindings = false;
   private supportsOmpSessionSwitch = false;
+  private supportsOmpAgentCatalog = false;
 
   private readonly logger: Logger;
   private readonly runtimeSettings?: ProviderRuntimeSettings;
@@ -2766,6 +2784,7 @@ export class OmpAgentClient implements AgentClient {
       supportsOmpSlashCommands: this.supportsOmpSlashCommands,
       supportsOmpKeybindings: this.supportsOmpKeybindings,
       supportsOmpSessionSwitch: this.supportsOmpSessionSwitch,
+      supportsOmpAgentCatalog: this.supportsOmpAgentCatalog,
     };
   }
 

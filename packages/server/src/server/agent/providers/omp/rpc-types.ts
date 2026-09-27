@@ -640,6 +640,32 @@ export const OmpToolCatalogResultSchema = z
   .object({ tools: z.array(OmpToolCatalogEntrySchema) })
   .passthrough();
 
+// Read-only catalog of agents the host can render in a list cell. The wire
+// shape mirrors `AgentDefinition` minus `systemPrompt` (intentionally omitted
+// because prompts are large and the host only needs metadata to render a row).
+// Spawn/execute is intentionally NOT modelled -- the fork does not expose it
+// over RPC yet, and a host must gate any spawn action on a future capability.
+export const OmpAvailableAgentCatalogEntrySchema = z
+  .object({
+    name: z.string().min(1),
+    description: z.string(),
+    source: z.enum(["bundled", "user", "project"]),
+    filePath: z.string().optional(),
+    tools: z.array(z.string()).optional(),
+    spawns: z.array(z.string()).optional(),
+    model: z.array(z.string()).optional(),
+    thinkingLevel: z.string().optional(),
+    autoloadSkills: z.array(z.string()).optional(),
+    advisor: z.union([z.boolean(), z.string()]).optional(),
+    prewalk: z.union([z.boolean(), z.string()]).optional(),
+    blocking: z.boolean().optional(),
+    readSummarize: z.boolean().optional(),
+  })
+  .passthrough();
+export const OmpAvailableAgentCatalogResultSchema = z
+  .object({ agents: z.array(OmpAvailableAgentCatalogEntrySchema) })
+  .passthrough();
+
 const OmpVibeStateEventSchema = z
   .object({ type: z.literal("vibe_state"), payload: OmpVibeStateSchema })
   .passthrough();
@@ -845,6 +871,7 @@ export const OmpRpcCommandSchema = z.discriminatedUnion("type", [
     type: z.literal("handoff"),
     customInstructions: z.string().optional(),
   }),
+  z.object({ ...OmpCommandBase, type: z.literal("get_available_agents") }),
 ]);
 
 export const OmpPromptAckSchema = z
@@ -948,6 +975,8 @@ export type OmpModesResult = z.infer<typeof OmpModesResultSchema>;
 export type OmpSetModeResult = z.infer<typeof OmpSetModeResultSchema>;
 export type OmpToolCatalogEntry = z.infer<typeof OmpToolCatalogEntrySchema>;
 export type OmpToolCatalogResult = z.infer<typeof OmpToolCatalogResultSchema>;
+export type OmpAvailableAgentCatalogEntry = z.infer<typeof OmpAvailableAgentCatalogEntrySchema>;
+export type OmpAvailableAgentCatalogResult = z.infer<typeof OmpAvailableAgentCatalogResultSchema>;
 export type OmpKeybindingEntry = z.infer<typeof OmpKeybindingEntrySchema>;
 export type OmpKeybindingsResult = z.infer<typeof OmpKeybindingsResultSchema>;
 export type OmpSetKeybindingResult = z.infer<typeof OmpSetKeybindingResultSchema>;

@@ -1805,7 +1805,20 @@ export class VoiceAssistantWebSocketServer {
         // to, so claiming support on a host that cannot spawn omp would only move
         // the failure from the control surface into the agent.
         ...(this.ompRuntimeAvailable
-          ? { ompCollab: true, ompVibe: true, ompToolSelection: true }
+          ? {
+              ompCollab: true,
+              ompVibe: true,
+              ompToolSelection: true,
+              ompSlashCommands: true,
+              ompSettings: true,
+              ompModes: true,
+              ompKeybindings: true,
+              // Read-only agent catalog (bundled + user + project + extension).
+              // Spawn/execute is intentionally NOT advertised here -- the fork
+              // does not expose it over RPC yet, so the host must gate any
+              // spawn action on a separate future capability.
+              ompAgentCatalog: true,
+            }
           : {}),
         // Whether this host can launch OMP at all, so clients hide OMP-only
         // controls (the OMP TUI terminal) instead of offering a command that

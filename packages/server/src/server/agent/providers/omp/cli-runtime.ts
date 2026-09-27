@@ -43,6 +43,7 @@ import {
   OmpVibeKillResultSchema,
   OmpVibeWaitResultSchema,
   OmpVibeSpawnResultSchema,
+  OmpAvailableAgentCatalogResultSchema,
   type OmpThinkingLevel,
   type OmpAgentMessage,
   type OmpModel,
@@ -57,6 +58,7 @@ import {
   type OmpSessionStats,
   type OmpSubagentSubscriptionLevel,
   type OmpToolCatalogEntry,
+  type OmpAvailableAgentCatalogEntry,
   type OmpVibeEnterResult,
   type OmpVibeExitResult,
   type OmpVibeKillResult,
@@ -393,6 +395,17 @@ class OmpCliRuntimeSession implements OmpRuntimeSession {
       await this.request({ type: "set_tool_selection", enabledTools }),
     );
     return result.tools;
+  }
+
+  /**
+   * Read-only catalog of agents the host can render in a list cell.
+   * Mirrors `getToolCatalog`'s shape: typed result schema, no side effects.
+   */
+  async getAvailableAgents(): Promise<OmpAvailableAgentCatalogEntry[]> {
+    const result = OmpAvailableAgentCatalogResultSchema.parse(
+      await this.request({ type: "get_available_agents" }),
+    );
+    return result.agents;
   }
 
   sendHostToolResult(result: OmpRpcHostToolResult): void {

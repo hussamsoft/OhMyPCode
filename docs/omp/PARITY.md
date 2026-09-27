@@ -228,6 +228,7 @@ Total tracked entries: **864**.
 | `rpc` | `cycle_thinking_level` | `rpc` | `terminal:omp-tui` | — |
 | `rpc` | `export_html` | `rpc` | `terminal:omp-tui` | — |
 | `rpc` | `follow_up` | `rpc` | `terminal:omp-tui` | — |
+| `rpc` | `get_available_agents` | `rpc` | `omp_agents_hub` | `ompAgentCatalog` |
 | `rpc` | `get_available_commands` | `rpc` | `terminal:omp-tui` | — |
 | `rpc` | `get_available_models` | `rpc` | `terminal:omp-tui` | — |
 | `rpc` | `get_available_thinking_levels` | `rpc` | `terminal:omp-tui` | — |
@@ -246,6 +247,7 @@ Total tracked entries: **864**.
 | `rpc` | `get_subagents` | `rpc` | `terminal:omp-tui` | — |
 | `rpc` | `get_tool_catalog` | `rpc` | `omp-tools-control` | `ompToolSelection` |
 | `rpc` | `get_tree` | `rpc` | `terminal:omp-tui` | — |
+| `rpc` | `goal_action` | `rpc` | `omp_goal` | `ompModes` |
 | `rpc` | `handoff` | `rpc` | `terminal:omp-tui` | — |
 | `rpc` | `login` | `rpc` | `terminal:omp-tui` | — |
 | `rpc` | `negotiate_protocol` | `rpc` | `terminal:omp-tui` | — |

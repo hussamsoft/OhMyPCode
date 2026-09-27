@@ -9,6 +9,7 @@ import type {
   OmpGoalActionPayload,
   OmpSettingsSetPayload,
 } from "@ohmypcode/client/internal/daemon-client";
+import type { OmpAvailableAgent } from "@ohmypcode/protocol/messages";
 import type {
   OmpKeybindingEntrySchema,
   OmpModesState,
@@ -89,7 +90,7 @@ function useOmpAgentScope(serverId: string | null | undefined) {
 
 function useOmpSupportsFeature(
   serverId: string | null | undefined,
-  feature: "ompModes" | "ompSettings" | "ompSlashCommands" | "ompKeybindings",
+  feature: "ompModes" | "ompSettings" | "ompSlashCommands" | "ompKeybindings" | "ompAgentCatalog",
 ): boolean {
   return useSessionStore(
     (state) => state.sessions[serverId ?? ""]?.serverInfo?.features?.[feature] === true,
@@ -578,5 +579,71 @@ export function useOmpKeybindingSetter(
     isPending: mutation.isPending,
     error: mutation.error instanceof Error ? mutation.error : null,
     lastResult: mutation.data ?? null,
+  };
+}
+
+export function ompAgentCatalogQueryKey(
+  serverId: string | null | undefined,
+  agentId: string | null | undefined,
+) {
+  return ["ompAgentCatalog", serverId ?? "", agentId ?? ""] as const;
+}
+
+export interface UseOmpAgentCatalogResult {
+  data: readonly OmpAvailableAgent[] | null;
+  supported: boolean;
+  isLoading: boolean;
+  isFetching: boolean;
+  error: Error | null;
+  refetch: () => Promise<void>;
+}
+
+/**
+ * Read-only catalog of agents the host can render in a list cell. Capability
+ * gate: returns `{ data: null, supported: false }` when the server has not
+ * advertised `ompAgentCatalog` (mirrors `useOmpModes`'s `supported` field).
+ * Spawn/execute is intentionally absent — the fork does not expose it over
+ * RPC yet, so no setter is provided.
+ */
+export function useOmpAgentCatalog(
+  serverId: string | null | undefined,
+  agentId: string | null | undefined,
+  options: UseOmpAgentScopeOptions = {},
+): UseOmpAgentCatalogResult {
+  const { client, isConnected, errorHostDisconnected } = useOmpAgentScope(serverId);
+  const queryClient = useQueryClient();
+  const supportsOmpAgentCatalog = useOmpSupportsFeature(serverId, "ompAgentCatalog");
+  const queryKey = useMemo(() => ompAgentCatalogQueryKey(serverId, agentId), [serverId, agentId]);
+  const enabled =
+    (options.enabled ?? true) &&
+    Boolean(serverId && agentId && client && isConnected && supportsOmpAgentCatalog);
+  const query = useFetchQuery({
+    queryKey,
+    enabled,
+    dataShape: "value",
+    staleTimeMs: 30_000,
+    queryFn: async () => {
+      if (!client || !agentId) {
+        throw new Error(errorHostDisconnected);
+      }
+      return client.listOmpAgentCatalog(agentId);
+    },
+  });
+  const data = query.data?.agents ?? null;
+  const refetch = useCallback(async () => {
+    if (!client || !agentId) return;
+    await queryClient.fetchQuery({
+      queryKey,
+      queryFn: () => client.listOmpAgentCatalog(agentId),
+      staleTime: 0,
+    });
+  }, [agentId, client, queryClient, queryKey]);
+  return {
+    data,
+    supported: isConnected && supportsOmpAgentCatalog,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    error: query.error instanceof Error ? query.error : null,
+    refetch,
   };
 }

@@ -140,6 +140,9 @@ const INBOUND_PERMISSION = {
   "omp.keybindings.get.request": "daemon.read",
   "omp.keybindings.set.request": "daemon.manage",
   "omp.session.switch.request": "daemon.manage",
+  // Read-only catalog of available agents (bundled + user + project +
+  // extension). Mirrors `omp.modes.get.request` — same `daemon.read` shape.
+  "omp.agents.list.request": "daemon.read",
   list_terminals_request: "workspace.read",
   "loop/inspect": "automation.manage",
   "loop/list": "automation.manage",
@@ -383,6 +386,7 @@ const OUTBOUND_PERMISSION = {
   "omp.keybindings.get.response": "daemon.read",
   "omp.keybindings.set.response": "daemon.manage",
   "omp.session.switch.response": "daemon.manage",
+  "omp.agents.list.response": "daemon.read",
   list_terminals_response: "workspace.read",
   "loop/inspect/response": "automation.manage",
   "loop/list/response": "automation.manage",

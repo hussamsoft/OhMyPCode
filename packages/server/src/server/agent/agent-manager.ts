@@ -62,6 +62,7 @@ import {
   type OmpSlashCommandResult,
   type OmpModesResult,
   type OmpSetModeResult,
+  type OmpAgentCatalogEntry,
   type VibeEnterResult,
   type VibeExitResult,
   type VibeKillResult,
@@ -180,7 +181,8 @@ export type OmpParityErrorCode =
   | "omp_setting_failed"
   | "omp_keybinding_failed"
   | "omp_goal_action_failed"
-  | "omp_session_switch_failed";
+  | "omp_session_switch_failed"
+  | "omp_agents_list_failed";
 
 export class AgentManagerOmpParityError extends Error {
   constructor(
@@ -201,6 +203,7 @@ const OMP_PARITY_ERROR_CODES: ReadonlySet<string> = new Set<OmpParityErrorCode>(
   "omp_keybinding_failed",
   "omp_goal_action_failed",
   "omp_session_switch_failed",
+  "omp_agents_list_failed",
 ]);
 
 export function isOmpParityErrorCode(value: unknown): value is OmpParityErrorCode {
@@ -1382,6 +1385,17 @@ export class AgentManager {
     const result = await this.requireOmpModeSession(agentId).goalAction(action);
     this.applyOmpModesResult(agentId, result);
     return result;
+  }
+
+  /**
+   * Read-only catalog of agents the host can render in a list cell. Bundled
+   * + user + project + extension-package agents plus session-local model
+   * mentions. Mirrors `getOmpModes`/`setOmpMode` shape: thin wrapper that
+   * delegates to the parity session and surfaces parity errors with the
+   * standard code.
+   */
+  async listOmpAgentCatalog(agentId: string): Promise<OmpAgentCatalogEntry[]> {
+    return await this.requireOmpModeSession(agentId).listAvailableAgents();
   }
 
   /**

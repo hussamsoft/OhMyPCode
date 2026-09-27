@@ -2055,6 +2055,43 @@ export const OmpSessionSwitchResponseMessageSchema = z.object({
   }),
 });
 
+/**
+ * Read-only catalog of agents the host can render in a list cell.
+ * Spawn/execute is intentionally absent — the fork does not expose it over
+ * RPC yet, and the host must gate any spawn action on a future capability.
+ * Each entry mirrors the fork's `get_available_agents` data shape minus
+ * `systemPrompt` (intentionally omitted because prompts are large).
+ */
+export const OmpAvailableAgentPayloadSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  source: z.enum(["bundled", "user", "project"]),
+  filePath: z.string().optional(),
+  tools: z.array(z.string()).optional(),
+  spawns: z.array(z.string()).optional(),
+  model: z.array(z.string()).optional(),
+  thinkingLevel: z.string().optional(),
+  autoloadSkills: z.array(z.string()).optional(),
+  advisor: z.union([z.boolean(), z.string()]).optional(),
+  prewalk: z.union([z.boolean(), z.string()]).optional(),
+  blocking: z.boolean().optional(),
+  readSummarize: z.boolean().optional(),
+});
+
+export const OmpAgentsListRequestMessageSchema = z.object({
+  type: z.literal("omp.agents.list.request"),
+  agentId: z.string(),
+  requestId: z.string(),
+});
+
+export const OmpAgentsListResponseMessageSchema = z.object({
+  type: z.literal("omp.agents.list.response"),
+  payload: z.object({
+    requestId: z.string(),
+    agents: z.array(OmpAvailableAgentPayloadSchema),
+  }),
+});
+
 export const OmpStatisticsRequestMessageSchema = z.object({
   type: z.literal("omp.statistics.request"),
   requestId: z.string(),
@@ -3641,6 +3678,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   OmpKeybindingsGetRequestSchema,
   OmpKeybindingsSetRequestSchema,
   OmpSessionSwitchRequestMessageSchema,
+  OmpAgentsListRequestMessageSchema,
   OmpProvidersListRequestSchema,
   OmpProviderLoginStartRequestSchema,
   OmpProviderLoginRespondRequestSchema,
@@ -4047,6 +4085,11 @@ export const ServerInfoStatusPayloadSchema = z
         // (the `omp_sessions` panel). Server capability gates the
         // omp.session.switch.request RPC.
         ompSessionSwitch: z.boolean().optional(),
+        // Whether the host exposes the read-only available-agents catalog
+        // (bundled + user + project + extension-package agents). Spawn/execute
+        // is intentionally NOT advertised here — the fork does not expose it
+        // over RPC yet.
+        ompAgentCatalog: z.boolean().optional(),
         // Whether this host can launch the OMP CLI (bundled runtime or PATH).
         ompRuntime: z.boolean().optional(),
         // COMPAT(agentDetach): added in v0.1.98, remove gate after 2026-12-19 once daemon floor >= v0.1.98.
@@ -7719,6 +7762,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   OmpKeybindingsGetResponseSchema,
   OmpKeybindingsSetResponseSchema,
   OmpSessionSwitchResponseMessageSchema,
+  OmpAgentsListResponseMessageSchema,
   OmpCollabHostsListResponseSchema,
   OmpCollabLinkCreateResponseSchema,
   OmpCollabSessionShareResponseSchema,
@@ -7975,6 +8019,9 @@ export type OmpKeybindingsSetRequest = z.infer<typeof OmpKeybindingsSetRequestSc
 export type OmpKeybindingsSetResponse = z.infer<typeof OmpKeybindingsSetResponseSchema>;
 export type OmpSessionSwitchRequest = z.infer<typeof OmpSessionSwitchRequestMessageSchema>;
 export type OmpSessionSwitchResponse = z.infer<typeof OmpSessionSwitchResponseMessageSchema>;
+export type OmpAvailableAgent = z.infer<typeof OmpAvailableAgentPayloadSchema>;
+export type OmpAgentsListRequest = z.infer<typeof OmpAgentsListRequestMessageSchema>;
+export type OmpAgentsListResponse = z.infer<typeof OmpAgentsListResponseMessageSchema>;
 export type ChatCreateResponse = z.infer<typeof ChatCreateResponseSchema>;
 export type ChatListResponse = z.infer<typeof ChatListResponseSchema>;
 export type ChatInspectResponse = z.infer<typeof ChatInspectResponseSchema>;

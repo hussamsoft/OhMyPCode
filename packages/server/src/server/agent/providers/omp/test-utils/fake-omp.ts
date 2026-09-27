@@ -17,6 +17,7 @@ import type {
   OmpSessionStats,
   OmpThinkingLevel,
   OmpToolCatalogEntry,
+  OmpAvailableAgentCatalogEntry,
   OmpModesResult,
   OmpSetModeResult,
   OmpKeybindingsResult,
@@ -230,6 +231,7 @@ export class FakeOmpSession implements OmpRuntimeSession {
   vibeStatusError: Error | null = null;
   toolCatalogError: Error | null = null;
   setToolsError: Error | null = null;
+  availableAgents: OmpAvailableAgentCatalogEntry[] = [];
   readonly vibeRequests: Array<Record<string, unknown>> = [];
   modesState: OmpModesResult = {
     mode: "none",
@@ -650,6 +652,10 @@ export class FakeOmpSession implements OmpRuntimeSession {
       enabled: tool.required || selected.has(tool.name),
     }));
     return this.toolCatalog;
+  }
+
+  async getAvailableAgents(): Promise<OmpAvailableAgentCatalogEntry[]> {
+    return this.availableAgents;
   }
 
   async branch(entryId: string): Promise<{ text: string }> {

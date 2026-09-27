@@ -112,6 +112,7 @@ import type {
   OmpKeybindingsGetResponse,
   OmpKeybindingsSetResponse,
   OmpSessionSwitchResponse,
+  OmpAgentsListResponse,
   ListProviderToolsResponseSchema,
   ListAgentToolsResponseSchema,
   SetAgentToolsResponseSchema,
@@ -538,6 +539,7 @@ export type OmpGoalActionPayload = OmpGoalActionResponse["payload"];
 export type OmpKeybindingsGetPayload = OmpKeybindingsGetResponse["payload"];
 export type OmpKeybindingsSetPayload = OmpKeybindingsSetResponse["payload"];
 export type OmpSessionSwitchPayload = OmpSessionSwitchResponse["payload"];
+export type OmpAgentsListPayload = OmpAgentsListResponse["payload"];
 type ProviderDiagnosticPayload = ProviderDiagnosticResponseMessage["payload"];
 type ProviderUsageListPayload = ProviderUsageListResponseMessage["payload"];
 type OmpStatisticsPayload = OmpStatisticsResponseMessage["payload"];
@@ -5503,6 +5505,23 @@ export class DaemonClient {
     return this.sendNamespacedCorrelatedSessionRequest({
       requestId: options?.requestId,
       message: { type: "omp.goal.action.request", agentId, action },
+    });
+  }
+
+  /**
+   * Read-only catalog of agents the host can render in a list cell. The
+   * payload mirrors the fork's `get_available_agents` RPC: bundled + user +
+   * project + extension-package agents plus session-local model mentions.
+   * Spawn/execute is intentionally absent — the fork does not expose it over
+   * RPC yet.
+   */
+  async listOmpAgentCatalog(
+    agentId: string,
+    options?: { requestId?: string },
+  ): Promise<OmpAgentsListPayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "omp.agents.list.request", agentId },
     });
   }
 
