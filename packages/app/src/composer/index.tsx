@@ -43,10 +43,10 @@ import {
 import * as Clipboard from "expo-clipboard";
 import { FOOTER_HEIGHT, MAX_CONTENT_WIDTH } from "@/constants/layout";
 import {
-  AgentControls,
-  DraftAgentControls,
-  type DraftAgentControlsProps,
-} from "@/composer/agent-controls";
+  resolveComposerLeftContent,
+  type ResolveComposerLeftContentArgs,
+} from "@/composer/render-left-content";
+import type { DraftAgentControlsProps } from "@/composer/agent-controls";
 import { ContextWindowMeter } from "@/components/context-window-meter";
 import { useImageAttachmentPicker } from "@/hooks/use-image-attachment-picker";
 import { selectAgentTurnPresentation, useSessionStore } from "@/stores/session-store";
@@ -105,7 +105,6 @@ import {
   persistAttachmentFromDataUrl,
   persistAttachmentFromFileUri,
 } from "@/attachments/service";
-import { resolveAgentControlsMode } from "@/composer/agent-controls/mode";
 import { resolveComposerInputMode, type ComposerInputMode } from "@/composer/input-mode";
 import { resolveActiveSendBehavior } from "./input/state";
 import { useKeyboardActionHandler } from "@/hooks/use-keyboard-action-handler";
@@ -315,28 +314,17 @@ function resolveContextWindowPlacement(
 }
 
 interface RenderLeftContentArgs {
-  agentControls: DraftAgentControlsProps | undefined;
-  agentId: string;
-  serverId: string;
-  focusInput: () => void;
-  isCompactLayout: boolean;
-  showAgentControls: boolean;
+  agentControls: ResolveComposerLeftContentArgs["agentControls"];
+  agentId: ResolveComposerLeftContentArgs["agentId"];
+  serverId: ResolveComposerLeftContentArgs["serverId"];
+  focusInput: ResolveComposerLeftContentArgs["focusInput"];
+  isCompactLayout: ResolveComposerLeftContentArgs["isCompactLayout"];
+  showAgentControls: ResolveComposerLeftContentArgs["showAgentControls"];
+  isOmpProvider: ResolveComposerLeftContentArgs["isOmpProvider"];
 }
 
 function renderLeftContent(args: RenderLeftContentArgs): ReactElement | null {
-  const { agentControls, agentId, serverId, focusInput, isCompactLayout } = args;
-  if (!args.showAgentControls) return null;
-  if (resolveAgentControlsMode(agentControls) === "draft" && agentControls) {
-    return <DraftAgentControls {...agentControls} isCompactLayout={isCompactLayout} />;
-  }
-  return (
-    <AgentControls
-      agentId={agentId}
-      serverId={serverId}
-      onDropdownClose={focusInput}
-      isCompactLayout={isCompactLayout}
-    />
-  );
+  return resolveComposerLeftContent(args);
 }
 
 interface PendingFileAttachment {
@@ -2230,8 +2218,17 @@ function ComposerContentImpl({
         focusInput,
         isCompactLayout,
         showAgentControls: mode.showAgentControls,
+        isOmpProvider: agentState.provider === "omp",
       }),
-    [agentControls, agentId, focusInput, isCompactLayout, mode.showAgentControls, serverId],
+    [
+      agentControls,
+      agentId,
+      agentState.provider,
+      focusInput,
+      isCompactLayout,
+      mode.showAgentControls,
+      serverId,
+    ],
   );
 
   const handleAttachButtonRef = useCallback((node: View | null) => {

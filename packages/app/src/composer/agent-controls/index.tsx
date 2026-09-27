@@ -362,7 +362,9 @@ type AgentControlsSlice = {
   lastUsage: unknown;
 } | null;
 
-function selectAgentControlsSlice(
+export type { AgentControlsSlice };
+
+export function selectAgentControlsSlice(
   state: ReturnType<typeof useSessionStore.getState>,
   serverId: string,
   agentId: string,
@@ -382,7 +384,7 @@ function selectAgentControlsSlice(
   };
 }
 
-function resolveSnapshotSelectedEntry(
+export function resolveSnapshotSelectedEntry(
   snapshotEntries: ReturnType<typeof useProvidersSnapshot>["entries"],
   agentProvider: string | undefined,
 ) {
@@ -401,7 +403,7 @@ function resolveSnapshotModeIds(
   return entry.modes.map((mode) => mode.id);
 }
 
-function buildAgentProviderDefinitions(
+export function buildAgentProviderDefinitions(
   agentProvider: string | undefined,
   snapshotEntries: ReturnType<typeof useProvidersSnapshot>["entries"],
 ): AgentProviderDefinition[] {
@@ -411,7 +413,7 @@ function buildAgentProviderDefinitions(
   return definition ? [definition] : [];
 }
 
-function buildAgentProviderModels(
+export function buildAgentProviderModels(
   agentProvider: string | undefined,
   models: AgentModelDefinition[] | null,
 ): Map<string, AgentModelDefinition[]> {
