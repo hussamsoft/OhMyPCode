@@ -177,6 +177,8 @@ function secondaryWorkspaceTabTargetsEqual(
   if (left.kind === "pull_request" && right.kind === "pull_request") {
     return true;
   }
+  const ompResult = ompPanelTargetsEqual(left, right);
+  if (ompResult !== null) return ompResult;
   if (left.kind === "setup" && right.kind === "setup") {
     return left.workspaceId === right.workspaceId;
   }
@@ -184,6 +186,34 @@ function secondaryWorkspaceTabTargetsEqual(
     return left.sha === right.sha;
   }
   return false;
+}
+
+/**
+ * Equality for agent-scoped OMP panel targets, extracted for the same
+ * reason as `normalizeOmpPanelTarget`: keeping this out of
+ * `secondaryWorkspaceTabTargetsEqual`'s own body bounds its complexity as
+ * more Phase 10 omp_* screens land. Returns `null` (not `false`) when
+ * neither side is an omp_* panel target, so the caller knows to keep
+ * checking the remaining kinds rather than treating "not applicable" as
+ * "unequal".
+ */
+function ompPanelTargetsEqual(left: WorkspaceTabTarget, right: WorkspaceTabTarget): boolean | null {
+  if (left.kind === "omp_vibe" && right.kind === "omp_vibe") {
+    return left.agentId === right.agentId && left.workerId === right.workerId;
+  }
+  if (left.kind === "omp_settings" && right.kind === "omp_settings") {
+    return left.agentId === right.agentId;
+  }
+  if (left.kind === "omp_keybindings" && right.kind === "omp_keybindings") {
+    return left.agentId === right.agentId;
+  }
+  if (left.kind === "omp_context" && right.kind === "omp_context") {
+    return left.agentId === right.agentId;
+  }
+  if (left.kind === "omp_mcp" && right.kind === "omp_mcp") {
+    return left.agentId === right.agentId;
+  }
+  return null;
 }
 
 function workspaceDraftTabSetupsEqual(

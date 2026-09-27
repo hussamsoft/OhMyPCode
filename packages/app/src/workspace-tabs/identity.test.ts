@@ -225,6 +225,14 @@ describe("omp vibe tab identity", () => {
       buildDeterministicWorkspaceTabId({ kind: "omp_vibe", agentId: "agent-1", workerId: null }),
     ).toBe("omp_vibe_7_agent-1");
   });
+
+  it("treats same agent and worker as equal, and a different worker as distinct", () => {
+    const target = { kind: "omp_vibe", agentId: "agent-1", workerId: "worker-1" } as const;
+    expect(workspaceTabTargetsEqual(target, { ...target })).toBe(true);
+    expect(workspaceTabTargetsEqual(target, { ...target, workerId: "worker-2" })).toBe(false);
+    expect(workspaceTabTargetsEqual(target, { ...target, workerId: null })).toBe(false);
+    expect(workspaceTabTargetsEqual(target, { ...target, agentId: "agent-2" })).toBe(false);
+  });
 });
 
 describe("omp settings tab identity", () => {
@@ -242,6 +250,12 @@ describe("omp settings tab identity", () => {
 
   it("rejects a missing agent id", () => {
     expect(normalizeWorkspaceTabTarget({ kind: "omp_settings", agentId: "" })).toBeNull();
+  });
+
+  it("treats same-agent targets as equal and different-agent targets as distinct", () => {
+    const target = { kind: "omp_settings", agentId: "agent-1" } as const;
+    expect(workspaceTabTargetsEqual(target, { ...target })).toBe(true);
+    expect(workspaceTabTargetsEqual(target, { ...target, agentId: "agent-2" })).toBe(false);
   });
 });
 
@@ -261,6 +275,12 @@ describe("omp keybindings tab identity", () => {
   it("rejects a missing agent id", () => {
     expect(normalizeWorkspaceTabTarget({ kind: "omp_keybindings", agentId: "" })).toBeNull();
   });
+
+  it("treats same-agent targets as equal and different-agent targets as distinct", () => {
+    const target = { kind: "omp_keybindings", agentId: "agent-1" } as const;
+    expect(workspaceTabTargetsEqual(target, { ...target })).toBe(true);
+    expect(workspaceTabTargetsEqual(target, { ...target, agentId: "agent-2" })).toBe(false);
+  });
 });
 
 describe("omp context tab identity", () => {
@@ -279,6 +299,12 @@ describe("omp context tab identity", () => {
   it("rejects a missing agent id", () => {
     expect(normalizeWorkspaceTabTarget({ kind: "omp_context", agentId: "" })).toBeNull();
   });
+
+  it("treats same-agent targets as equal and different-agent targets as distinct", () => {
+    const target = { kind: "omp_context", agentId: "agent-1" } as const;
+    expect(workspaceTabTargetsEqual(target, { ...target })).toBe(true);
+    expect(workspaceTabTargetsEqual(target, { ...target, agentId: "agent-2" })).toBe(false);
+  });
 });
 
 describe("omp mcp tab identity", () => {
@@ -296,5 +322,11 @@ describe("omp mcp tab identity", () => {
 
   it("rejects a missing agent id", () => {
     expect(normalizeWorkspaceTabTarget({ kind: "omp_mcp", agentId: "" })).toBeNull();
+  });
+
+  it("treats same-agent targets as equal and different-agent targets as distinct", () => {
+    const target = { kind: "omp_mcp", agentId: "agent-1" } as const;
+    expect(workspaceTabTargetsEqual(target, { ...target })).toBe(true);
+    expect(workspaceTabTargetsEqual(target, { ...target, agentId: "agent-2" })).toBe(false);
   });
 });
