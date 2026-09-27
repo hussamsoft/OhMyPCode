@@ -426,3 +426,27 @@ describe("omp plugins tab identity", () => {
     expect(workspaceTabTargetsEqual(target, { ...target, agentId: "agent-2" })).toBe(false);
   });
 });
+
+describe("omp skills tab identity", () => {
+  it("normalizes and deterministically keys by agent id", () => {
+    const target = normalizeWorkspaceTabTarget({
+      kind: "omp_skills",
+      agentId: " agent-1 ",
+    });
+
+    expect(target).toEqual({ kind: "omp_skills", agentId: "agent-1" });
+    expect(buildDeterministicWorkspaceTabId({ kind: "omp_skills", agentId: "agent-1" })).toBe(
+      "omp_skills_7_agent-1",
+    );
+  });
+
+  it("rejects a missing agent id", () => {
+    expect(normalizeWorkspaceTabTarget({ kind: "omp_skills", agentId: "" })).toBeNull();
+  });
+
+  it("treats same-agent targets as equal and different-agent targets as distinct", () => {
+    const target = { kind: "omp_skills", agentId: "agent-1" } as const;
+    expect(workspaceTabTargetsEqual(target, { ...target })).toBe(true);
+    expect(workspaceTabTargetsEqual(target, { ...target, agentId: "agent-2" })).toBe(false);
+  });
+});

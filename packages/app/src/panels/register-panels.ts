@@ -21,6 +21,7 @@ import { ompSshPanelRegistration } from "@/panels/omp-ssh-panel";
 import { ompGoalPanelRegistration } from "@/panels/omp-goal-panel";
 import { ompLoopPanelRegistration } from "@/panels/omp-loop-panel";
 import { ompPluginsPanelRegistration } from "@/panels/omp-plugins-panel";
+import { ompSkillsPanelRegistration } from "@/panels/omp-skills-panel";
 import { pullRequestPanelRegistration } from "@/panels/pull-request-panel";
 import { pluginPanelRegistration } from "@/plugins/workspace-panels/panel";
 import { newTabPanelRegistration } from "@/panels/new-tab-panel";
@@ -44,6 +45,7 @@ export function ensurePanelsRegistered(): void {
   registerPanel(ompGoalPanelRegistration);
   registerPanel(ompLoopPanelRegistration);
   registerPanel(ompPluginsPanelRegistration);
+  registerPanel(ompSkillsPanelRegistration);
   registerPanel(setupPanelRegistration);
   registerPanel(terminalPanelRegistration);
   registerPanel(browserPanelRegistration);

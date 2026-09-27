@@ -123,6 +123,7 @@ import { openOmpContextTarget } from "@/workspace-tabs/open-omp-context-target";
 import { openOmpMcpTarget } from "@/workspace-tabs/open-omp-mcp-target";
 import { openOmpSshTarget } from "@/workspace-tabs/open-omp-ssh-target";
 import { openOmpPluginsTarget } from "@/workspace-tabs/open-omp-plugins-target";
+import { openOmpSkillsTarget } from "@/workspace-tabs/open-omp-skills-target";
 import { handleOmpCommandRunResponse } from "@/composer/handle-omp-command-run-response";
 import { RenderProfile } from "@/utils/render-profiler";
 import { AfterPaintPublication } from "@/composer/after-paint-publication";
@@ -1483,6 +1484,7 @@ function ComposerContentImpl({
             openOmpMcpTarget,
             openOmpSshTarget,
             openOmpPluginsTarget,
+            openOmpSkillsTarget,
           },
         });
       } catch (error) {

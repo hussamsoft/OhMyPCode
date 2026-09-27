@@ -18,6 +18,7 @@ export interface OmpOverlayOpeners {
   openOmpMcpTarget: (target: { agentId: string }) => string | null;
   openOmpSshTarget: (target: { agentId: string }) => string | null;
   openOmpPluginsTarget: (target: { agentId: string }) => string | null;
+  openOmpSkillsTarget: (target: { agentId: string }) => string | null;
 }
 
 function openOmpOverlayTarget(target: OverlayTarget, openers: OmpOverlayOpeners): string | null {
@@ -56,6 +57,9 @@ function resolveNonOverlayPanelOpener(
   }
   if (commandName === "plugins") {
     return openers.openOmpPluginsTarget;
+  }
+  if (commandName === "skillful") {
+    return openers.openOmpSkillsTarget;
   }
   return null;
 }

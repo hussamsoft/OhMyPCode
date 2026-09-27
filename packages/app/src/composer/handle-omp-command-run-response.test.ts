@@ -14,6 +14,7 @@ function buildOpeners(overrides: Partial<OmpOverlayOpeners> = {}): OmpOverlayOpe
     openOmpMcpTarget: vi.fn(() => "tab-mcp"),
     openOmpSshTarget: vi.fn(() => "tab-ssh"),
     openOmpPluginsTarget: vi.fn(() => "tab-plugins"),
+    openOmpSkillsTarget: vi.fn(() => "tab-skills"),
     ...overrides,
   };
 }
@@ -184,6 +185,24 @@ describe("handleOmpCommandRunResponse", () => {
     });
 
     expect(openers.openOmpPluginsTarget).toHaveBeenCalledWith({ agentId: "agent-1" });
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it("opens the skills panel for a non-overlay skillful response instead of toasting", () => {
+    const openers = buildOpeners();
+    const showToast = vi.fn();
+    handleOmpCommandRunResponse({
+      response: buildResponse({
+        output: "Skill listing: on (session override; default from the skillful setting).",
+      }),
+      commandName: "skillful",
+      agentId: "agent-1",
+      showToast,
+      setSendError: vi.fn(),
+      openers,
+    });
+
+    expect(openers.openOmpSkillsTarget).toHaveBeenCalledWith({ agentId: "agent-1" });
     expect(showToast).not.toHaveBeenCalled();
   });
 

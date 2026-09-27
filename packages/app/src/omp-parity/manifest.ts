@@ -6734,10 +6734,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:skillful",
     surface: "slash",
     name: "skillful",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "omp_skills",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Headless `handle` in fork `slash-commands/builtin-modes.ts` (`status`/`on`/`off`/toggle); runs through the plain `omp.command.run` RPC and is surfaced in the `omp_skills` desktop panel.",
   },
   {
     id: "slash:skills",
@@ -6746,7 +6746,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "terminal",
     guiHome: "terminal:omp-tui",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Builtin slash command; registry install/update stays in the bundled OMP TUI (the omp_skills panel intentionally does not surface it — `slash:skills` is `handleTui`-only in fork `slash-commands/builtin-skills.ts`).",
   },
   {
     id: "slash:slow",

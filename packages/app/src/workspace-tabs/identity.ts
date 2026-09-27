@@ -95,7 +95,8 @@ function normalizeOmpPanelTarget(
         | "omp_ssh"
         | "omp_goal"
         | "omp_loop"
-        | "omp_plugins";
+        | "omp_plugins"
+        | "omp_skills";
     }
   >,
 ): WorkspaceTabTarget | null {
@@ -206,34 +207,20 @@ function secondaryWorkspaceTabTargetsEqual(
  * "unequal".
  */
 function ompPanelTargetsEqual(left: WorkspaceTabTarget, right: WorkspaceTabTarget): boolean | null {
-  if (left.kind === "omp_vibe" && right.kind === "omp_vibe") {
-    return left.agentId === right.agentId && left.workerId === right.workerId;
+  if (!isOmpPanelTarget(left) || !isOmpPanelTarget(right)) {
+    return null;
   }
-  if (left.kind === "omp_settings" && right.kind === "omp_settings") {
-    return left.agentId === right.agentId;
+  if (left.kind !== right.kind) {
+    return false;
   }
-  if (left.kind === "omp_keybindings" && right.kind === "omp_keybindings") {
-    return left.agentId === right.agentId;
+  if (left.kind === "omp_vibe") {
+    return (
+      right.kind === "omp_vibe" &&
+      left.agentId === right.agentId &&
+      left.workerId === right.workerId
+    );
   }
-  if (left.kind === "omp_context" && right.kind === "omp_context") {
-    return left.agentId === right.agentId;
-  }
-  if (left.kind === "omp_mcp" && right.kind === "omp_mcp") {
-    return left.agentId === right.agentId;
-  }
-  if (left.kind === "omp_ssh" && right.kind === "omp_ssh") {
-    return left.agentId === right.agentId;
-  }
-  if (left.kind === "omp_goal" && right.kind === "omp_goal") {
-    return left.agentId === right.agentId;
-  }
-  if (left.kind === "omp_loop" && right.kind === "omp_loop") {
-    return left.agentId === right.agentId;
-  }
-  if (left.kind === "omp_plugins" && right.kind === "omp_plugins") {
-    return left.agentId === right.agentId;
-  }
-  return null;
+  return left.agentId === right.agentId;
 }
 
 function workspaceDraftTabSetupsEqual(
@@ -321,7 +308,8 @@ type OmpPanelTargetKind =
   | "omp_ssh"
   | "omp_goal"
   | "omp_loop"
-  | "omp_plugins";
+  | "omp_plugins"
+  | "omp_skills";
 
 /**
  * Every omp_* panel target's deterministic id is `${kind}_${agentId.length}_
@@ -341,7 +329,8 @@ export function isOmpPanelTarget(
     target.kind === "omp_ssh" ||
     target.kind === "omp_goal" ||
     target.kind === "omp_loop" ||
-    target.kind === "omp_plugins"
+    target.kind === "omp_plugins" ||
+    target.kind === "omp_skills"
   );
 }
 

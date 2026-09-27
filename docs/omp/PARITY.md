@@ -766,7 +766,7 @@ Total tracked entries: **864**.
 | `slash` | `setup` | `terminal` | `terminal:omp-tui` | — |
 | `slash` | `shake` | `terminal` | `terminal:omp-tui` | — |
 | `slash` | `share` | `rpc` | `/h/[serverId]/settings/collaboration` | `ompCollab` |
-| `slash` | `skillful` | `terminal` | `terminal:omp-tui` | — |
+| `slash` | `skillful` | `rpc` | `omp_skills` | — |
 | `slash` | `skills` | `terminal` | `terminal:omp-tui` | — |
 | `slash` | `slow` | `terminal` | `terminal:omp-tui` | — |
 | `slash` | `ssh` | `terminal` | `terminal:omp-tui` | — |
