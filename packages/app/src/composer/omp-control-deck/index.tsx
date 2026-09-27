@@ -36,12 +36,7 @@ import {
   type OmpMcpServerGroup,
   type OmpMode,
 } from "./model";
-import {
-  useOmpModeSetter,
-  useOmpModes,
-  useOmpSettingSetter,
-  useOmpSettings,
-} from "./use-omp-rpc";
+import { useOmpModeSetter, useOmpModes, useOmpSettingSetter, useOmpSettings } from "./use-omp-rpc";
 export { OMP_VIBE_FEATURE_ID, OMP_APPROVAL_MODE_PATH, resolveOmpEnabledTools } from "./model";
 export type { OmpApprovalMode } from "./model";
 
@@ -218,9 +213,7 @@ export function OmpModeControl({
   const { modes, error: modesError } = modesQuery;
   const [pendingMode, setPendingMode] = useState<OmpMode | null>(null);
   const [optimisticMode, setOptimisticMode] = useState<OmpMode | null>(null);
-  const [segmentError, setSegmentError] = useState<{ mode: OmpMode; message: string } | null>(
-    null,
-  );
+  const [segmentError, setSegmentError] = useState<{ mode: OmpMode; message: string } | null>(null);
   const committedMode: OmpMode = optimisticMode
     ? optimisticMode
     : modes
@@ -230,7 +223,9 @@ export function OmpModeControl({
           loopEnabled: modes.loopModeEnabled,
           vibeEnabled: vibe.enabled,
         })
-      : (vibe.enabled ? "vibe" : "build");
+      : vibe.enabled
+        ? "vibe"
+        : "build";
   const canEnterAll = modes?.canEnter ?? true;
   const globalBlockedReason = modes?.blockedReason;
   const transitionTo = useCallback(
@@ -821,17 +816,11 @@ function OmpToolsSheet({
           {error}
         </Text>
       ) : null}
-      {isEmpty ? (
-        <Text style={styles.emptyTools}>{t("agentControls.omp.noTools")}</Text>
-      ) : null}
+      {isEmpty ? <Text style={styles.emptyTools}>{t("agentControls.omp.noTools")}</Text> : null}
       <ToolRows rows={grouping.nonMcp} pending={pending} onToggle={handleToolToggle} />
       {grouping.mcp.map((group) => (
         <View key={group.serverName} testID={`omp-mcp-group-${group.serverName}`}>
-          <OmpMcpServerGroupRow
-            group={group}
-            pending={pending}
-            onToggle={handleGroupToggle}
-          />
+          <OmpMcpServerGroupRow group={group} pending={pending} onToggle={handleGroupToggle} />
           <View style={styles.mcpGroupChildren}>
             <ToolRows rows={group.rows} pending={pending} onToggle={handleToolToggle} />
           </View>
@@ -867,9 +856,7 @@ export function OmpAccessControl({
   const [pendingMode, setPendingMode] = useState<OmpApprovalMode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const approvalEntry = useMemo(() => {
-    return settingsQuery.settings.find(
-      (entry) => entry.path === OMP_APPROVAL_MODE_PATH,
-    );
+    return settingsQuery.settings.find((entry) => entry.path === OMP_APPROVAL_MODE_PATH);
   }, [settingsQuery.settings]);
   const currentMode: OmpApprovalMode = approvalEntry
     ? resolveOmpApprovalModeId(approvalEntry.value)
@@ -889,8 +876,8 @@ export function OmpAccessControl({
       })),
     [t],
   );
-  const currentLabel = options.find((option) => option.id === currentMode)?.label
-    ?? t("agentControls.access.unknown");
+  const currentLabel =
+    options.find((option) => option.id === currentMode)?.label ?? t("agentControls.access.unknown");
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       const wasOpen = openRef.current;

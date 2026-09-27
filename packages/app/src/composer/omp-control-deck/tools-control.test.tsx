@@ -370,9 +370,7 @@ describe("OMP control deck MCP server grouping", () => {
     });
 
     const sheet = openSheet(container);
-    const serverRow = sheet.querySelector<HTMLElement>(
-      '[data-testid="omp-mcp-server-fs"]',
-    );
+    const serverRow = sheet.querySelector<HTMLElement>('[data-testid="omp-mcp-server-fs"]');
     if (!serverRow) throw new Error("fs server row missing");
 
     fireEvent.click(serverRow);
@@ -395,9 +393,7 @@ describe("OMP control deck MCP server grouping", () => {
     });
 
     const sheet = openSheet(container);
-    const serverRow = sheet.querySelector<HTMLElement>(
-      '[data-testid="omp-mcp-server-fs"]',
-    );
+    const serverRow = sheet.querySelector<HTMLElement>('[data-testid="omp-mcp-server-fs"]');
     if (!serverRow) throw new Error("fs server row missing");
     expect(serverRow.getAttribute("aria-disabled")).toBe("true");
     // The required tool's individual row is also locked, so the existing
@@ -415,9 +411,7 @@ describe("OMP control deck MCP server grouping", () => {
     });
 
     const sheet = openSheet(container);
-    const serverRow = sheet.querySelector<HTMLElement>(
-      '[data-testid="omp-mcp-server-fs"]',
-    );
+    const serverRow = sheet.querySelector<HTMLElement>('[data-testid="omp-mcp-server-fs"]');
     if (!serverRow) throw new Error("fs server row missing");
     expect(serverRow.getAttribute("aria-disabled")).not.toBe("true");
   });

@@ -39,16 +39,18 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-const MODE_STATE_BASE = vi.hoisted((): OmpModesState => ({
-  mode: "none",
-  planModeEnabled: false,
-  planModePaused: false,
-  goalModeEnabled: false,
-  goalModePaused: false,
-  loopModeEnabled: false,
-  loopModePaused: false,
-  canEnter: true,
-}));
+const MODE_STATE_BASE = vi.hoisted(
+  (): OmpModesState => ({
+    mode: "none",
+    planModeEnabled: false,
+    planModePaused: false,
+    goalModeEnabled: false,
+    goalModePaused: false,
+    loopModeEnabled: false,
+    loopModePaused: false,
+    canEnter: true,
+  }),
+);
 
 const hooks = vi.hoisted(() => {
   const modeHook: {
@@ -127,7 +129,13 @@ const comboboxCapture: {
 } = { options: [] };
 
 vi.mock("@/components/ui/combobox", () => ({
-  Combobox: ({ onSelect, options }: { onSelect?: (id: string) => void; options: { id: string; label: string }[] }) => {
+  Combobox: ({
+    onSelect,
+    options,
+  }: {
+    onSelect?: (id: string) => void;
+    options: { id: string; label: string }[];
+  }) => {
     comboboxCapture.onSelect = onSelect;
     comboboxCapture.options = options;
     return null;
@@ -143,18 +151,88 @@ vi.mock("lucide-react-native", () => {
   const MockIcon = () => null;
   const mock: Record<string, unknown> = {};
   for (const key of [
-    "Activity", "AlertCircle", "AlertTriangle", "Archive", "ArrowDown", "ArrowLeft",
-    "ArrowLeftToLine", "ArrowUp", "ArrowUpRight", "BarChart3", "Blocks", "BookOpen",
-    "Bot", "Brain", "CalendarClock", "Check", "CheckCircle", "CheckCircle2", "ChevronDown",
-    "ChevronLeft", "ChevronRight", "ChevronUp", "Circle", "CircleAlert", "CircleHelp",
-    "Clock3", "Compass", "Copy", "CornerDownLeft", "Eye", "EyeOff", "Expand", "Feather",
-    "File", "FilePlus", "FileText", "Folder", "FolderPlus", "Footprints", "Gift", "GitBranch",
-    "History", "Info", "Keyboard", "Link2", "ListTodo", "Map", "MessageSquarePlus", "Mic",
-    "MicOff", "Monitor", "MoreHorizontal", "MoreVertical", "Network", "PackagePlus",
-    "Pencil", "Plus", "RotateCw", "Search", "Settings", "Settings2", "Shield", "ShieldAlert",
-    "ShieldCheck", "ShieldEllipsis", "ShieldOff", "ShieldPlus", "ShieldQuestionMark",
-    "Sparkles", "Square", "SquareTerminal", "Terminal", "Trash2", "TriangleAlert", "Turtle",
-    "Unlink", "UserCheck", "Users", "Wrench", "X", "XCircle", "Zap",
+    "Activity",
+    "AlertCircle",
+    "AlertTriangle",
+    "Archive",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowLeftToLine",
+    "ArrowUp",
+    "ArrowUpRight",
+    "BarChart3",
+    "Blocks",
+    "BookOpen",
+    "Bot",
+    "Brain",
+    "CalendarClock",
+    "Check",
+    "CheckCircle",
+    "CheckCircle2",
+    "ChevronDown",
+    "ChevronLeft",
+    "ChevronRight",
+    "ChevronUp",
+    "Circle",
+    "CircleAlert",
+    "CircleHelp",
+    "Clock3",
+    "Compass",
+    "Copy",
+    "CornerDownLeft",
+    "Eye",
+    "EyeOff",
+    "Expand",
+    "Feather",
+    "File",
+    "FilePlus",
+    "FileText",
+    "Folder",
+    "FolderPlus",
+    "Footprints",
+    "Gift",
+    "GitBranch",
+    "History",
+    "Info",
+    "Keyboard",
+    "Link2",
+    "ListTodo",
+    "Map",
+    "MessageSquarePlus",
+    "Mic",
+    "MicOff",
+    "Monitor",
+    "MoreHorizontal",
+    "MoreVertical",
+    "Network",
+    "PackagePlus",
+    "Pencil",
+    "Plus",
+    "RotateCw",
+    "Search",
+    "Settings",
+    "Settings2",
+    "Shield",
+    "ShieldAlert",
+    "ShieldCheck",
+    "ShieldEllipsis",
+    "ShieldOff",
+    "ShieldPlus",
+    "ShieldQuestionMark",
+    "Sparkles",
+    "Square",
+    "SquareTerminal",
+    "Terminal",
+    "Trash2",
+    "TriangleAlert",
+    "Turtle",
+    "Unlink",
+    "UserCheck",
+    "Users",
+    "Wrench",
+    "X",
+    "XCircle",
+    "Zap",
   ]) {
     mock[key] = MockIcon;
   }
@@ -183,11 +261,7 @@ function renderModeControl(props: { serverId?: string; agentId?: string; vibe?: 
   );
 }
 
-function renderAccessControl(props: {
-  serverId?: string;
-  agentId?: string;
-  showLabel?: boolean;
-}) {
+function renderAccessControl(props: { serverId?: string; agentId?: string; showLabel?: boolean }) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrap = (children: ReactNode) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -279,9 +353,7 @@ describe("OmpModeControl segments", () => {
   });
 
   it("calls setOmpMode with the right mode and rolls back on failure", async () => {
-    const setMode = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("mode conflict: exit loop first"));
+    const setMode = vi.fn().mockRejectedValueOnce(new Error("mode conflict: exit loop first"));
     hooks.modeSetter.setMode = setMode;
     hooks.modeHook.modes = { ...MODE_STATE_BASE, loopModeEnabled: true };
     const { container } = renderModeControl({});
@@ -344,9 +416,7 @@ describe("OmpAccessControl approval mode", () => {
     ];
     const { container } = renderAccessControl({});
     const chip = container.querySelector('[data-testid="omp-access-control"]');
-    expect(chip?.getAttribute("aria-label")).toBe(
-      "agentControls.access.selectWithValue(write)",
-    );
+    expect(chip?.getAttribute("aria-label")).toBe("agentControls.access.selectWithValue(write)");
   });
 
   it("writes through set_setting with the correct path and each of the 3 approval values", async () => {
