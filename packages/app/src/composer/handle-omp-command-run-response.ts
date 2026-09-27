@@ -15,6 +15,7 @@ export interface OmpOverlayOpeners {
   openOmpSettingsTarget: (target: { kind: "omp_settings"; agentId: string }) => string | null;
   openOmpKeybindingsTarget: (target: { kind: "omp_keybindings"; agentId: string }) => string | null;
   openOmpContextTarget: (target: { agentId: string }) => string | null;
+  openOmpMcpTarget: (target: { agentId: string }) => string | null;
 }
 
 function openOmpOverlayTarget(target: OverlayTarget, openers: OmpOverlayOpeners): string | null {
@@ -44,6 +45,9 @@ function resolveNonOverlayPanelOpener(
 ): ((input: { agentId: string }) => string | null) | null {
   if (commandName === "context") {
     return openers.openOmpContextTarget;
+  }
+  if (commandName === "mcp") {
+    return openers.openOmpMcpTarget;
   }
   return null;
 }

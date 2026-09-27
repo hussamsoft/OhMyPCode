@@ -63,6 +63,7 @@ function normalizeSimpleWorkspaceTabTarget(value: WorkspaceTabTarget): Workspace
     case "omp_settings":
     case "omp_keybindings":
     case "omp_context":
+    case "omp_mcp":
       return normalizeOmpPanelTarget(value);
     case "setup": {
       const workspaceId = trimNonEmpty(value.workspaceId);
@@ -87,7 +88,7 @@ function normalizeSimpleWorkspaceTabTarget(value: WorkspaceTabTarget): Workspace
 function normalizeOmpPanelTarget(
   value: Extract<
     WorkspaceTabTarget,
-    { kind: "omp_vibe" | "omp_settings" | "omp_keybindings" | "omp_context" }
+    { kind: "omp_vibe" | "omp_settings" | "omp_keybindings" | "omp_context" | "omp_mcp" }
   >,
 ): WorkspaceTabTarget | null {
   const agentId = trimNonEmpty(value.agentId);
@@ -266,6 +267,9 @@ export function buildDeterministicWorkspaceTabId(target: WorkspaceTabTarget): st
   }
   if (target.kind === "omp_context") {
     return `omp_context_${target.agentId.length}_${target.agentId}`;
+  }
+  if (target.kind === "omp_mcp") {
+    return `omp_mcp_${target.agentId.length}_${target.agentId}`;
   }
   return `file_${target.path}`;
 }

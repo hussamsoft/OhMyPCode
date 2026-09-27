@@ -6439,10 +6439,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "slash:mcp",
     surface: "slash",
     name: "mcp",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "omp_mcp",
     reason:
-      "Builtin slash command; escape hatch via bundled OMP TUI terminal until Phase 10 GUI screens land",
+      "Reachable via the headless omp.command.run RPC (handle: handleMcpAcp covers list/enable/disable/remove/reload/resources/prompts/test/add/smithery-search); the desktop app's omp_mcp console runs subcommands and shows the text output. Five OAuth/browser-flow verbs (reauth, unauth, smithery-login, smithery-logout, reconnect) are rejected server-side with a clear message and stay TUI-only",
   },
   {
     id: "slash:memory",

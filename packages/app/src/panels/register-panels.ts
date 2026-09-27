@@ -16,6 +16,7 @@ import { ompVibePanelRegistration } from "@/omp-vibe/vibe-panel";
 import { ompSettingsPanelRegistration } from "@/panels/omp-settings-panel";
 import { ompKeybindingsPanelRegistration } from "@/panels/omp-keybindings-panel";
 import { ompContextPanelRegistration } from "@/panels/omp-context-panel";
+import { ompMcpPanelRegistration } from "@/panels/omp-mcp-panel";
 import { pullRequestPanelRegistration } from "@/panels/pull-request-panel";
 import { pluginPanelRegistration } from "@/plugins/workspace-panels/panel";
 import { newTabPanelRegistration } from "@/panels/new-tab-panel";
@@ -34,6 +35,7 @@ export function ensurePanelsRegistered(): void {
   registerPanel(ompSettingsPanelRegistration);
   registerPanel(ompKeybindingsPanelRegistration);
   registerPanel(ompContextPanelRegistration);
+  registerPanel(ompMcpPanelRegistration);
   registerPanel(setupPanelRegistration);
   registerPanel(terminalPanelRegistration);
   registerPanel(browserPanelRegistration);

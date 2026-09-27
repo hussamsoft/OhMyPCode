@@ -280,3 +280,21 @@ describe("omp context tab identity", () => {
     expect(normalizeWorkspaceTabTarget({ kind: "omp_context", agentId: "" })).toBeNull();
   });
 });
+
+describe("omp mcp tab identity", () => {
+  it("normalizes and deterministically keys by agent id", () => {
+    const target = normalizeWorkspaceTabTarget({
+      kind: "omp_mcp",
+      agentId: " agent-1 ",
+    });
+
+    expect(target).toEqual({ kind: "omp_mcp", agentId: "agent-1" });
+    expect(buildDeterministicWorkspaceTabId({ kind: "omp_mcp", agentId: "agent-1" })).toBe(
+      "omp_mcp_7_agent-1",
+    );
+  });
+
+  it("rejects a missing agent id", () => {
+    expect(normalizeWorkspaceTabTarget({ kind: "omp_mcp", agentId: "" })).toBeNull();
+  });
+});

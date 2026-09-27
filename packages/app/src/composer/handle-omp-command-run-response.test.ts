@@ -11,6 +11,7 @@ function buildOpeners(overrides: Partial<OmpOverlayOpeners> = {}): OmpOverlayOpe
     openOmpSettingsTarget: vi.fn(() => "tab-settings"),
     openOmpKeybindingsTarget: vi.fn(() => "tab-keybindings"),
     openOmpContextTarget: vi.fn(() => "tab-context"),
+    openOmpMcpTarget: vi.fn(() => "tab-mcp"),
     ...overrides,
   };
 }
@@ -131,6 +132,22 @@ describe("handleOmpCommandRunResponse", () => {
     });
 
     expect(openers.openOmpContextTarget).toHaveBeenCalledWith({ agentId: "agent-1" });
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it("opens the mcp panel for a non-overlay mcp response instead of toasting", () => {
+    const openers = buildOpeners();
+    const showToast = vi.fn();
+    handleOmpCommandRunResponse({
+      response: buildResponse({ output: "3 servers configured" }),
+      commandName: "mcp",
+      agentId: "agent-1",
+      showToast,
+      setSendError: vi.fn(),
+      openers,
+    });
+
+    expect(openers.openOmpMcpTarget).toHaveBeenCalledWith({ agentId: "agent-1" });
     expect(showToast).not.toHaveBeenCalled();
   });
 
