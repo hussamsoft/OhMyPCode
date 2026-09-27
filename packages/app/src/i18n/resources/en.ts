@@ -2127,6 +2127,18 @@ export const en = {
       tooltip: "Toggle OMP's session skill listing (and view the persisted default)",
       header: "Skill listing (session override)",
     },
+    ompAgentsHub: {
+      label: "Agent subagents",
+      subtitle: "OMP task subagents",
+      tooltip: "View and inspect the current agent's task subagents (live and completed)",
+      header: "Agent subagents",
+      empty: "No subagents for this agent yet.",
+      running: "running",
+      completed: "completed",
+      failed: "failed",
+      cancelled: "cancelled",
+      placeholderMissingServer: "Agent subagents require an active OMP session.",
+    },
     pullRequest: {
       label: "Pull request",
       subtitle: "Pull request details",

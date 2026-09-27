@@ -1,7 +1,7 @@
 /**
  * OMP skill-listing toggle screen for OhMyPCode.
  *
- * `/skillful` (alias `/skills`) has a headless `handle: ...` in the fork's
+ * `/skillful` (NOT an alias of `/skills`) has a headless `handle: ...` in the fork's
  * `slash-commands/builtin-modes.ts` (~line 553), so — like `/mcp`, `/ssh`,
  * `/context`, and `/plugins` — it never goes through the
  * `ui.kind === "overlay"` contract; it's reachable through the plain

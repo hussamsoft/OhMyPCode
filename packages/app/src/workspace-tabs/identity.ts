@@ -96,7 +96,8 @@ function normalizeOmpPanelTarget(
         | "omp_goal"
         | "omp_loop"
         | "omp_plugins"
-        | "omp_skills";
+        | "omp_skills"
+        | "omp_agents_hub";
     }
   >,
 ): WorkspaceTabTarget | null {
@@ -309,7 +310,8 @@ type OmpPanelTargetKind =
   | "omp_goal"
   | "omp_loop"
   | "omp_plugins"
-  | "omp_skills";
+  | "omp_skills"
+  | "omp_agents_hub";
 
 /**
  * Every omp_* panel target's deterministic id is `${kind}_${agentId.length}_
@@ -330,7 +332,8 @@ export function isOmpPanelTarget(
     target.kind === "omp_goal" ||
     target.kind === "omp_loop" ||
     target.kind === "omp_plugins" ||
-    target.kind === "omp_skills"
+    target.kind === "omp_skills" ||
+    target.kind === "omp_agents_hub"
   );
 }
 

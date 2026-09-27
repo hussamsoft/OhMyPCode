@@ -26,6 +26,7 @@ const WorkspaceTabTargetStorageSchema = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("omp_loop"), agentId: z.string() }),
   z.strictObject({ kind: z.literal("omp_plugins"), agentId: z.string() }),
   z.strictObject({ kind: z.literal("omp_skills"), agentId: z.string() }),
+  z.strictObject({ kind: z.literal("omp_agents_hub"), agentId: z.string() }),
   z.strictObject({
     kind: z.literal("provider_subagent"),
     parentAgentId: z.string(),

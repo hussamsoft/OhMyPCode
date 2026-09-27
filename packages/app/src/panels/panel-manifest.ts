@@ -78,6 +78,11 @@ const manifests = {
     supportedHosts: ["main"],
     resourceKey: (target) => `ompSkills:${target.agentId}`,
   },
+  omp_agents_hub: {
+    kind: "omp_agents_hub",
+    supportedHosts: ["main"],
+    resourceKey: (target) => `ompAgentsHub:${target.agentId}`,
+  },
   provider_subagent: {
     kind: "provider_subagent",
     supportedHosts: ["main", "explorer"],
