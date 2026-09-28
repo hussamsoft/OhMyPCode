@@ -19,10 +19,17 @@ import {
  */
 export interface OmpStatusBarData {
   preset: StatusLinePreset;
-  /** Optional overrides the component will merge with the preset defaults. */
+  /**
+   * Optional overrides the component will merge with the preset defaults.
+   *
+   * The presets themselves are a verbatim copy of OMP's own status-line
+   * presets and a test pins that, so this app's deliberate deviations live
+   * here instead of being edited into the preset table.
+   */
   overrides?: {
     leftSegments?: StatusLineSegmentId[];
     rightSegments?: StatusLineSegmentId[];
+    separator?: StatusLineSeparatorStyle;
   };
   /** Currently selected model label (e.g. "sonnet"). */
   modelLabel?: string | null;
@@ -326,7 +333,7 @@ export interface OmpStatusBarProps {
 function OmpStatusBarComponent({ data }: OmpStatusBarProps): ReactElement {
   const { t } = useTranslation();
   const preset: OmpStatusLinePresetDef = getStatusLinePreset(data.preset);
-  const separator = preset.separator;
+  const separator = data.overrides?.separator ?? preset.separator;
   const leftSegments = data.overrides?.leftSegments ?? preset.leftSegments;
   const rightSegments = data.overrides?.rightSegments ?? preset.rightSegments;
   const unavailable = useMemo(

@@ -29,6 +29,8 @@ import { RetainedChatContent } from "./retained-chat-content";
 import { OmpHookWidget } from "@/omp-ui/hook-widget/hook-widget";
 import { useOmpHook } from "@/omp-ui/hook-widget/use-omp-hook";
 import { OmpStatusBar, type OmpStatusBarData } from "@/omp-ui/status-bar/omp-status-bar";
+import { getStatusLinePreset } from "@/omp-ui/status-bar/presets";
+import type { StatusLineSegmentId } from "@/omp-ui/status-bar/segments";
 import { OmpTodoRail } from "@/omp-ui/todo-rail";
 import { Composer } from "@/composer";
 import { useWorkspaceHasDiffStat } from "@/composer/workspace-diff-stat";
@@ -1423,10 +1425,41 @@ function AgentComposerChromeOverlay({
 }) {
   return (
     <View style={styles.composerChromeOverlay} testID="agent-composer-chrome">
-      <OmpStatusBar data={statusBarData} />
+      <OmpStatusBar data={statusBarDataWithAppOverrides(statusBarData)} />
       <OmpHookWidget agentId={agentId} placement="aboveEditor" />
     </View>
   );
+}
+
+/**
+ * This app's deliberate deviations from OMP's stock status-line preset.
+ *
+ * The preset table is a verbatim copy of OMP's own and a test pins that, so
+ * overrides are applied here rather than edited into it.
+ *
+ * `model` and `mode` are dropped because the composer deck renders both as
+ * first-class controls directly above this bar; repeating the same values in
+ * two places on one screen is what made it read as a stray ribbon.
+ * `powerline-thin` becomes `slash` because its glyphs (U+E0B0/U+E0B1) sit in
+ * the Nerd Font private-use area and render as tofu boxes in this app's
+ * system font stack.
+ */
+function statusBarDataWithAppOverrides(data: OmpStatusBarData): OmpStatusBarData {
+  const preset = getStatusLinePreset(data.preset);
+  const narrow = (ids: readonly StatusLineSegmentId[]): StatusLineSegmentId[] | undefined => {
+    const filtered = ids.filter((id) => id !== "model" && id !== "mode");
+    // Only ever narrow a preset; never widen one.
+    return filtered.length === ids.length ? undefined : filtered;
+  };
+  return {
+    ...data,
+    overrides: {
+      leftSegments: narrow(preset.leftSegments),
+      rightSegments: narrow(preset.rightSegments),
+      separator: "slash",
+      ...data.overrides,
+    },
+  };
 }
 
 function ChatSurface({
