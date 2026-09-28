@@ -272,6 +272,41 @@ test.describe("OMP desktop control deck", () => {
     }
   });
 
+  // The Advisor toggle is only a control if the write reaches the daemon. This
+  // is the one place the app drives a plain OMP setting from the deck, so it
+  // gets the same treatment as the command arms: prove the effect, not the
+  // render.
+  test("advisor toggle writes advisor.enabled to the daemon", async ({ page }) => {
+    const agent = await seedOmpAgentWorkspace({
+      repoPrefix: "omp-advisor-",
+      title: "OMP advisor",
+    });
+    try {
+      const server = await openOmpAgentRoute(page, agent);
+      const toggle = page.getByTestId("omp-advisor-toggle");
+
+      // Seeded off, and it must be present -- the toggle hides itself entirely
+      // when the setting is not reported, which is otherwise indistinguishable
+      // from a broken control.
+      await expect(toggle).toBeVisible();
+      await expect(toggle).toHaveAttribute("aria-checked", "false");
+
+      // The workspace has to survive the write; a control that navigates away
+      // from under the user is not a control that works.
+      await expect(page.getByTestId("workspace-header-title")).toBeVisible();
+      await toggle.click();
+      await expect(page.getByTestId("workspace-header-title")).toBeVisible();
+      await expect
+        .poll(() => server.settingWrites())
+        .toEqual([{ path: "advisor.enabled", value: true }]);
+
+      // And it reflects the new state without a page reload.
+      await expect(toggle).toHaveAttribute("aria-checked", "true");
+    } finally {
+      await agent.cleanup();
+    }
+  });
+
   test("does not arm a bare sigil, and does not treat prose as a command", async ({ page }) => {
     const agent = await seedOmpAgentWorkspace({
       repoPrefix: "omp-exec-bare-",

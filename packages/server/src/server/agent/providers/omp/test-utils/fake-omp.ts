@@ -568,6 +568,13 @@ export class FakeOmpSession implements OmpRuntimeSession {
     this.settingsResult = {
       ...this.settingsResult,
       revision: this.settingsResult.revision + 1,
+      // Store the new value, not just the revision. A fake that acknowledges a
+      // write and then reports the old value makes every settings control
+      // untestable: the app re-reads, sees no change, and snaps back, so the
+      // round trip can only be asserted on the request side.
+      settings: this.settingsResult.settings.map((entry) =>
+        entry.path === path ? { ...entry, value, configured: true } : entry,
+      ),
     };
     return { path, value, revision: this.settingsResult.revision };
   }

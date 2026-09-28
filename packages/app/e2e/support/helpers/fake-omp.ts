@@ -26,6 +26,8 @@ export interface OmpServerFixture {
   pythonRequests(): Array<{ code: string; excludeFromContext: boolean }>;
   /** Text of every message sent down the ordinary prompt path, in order. */
   messageRequests(): string[];
+  /** Every OMP setting write, in order -- the proof a control is not decorative. */
+  settingWrites(): Array<{ path: string; value: unknown }>;
 }
 
 export function configureFakeOmpScenario(scenario: FakeOmpScenario): void {
@@ -71,6 +73,7 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
   const bashRequests: Array<{ command: string; excludeFromContext: boolean }> = [];
   const pythonRequests: Array<{ code: string; excludeFromContext: boolean }> = [];
   const messageRequests: string[] = [];
+  const settingWrites: Array<{ path: string; value: unknown }> = [];
   await page.routeWebSocket(daemonWsRoutePattern(), (webSocket) => {
     const server = webSocket.connectToServer();
     webSocket.onMessage((message) => {
@@ -83,6 +86,8 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
             command?: unknown;
             code?: unknown;
             excludeFromContext?: unknown;
+            path?: unknown;
+            value?: unknown;
             text?: unknown;
           };
         };
@@ -109,6 +114,12 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
             code: envelope.message.code,
             excludeFromContext: envelope.message.excludeFromContext === true,
           });
+        }
+        if (
+          envelope.message?.type === "omp.settings.set.request" &&
+          typeof envelope.message.path === "string"
+        ) {
+          settingWrites.push({ path: envelope.message.path, value: envelope.message.value });
         }
         if (
           envelope.message?.type === "send_agent_message_request" &&
@@ -139,11 +150,21 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
         ) {
           payload.features = {
             ...payload.features,
+            // Mirror every OMP capability the real server advertises under
+            // `ompRuntimeAvailable` (websocket-server.ts). A partial list is not
+            // a stricter fixture, it is a broken one: a control gated on a
+            // missing capability throws, and the test sees a control that
+            // renders correctly and does nothing.
+            ompCollab: true,
             ompVibe: true,
             ompToolSelection: true,
             ompSlashCommands: true,
             ompBash: true,
             ompPython: true,
+            ompSettings: true,
+            ompModes: true,
+            ompKeybindings: true,
+            ompAgentCatalog: true,
           };
           webSocket.send(JSON.stringify(envelope));
           return;
@@ -159,6 +180,7 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
     bashRequests: () => bashRequests.map((request) => ({ ...request })),
     pythonRequests: () => pythonRequests.map((request) => ({ ...request })),
     messageRequests: () => messageRequests.slice(),
+    settingWrites: () => settingWrites.map((write) => ({ ...write })),
   };
 }
 
