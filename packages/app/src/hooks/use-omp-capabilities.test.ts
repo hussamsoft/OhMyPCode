@@ -27,12 +27,15 @@ describe("selectOmpCapabilityState", () => {
       { canUseVibe: false, canSelectTools: false, canUseModes: false, canUseSettings: false },
     ],
     [
+      // Independent server features. Losing Vibe must not take tool selection
+      // with it, and vice versa — they are separate capabilities and an older
+      // runtime can advertise one without the other.
       { serverSupportsVibe: false },
-      { canUseVibe: false, canSelectTools: false, canUseModes: true, canUseSettings: true },
+      { canUseVibe: false, canSelectTools: true, canUseModes: true, canUseSettings: true },
     ],
     [
       { serverSupportsTools: false },
-      { canUseVibe: false, canSelectTools: false, canUseModes: true, canUseSettings: true },
+      { canUseVibe: true, canSelectTools: false, canUseModes: true, canUseSettings: true },
     ],
     [
       { supportsOmpVibe: false },

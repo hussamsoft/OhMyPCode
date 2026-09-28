@@ -18,10 +18,14 @@ export function selectOmpCapabilityState(input: {
   serverSupportsSettings: boolean | undefined;
 }): OmpCapabilityState {
   const isOmp = input.provider === "omp";
-  const hasServerFeatures = input.serverSupportsVibe === true && input.serverSupportsTools === true;
+  // Each capability gates only itself. An earlier version computed one
+  // `hasServerFeatures` flag from ompVibe && ompToolSelection and applied it
+  // to both, so a host without the tool-selection feature also lost Vibe —
+  // two independent features, one switch.
   return {
-    canUseVibe: isOmp && hasServerFeatures && input.supportsOmpVibe === true,
-    canSelectTools: isOmp && hasServerFeatures && input.supportsOmpToolSelection === true,
+    canUseVibe: isOmp && input.serverSupportsVibe === true && input.supportsOmpVibe === true,
+    canSelectTools:
+      isOmp && input.serverSupportsTools === true && input.supportsOmpToolSelection === true,
     canUseModes: isOmp && input.serverSupportsModes === true,
     canUseSettings: isOmp && input.serverSupportsSettings === true,
   };
