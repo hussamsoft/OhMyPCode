@@ -469,3 +469,28 @@ describe("useOmpSettingsUpdate subscription", () => {
     });
   });
 });
+
+describe("refresh() does not reject on a dead agent", () => {
+  it("resolves rather than throwing when the daemon no longer knows the agent", async () => {
+    // Regression, and the worst failure this codebase has produced: a tab
+    // restored from persisted state named an agent whose process had died with
+    // the previous daemon. `refreshModes()` pushed a fresh modes value, the
+    // effect called `void refresh()`, and `fetchQuery` rethrew — so the
+    // rejection escaped as
+    //   Uncaught (in promise) DaemonRpcError: Unknown agent ... omp.modes.get.request
+    // and the whole renderer window went down. `void` discards the value, not
+    // the rejection.
+    installSession("server-1", { ompModes: true });
+    installClient("server-1", {
+      getOmpModes: vi.fn(async () => {
+        throw new Error("Unknown agent 'agent-1'");
+      }),
+    });
+
+    const { result } = renderHook(() => useOmpModes("server-1", "agent-1"), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // The point of the test: awaiting the refresh must not throw.
+    await expect(result.current.refresh()).resolves.toBeUndefined();
+  });
+});

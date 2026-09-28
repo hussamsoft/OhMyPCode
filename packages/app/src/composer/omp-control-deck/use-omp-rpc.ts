@@ -134,13 +134,24 @@ export function useOmpModes(
     },
   });
   const modes = readOmpModesState(query.data);
+  // A refresh is best-effort and must not reject. `fetchQuery` rethrows, and
+  // the effect below calls this as `void refresh()` — `void` discards the
+  // value, not the rejection. For an agent the daemon no longer knows (a tab
+  // restored from persisted state after a restart) that surfaced as
+  //   Uncaught (in promise) DaemonRpcError: Unknown agent ... omp.modes.get.request
+  // and took the whole renderer window down with it. The query's own error
+  // state still surfaces the failure to the UI; this only stops it escaping.
   const refresh = useCallback(async () => {
     if (!client || !agentId) return;
-    await queryClient.fetchQuery({
-      queryKey,
-      queryFn: () => client.getOmpModes(agentId),
-      staleTime: 0,
-    });
+    try {
+      await queryClient.fetchQuery({
+        queryKey,
+        queryFn: () => client.getOmpModes(agentId),
+        staleTime: 0,
+      });
+    } catch {
+      // Intentionally swallowed; see above.
+    }
   }, [agentId, client, queryClient, queryKey]);
   // `refreshModes()` (agent.ts) pushes a fresh `OmpModesResult` onto
   // `runtimeInfo.extra.modes` after every turn and every slash command, not
@@ -314,13 +325,20 @@ export function useOmpSettings(
   const payload = query.data;
   const settings = (payload?.settings ?? []) as readonly OmpSettingEntry[];
   const revision = payload?.revision ?? 0;
+  // Best-effort, like the modes refresh above: `fetchQuery` rethrows, and a
+  // caller that does not await-and-catch turns a dead agent into an unhandled
+  // rejection. See the modes hook for the full account.
   const refresh = useCallback(async () => {
     if (!client || !agentId) return;
-    await queryClient.fetchQuery({
-      queryKey,
-      queryFn: () => client.getOmpSettings(agentId),
-      staleTime: 0,
-    });
+    try {
+      await queryClient.fetchQuery({
+        queryKey,
+        queryFn: () => client.getOmpSettings(agentId),
+        staleTime: 0,
+      });
+    } catch {
+      // Intentionally swallowed; the query's own error state still reports it.
+    }
   }, [agentId, client, queryClient, queryKey]);
   return {
     settings,
@@ -517,13 +535,20 @@ export function useOmpKeybindings(
     },
   });
   const keybindings = (query.data?.keybindings ?? []) as readonly OmpKeybindingEntry[];
+  // Best-effort, like the modes refresh above: `fetchQuery` rethrows, and a
+  // caller that does not await-and-catch turns a dead agent into an unhandled
+  // rejection. See the modes hook for the full account.
   const refresh = useCallback(async () => {
     if (!client || !agentId) return;
-    await queryClient.fetchQuery({
-      queryKey,
-      queryFn: () => client.getOmpKeybindings(agentId),
-      staleTime: 0,
-    });
+    try {
+      await queryClient.fetchQuery({
+        queryKey,
+        queryFn: () => client.getOmpKeybindings(agentId),
+        staleTime: 0,
+      });
+    } catch {
+      // Intentionally swallowed; the query's own error state still reports it.
+    }
   }, [agentId, client, queryClient, queryKey]);
   return {
     keybindings,
@@ -630,13 +655,18 @@ export function useOmpAgentCatalog(
     },
   });
   const data = query.data?.agents ?? null;
+  // Best-effort, like the modes refresh above. See that hook for the account.
   const refetch = useCallback(async () => {
     if (!client || !agentId) return;
-    await queryClient.fetchQuery({
-      queryKey,
-      queryFn: () => client.listOmpAgentCatalog(agentId),
-      staleTime: 0,
-    });
+    try {
+      await queryClient.fetchQuery({
+        queryKey,
+        queryFn: () => client.listOmpAgentCatalog(agentId),
+        staleTime: 0,
+      });
+    } catch {
+      // Intentionally swallowed; the query's own error state still reports it.
+    }
   }, [agentId, client, queryClient, queryKey]);
   return {
     data,
