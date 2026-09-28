@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type {
   OmpBashResponsePayload,
+  OmpPythonResponsePayload,
   OmpCommandRunPayload,
   OmpKeybindingsSetPayload,
   OmpModesGetPayload,
@@ -97,7 +98,8 @@ function useOmpSupportsFeature(
     | "ompSlashCommands"
     | "ompKeybindings"
     | "ompAgentCatalog"
-    | "ompBash",
+    | "ompBash"
+    | "ompPython",
 ): boolean {
   return useSessionStore(
     (state) => state.sessions[serverId ?? ""]?.serverInfo?.features?.[feature] === true,
@@ -464,7 +466,7 @@ export function useOmpSlashCommand(
 }
 
 export interface UseOmpBashResult {
-  run: (command: string) => Promise<OmpBashResponsePayload>;
+  run: (command: string, excludeFromContext?: boolean) => Promise<OmpBashResponsePayload>;
   /** Whether the connection + server capability allow calling `run` at all. */
   supported: boolean;
   isPending: boolean;
@@ -495,25 +497,81 @@ export function useOmpBash(
   // without one reports the arm unavailable instead of dispatching into a void.
   const supportsOmpBash = useOmpSupportsFeature(serverId, "ompBash");
   const mutation = useMutation({
-    mutationFn: async (command: string): Promise<OmpBashResponsePayload> => {
+    mutationFn: async (input: {
+      command: string;
+      excludeFromContext?: boolean;
+    }): Promise<OmpBashResponsePayload> => {
       if (!client || !agentId) {
         throw new Error("OMP host client unavailable");
       }
-      return await client.runOmpBash(agentId, command);
+      return await client.runOmpBash(agentId, input.command, {
+        excludeFromContext: input.excludeFromContext,
+      });
     },
   });
   const run = useCallback(
-    async (command: string): Promise<OmpBashResponsePayload> => {
+    async (command: string, excludeFromContext = false): Promise<OmpBashResponsePayload> => {
       if (!isConnected || !supportsOmpBash) {
         throw new Error("OMP bash capability unavailable on this server/agent");
       }
-      return await mutation.mutateAsync(command);
+      return await mutation.mutateAsync({ command, excludeFromContext });
     },
     [isConnected, mutation, supportsOmpBash],
   );
   return {
     run,
     supported: isConnected && supportsOmpBash,
+    isPending: mutation.isPending,
+    error: mutation.error instanceof Error ? mutation.error : null,
+    lastResult: mutation.data ?? null,
+  };
+}
+
+export interface UseOmpPythonResult {
+  run: (code: string, excludeFromContext?: boolean) => Promise<OmpPythonResponsePayload>;
+  supported: boolean;
+  isPending: boolean;
+  error: Error | null;
+  lastResult: OmpPythonResponsePayload | null;
+}
+
+/**
+ * Run Python against the OMP session behind the composer's `$` / `$$` arms.
+ *
+ * The mirror of {@link useOmpBash}: a command dispatch rather than a prompt
+ * submission, because the daemon treats a prefixed message as prose.
+ */
+export function useOmpPython(
+  serverId: string | null | undefined,
+  agentId: string | null | undefined,
+): UseOmpPythonResult {
+  const { client, isConnected } = useOmpAgentScope(serverId);
+  const supportsOmpPython = useOmpSupportsFeature(serverId, "ompPython");
+  const mutation = useMutation({
+    mutationFn: async (input: {
+      code: string;
+      excludeFromContext?: boolean;
+    }): Promise<OmpPythonResponsePayload> => {
+      if (!client || !agentId) {
+        throw new Error("OMP host client unavailable");
+      }
+      return await client.runOmpPython(agentId, input.code, {
+        excludeFromContext: input.excludeFromContext,
+      });
+    },
+  });
+  const run = useCallback(
+    async (code: string, excludeFromContext = false): Promise<OmpPythonResponsePayload> => {
+      if (!isConnected || !supportsOmpPython) {
+        throw new Error("OMP python capability unavailable on this server/agent");
+      }
+      return await mutation.mutateAsync({ code, excludeFromContext });
+    },
+    [isConnected, mutation, supportsOmpPython],
+  );
+  return {
+    run,
+    supported: isConnected && supportsOmpPython,
     isPending: mutation.isPending,
     error: mutation.error instanceof Error ? mutation.error : null,
     lastResult: mutation.data ?? null,

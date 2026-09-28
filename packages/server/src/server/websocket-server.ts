@@ -1814,6 +1814,7 @@ export class VoiceAssistantWebSocketServer {
               // separately from slash commands: a host with one is not obliged to
               // have the other, and the arm must not assume either.
               ompBash: true,
+              ompPython: true,
               ompSettings: true,
               ompModes: true,
               ompKeybindings: true,

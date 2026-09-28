@@ -104,6 +104,7 @@ import type {
   OmpProviderLoginCancelResponse,
   OmpProviderLogoutResponse,
   OmpBashResponse,
+  OmpPythonResponse,
   OmpCommandRunResponse,
   OmpSettingsGetResponse,
   OmpSettingsSetResponse,
@@ -532,6 +533,7 @@ export type OmpProviderLoginRespondPayload = OmpProviderLoginRespondResponse["pa
 export type OmpProviderLoginCancelPayload = OmpProviderLoginCancelResponse["payload"];
 export type OmpProviderLogoutPayload = OmpProviderLogoutResponse["payload"];
 export type OmpBashResponsePayload = OmpBashResponse["payload"];
+export type OmpPythonResponsePayload = OmpPythonResponse["payload"];
 export type OmpCommandRunPayload = OmpCommandRunResponse["payload"];
 export type OmpSettingsGetPayload = OmpSettingsGetResponse["payload"];
 export type OmpSettingsSetPayload = OmpSettingsSetResponse["payload"];
@@ -5456,7 +5458,7 @@ export class DaemonClient {
   async runOmpBash(
     agentId: string,
     command: string,
-    options?: { requestId?: string },
+    options?: { requestId?: string; excludeFromContext?: boolean },
   ): Promise<OmpBashResponsePayload> {
     return this.sendNamespacedCorrelatedSessionRequest({
       requestId: options?.requestId,
@@ -5464,6 +5466,28 @@ export class DaemonClient {
         type: "omp.bash.request",
         agentId,
         command,
+        ...(options?.excludeFromContext === undefined
+          ? {}
+          : { excludeFromContext: options.excludeFromContext }),
+      },
+    });
+  }
+
+  /** Run Python against an OMP agent's session. Backs the `$` and `$$` arms. */
+  async runOmpPython(
+    agentId: string,
+    code: string,
+    options?: { requestId?: string; excludeFromContext?: boolean },
+  ): Promise<OmpPythonResponsePayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: {
+        type: "omp.python.request",
+        agentId,
+        code,
+        ...(options?.excludeFromContext === undefined
+          ? {}
+          : { excludeFromContext: options.excludeFromContext }),
       },
     });
   }

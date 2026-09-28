@@ -40,6 +40,7 @@ import {
   OmpSettingsResultSchema,
   OmpSetSettingResultSchema,
   OmpBashResultSchema,
+  OmpPythonResultSchema,
   OmpSlashCommandResultSchema,
   OmpVibeKillResultSchema,
   OmpVibeWaitResultSchema,
@@ -72,6 +73,7 @@ import {
   type OmpKeybindingsResult,
   type OmpSetKeybindingResult,
   type OmpBashResult,
+  type OmpPythonResult,
   type OmpSettingsResult,
   type OmpSetSettingResult,
   type OmpSlashCommandResult,
@@ -346,8 +348,16 @@ class OmpCliRuntimeSession implements OmpRuntimeSession {
     );
   }
 
-  async runBash(command: string): Promise<OmpBashResult> {
-    return OmpBashResultSchema.parse(await this.request({ type: "bash", command }));
+  async runBash(command: string, excludeFromContext = false): Promise<OmpBashResult> {
+    return OmpBashResultSchema.parse(
+      await this.request({ type: "bash", command, excludeFromContext }),
+    );
+  }
+
+  async runPython(code: string, excludeFromContext = false): Promise<OmpPythonResult> {
+    return OmpPythonResultSchema.parse(
+      await this.request({ type: "python", code, excludeFromContext }),
+    );
   }
 
   async getSettings(): Promise<OmpSettingsResult> {

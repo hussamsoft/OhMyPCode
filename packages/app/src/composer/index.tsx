@@ -111,12 +111,19 @@ import { useKeyboardActionHandler } from "@/hooks/use-keyboard-action-handler";
 import type { KeyboardActionDefinition } from "@/keyboard/keyboard-action-dispatcher";
 import type { MessageInputKeyboardActionKind } from "@/keyboard/actions";
 import { submitAgentInput } from "@/composer/submit";
-import { parseOmpBashTrigger, shouldDispatchAsBashCommand } from "@/composer/omp-bash-trigger";
+import {
+  parseOmpLocalExecution,
+  shouldDispatchAsBashCommand,
+} from "@/composer/omp-local-execution";
 import { BashArmedChip } from "@/composer/omp-control-deck/bash-armed-chip";
 import { createMessageSubmissionWriter } from "@/composer/submission/writer";
 import { ComposerKeyboardScopeProvider, useComposerKeyboardScope } from "@/composer/keyboard-scope";
 import { useAppSettings } from "@/hooks/use-settings";
-import { useOmpBash, useOmpSlashCommand } from "@/composer/omp-control-deck/use-omp-rpc";
+import {
+  useOmpBash,
+  useOmpPython,
+  useOmpSlashCommand,
+} from "@/composer/omp-control-deck/use-omp-rpc";
 import { useOmpCapabilities } from "@/hooks/use-omp-capabilities";
 import { openOmpVibeTarget } from "@/workspace-tabs/open-omp-vibe-target";
 import { openOmpSettingsTarget } from "@/workspace-tabs/open-omp-settings-target";
@@ -1455,6 +1462,7 @@ function ComposerContentImpl({
 
   const ompSlash = useOmpSlashCommand(serverId, agentId);
   const ompBash = useOmpBash(serverId, agentId);
+  const ompPython = useOmpPython(serverId, agentId);
   // Armed state tracks the live draft, not the submitted text: the chip is what
   // tells the user the submit button currently means "run a command".
   const composerText = useSyncExternalStore(
@@ -1462,7 +1470,7 @@ function ComposerContentImpl({
     textSource.getSnapshot,
     textSource.getSnapshot,
   );
-  const bashArmed = parseOmpBashTrigger(composerText);
+  const localExecution = parseOmpLocalExecution(composerText);
 
   const runOmpSlashCommand = useCallback(
     async (input: { name: string; args?: string }): Promise<void> => {
@@ -1725,7 +1733,7 @@ function ComposerContentImpl({
       // A `!`-prefixed draft is a command, not a message. The daemon accepts a
       // prefixed prompt as prose and runs nothing, so it is dispatched to the
       // fork's `bash` RPC instead of the message path.
-      const bashTrigger = parseOmpBashTrigger(outgoingMessage);
+      const bashTrigger = parseOmpLocalExecution(outgoingMessage);
       // The arm is a pure text transform with no attachment or queue semantics
       // of its own, so it only takes the draft when nothing else is riding
       // along. With attachments it falls through -- a command cannot carry a
@@ -1751,9 +1759,16 @@ function ComposerContentImpl({
         setIsProcessing(true);
         let outcome: "submitted" | "failed" = "submitted";
         try {
-          const response = await ompBash.run(bashTrigger.command);
+          const response =
+            bashTrigger.trigger === "python"
+              ? await ompPython.run(bashTrigger.command, bashTrigger.excludeFromContext)
+              : await ompBash.run(bashTrigger.command, bashTrigger.excludeFromContext);
           const failed = response.exitCode !== 0 && response.exitCode !== undefined;
-          const summary = response.output.trim() || `$ ${bashTrigger.command}`;
+          const summary =
+            response.output.trim() ||
+            (bashTrigger.trigger === "python"
+              ? `>>> ${bashTrigger.command}`
+              : `$ ${bashTrigger.command}`);
           toast.show(failed ? `${summary}\n\nexit code ${response.exitCode}` : summary, {
             variant: failed ? "error" : "success",
           });
@@ -2577,7 +2592,13 @@ function ComposerContentImpl({
                 onResolvingChange={setIsForgeResolving}
               />
 
-              {bashArmed.trigger === "bash" ? <BashArmedChip command={bashArmed.command} /> : null}
+              {localExecution.trigger !== "none" ? (
+                <BashArmedChip
+                  command={localExecution.command}
+                  arm={localExecution.trigger}
+                  excludeFromContext={localExecution.excludeFromContext}
+                />
+              ) : null}
 
               {/* MessageInput handles everything: text, dictation, attachments, all buttons */}
               <RenderProfile id="MessageInput">

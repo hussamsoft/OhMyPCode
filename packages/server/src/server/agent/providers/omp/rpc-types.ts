@@ -636,6 +636,11 @@ export const OmpBashResultSchema = z.object({
   outputBytes: z.number().int().nonnegative().optional(),
 });
 
+export const OmpPythonResultSchema = OmpBashResultSchema.extend({
+  displayOutputs: z.array(z.unknown()).optional(),
+  stdinRequested: z.boolean().optional(),
+});
+
 const OmpSettingsUpdateEventSchema = z
   .object({
     type: z.literal("settings_update"),
@@ -797,7 +802,18 @@ export const OmpRpcCommandSchema = z.discriminatedUnion("type", [
   z.object({ ...OmpCommandBase, type: z.literal("get_session_stats") }),
   z.object({ ...OmpCommandBase, type: z.literal("set_session_name"), name: z.string().min(1) }),
   z.object({ ...OmpCommandBase, type: z.literal("get_available_commands") }),
-  z.object({ ...OmpCommandBase, type: z.literal("bash"), command: z.string() }),
+  z.object({
+    ...OmpCommandBase,
+    type: z.literal("bash"),
+    command: z.string(),
+    excludeFromContext: z.boolean().optional(),
+  }),
+  z.object({
+    ...OmpCommandBase,
+    type: z.literal("python"),
+    code: z.string(),
+    excludeFromContext: z.boolean().optional(),
+  }),
   z.object({
     ...OmpCommandBase,
     type: z.literal("set_subagent_subscription"),
@@ -1009,6 +1025,7 @@ export type OmpSettingsResult = z.infer<typeof OmpSettingsResultSchema>;
 export type OmpSetSettingResult = z.infer<typeof OmpSetSettingResultSchema>;
 export type OmpSlashCommandResult = z.infer<typeof OmpSlashCommandResultSchema>;
 export type OmpBashResult = z.infer<typeof OmpBashResultSchema>;
+export type OmpPythonResult = z.infer<typeof OmpPythonResultSchema>;
 export type OmpSettingsUpdateEvent = z.infer<typeof OmpSettingsUpdateEventSchema>;
 export type VibeWorkerSnapshot = OmpVibeWorker;
 export type VibeStateResult = OmpVibeState;

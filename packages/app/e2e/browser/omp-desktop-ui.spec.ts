@@ -185,10 +185,56 @@ test.describe("OMP desktop control deck", () => {
 
       // It went out as a bash RPC carrying the command without the sigil...
       // It went out as a bash RPC carrying the command without the sigil...
-      await expect.poll(() => server.bashRequests()).toEqual(["echo ohmypcode"]);
+      await expect
+        .poll(() => server.bashRequests())
+        .toEqual([{ command: "echo ohmypcode", excludeFromContext: false }]);
       // ...and not down the prompt path at all.
       await expect.poll(() => server.messageRequests()).toEqual([]);
       await expect(chip).toHaveCount(0);
+    } finally {
+      await agent.cleanup();
+    }
+  });
+
+  // All four local-execution arms, end to end. `!!` / `$$` are the
+  // exclude-from-context variants: they run, but their output is kept out of
+  // the model's context. That flag exists on the wire now, so unlike a bare `!`
+  // there is no reason to treat them as unsupported.
+  test("dispatches !! and $$ as their exclude-from-context arms", async ({ page }) => {
+    const agent = await seedOmpAgentWorkspace({
+      repoPrefix: "omp-exec-excluded-",
+      title: "OMP excluded arms",
+    });
+    try {
+      const server = await openOmpAgentRoute(page, agent);
+      const input = page.getByRole("textbox", { name: "Message agent..." }).first();
+
+      await input.fill("!!echo hidden");
+      await expect(page.getByTestId("omp-bash-armed-command")).toHaveText("echo hidden");
+      await expect(page.getByTestId("omp-bash-armed-excluded")).toBeVisible();
+      await input.press("Enter");
+      await expect
+        .poll(() => server.bashRequests())
+        .toEqual([{ command: "echo hidden", excludeFromContext: true }]);
+      // A command never becomes a prompt.
+      await expect.poll(() => server.messageRequests()).toEqual([]);
+
+      await input.fill("$print(6 * 7)");
+      await expect(page.getByTestId("omp-bash-armed-sigil")).toHaveText("$");
+      await input.press("Enter");
+      await expect
+        .poll(() => server.pythonRequests())
+        .toEqual([{ code: "print(6 * 7)", excludeFromContext: false }]);
+
+      await input.fill("$$print(1 + 1)");
+      await expect(page.getByTestId("omp-bash-armed-sigil")).toHaveText("$$");
+      await input.press("Enter");
+      await expect
+        .poll(() => server.pythonRequests())
+        .toEqual([
+          { code: "print(6 * 7)", excludeFromContext: false },
+          { code: "print(1 + 1)", excludeFromContext: true },
+        ]);
     } finally {
       await agent.cleanup();
     }
@@ -226,25 +272,31 @@ test.describe("OMP desktop control deck", () => {
     }
   });
 
-  test("does not arm !! and submits it as an ordinary prompt", async ({ page }) => {
+  test("does not arm a bare sigil, and does not treat prose as a command", async ({ page }) => {
     const agent = await seedOmpAgentWorkspace({
-      repoPrefix: "omp-bash-unsupported-",
-      title: "OMP bash unsupported",
+      repoPrefix: "omp-exec-bare-",
+      title: "OMP bare sigil",
     });
     try {
       const server = await openOmpAgentRoute(page, agent);
       const input = page.getByRole("textbox", { name: "Message agent..." }).first();
 
-      // The fork's bash RPC carries only `command`, so the exclude-from-context
-      // arm cannot be expressed. It must not advertise itself as armed.
-      await input.fill("!!echo ohmypcode");
+      // A sigil with nothing after it is not an armed submission -- there is no
+      // command to run. Each arm on its own.
+      for (const sigil of ["!", "!!", "$", "$$"]) {
+        await input.fill(sigil);
+        await expect(page.getByTestId("omp-bash-armed")).toHaveCount(0);
+      }
+
+      // A dollar sign mid-sentence is prose, not the start of a code block.
+      await input.fill("the budget is $5 today");
       await expect(page.getByTestId("omp-bash-armed")).toHaveCount(0);
 
+      // And the fall-through still sends rather than swallowing.
       await input.press("Enter");
-      // Nothing was dispatched as a command...
       await expect.poll(() => server.bashRequests()).toEqual([]);
-      // ...and the text is not swallowed either: it goes down the prompt path.
-      await expect.poll(() => server.messageRequests()).toEqual(["!!echo ohmypcode"]);
+      await expect.poll(() => server.pythonRequests()).toEqual([]);
+      await expect.poll(() => server.messageRequests()).toEqual(["the budget is $5 today"]);
     } finally {
       await agent.cleanup();
     }

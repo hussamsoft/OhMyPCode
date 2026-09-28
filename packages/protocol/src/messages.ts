@@ -1998,6 +1998,25 @@ export const OmpBashRequestSchema = z.object({
   type: z.literal("omp.bash.request"),
   agentId: z.string(),
   command: z.string().min(1),
+  /**
+   * The `!!` arm. Maps to the fork's `bash` RPC field of the same name, which
+   * the vendored runtime now carries -- it reaches the session layer as
+   * options.excludeFromContext and keeps the output out of the LLM's context.
+   */
+  excludeFromContext: z.boolean().optional(),
+  requestId: z.string(),
+});
+
+/**
+ * Dispatch Python to an OMP agent's session, mirroring `omp.bash.request`.
+ * Backs the composer's `$` and `$$` arms.
+ */
+export const OmpPythonRequestSchema = z.object({
+  type: z.literal("omp.python.request"),
+  agentId: z.string(),
+  code: z.string().min(1),
+  /** The `$$` arm. */
+  excludeFromContext: z.boolean().optional(),
   requestId: z.string(),
 });
 
@@ -3693,6 +3712,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   OmpGoalActionRequestSchema,
   OmpCommandRunRequestSchema,
   OmpBashRequestSchema,
+  OmpPythonRequestSchema,
   OmpSettingsGetRequestSchema,
   OmpSettingsSetRequestSchema,
   OmpKeybindingsGetRequestSchema,
@@ -4101,6 +4121,8 @@ export const ServerInfoStatusPayloadSchema = z
         // The fork's `bash` RPC, reached by the composer's `!` arm. Separate from
         // ompSlashCommands: a host can have either without the other.
         ompBash: z.boolean().optional(),
+        // The fork's `python` RPC, reached by the composer's `$` and `$$` arms.
+        ompPython: z.boolean().optional(),
         ompSettings: z.boolean().optional(),
         ompModes: z.boolean().optional(),
         ompKeybindings: z.boolean().optional(),
@@ -6861,6 +6883,17 @@ export const OmpCommandRunResponseSchema = z.object({
   }),
 });
 
+export const OmpPythonResponseSchema = z.object({
+  type: z.literal("omp.python.response"),
+  payload: z.object({
+    requestId: z.string(),
+    output: z.string(),
+    exitCode: z.number().int().nullable().optional(),
+    cancelled: z.boolean().optional(),
+    truncated: z.boolean().optional(),
+  }),
+});
+
 export const OmpBashResponseSchema = z.object({
   type: z.literal("omp.bash.response"),
   payload: z.object({
@@ -7792,6 +7825,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   OmpGoalActionResponseSchema,
   OmpCommandRunResponseSchema,
   OmpBashResponseSchema,
+  OmpPythonResponseSchema,
   OmpSettingsGetResponseSchema,
   OmpSettingsSetResponseSchema,
   OmpKeybindingsGetResponseSchema,
@@ -8045,6 +8079,8 @@ export type OmpVibeKillResponse = z.infer<typeof OmpVibeKillResponseSchema>;
 export type OmpCommandRunRequest = z.infer<typeof OmpCommandRunRequestSchema>;
 export type OmpCommandRunResponse = z.infer<typeof OmpCommandRunResponseSchema>;
 export type OmpBashRequest = z.infer<typeof OmpBashRequestSchema>;
+export type OmpPythonRequest = z.infer<typeof OmpPythonRequestSchema>;
+export type OmpPythonResponse = z.infer<typeof OmpPythonResponseSchema>;
 export type OmpBashResponse = z.infer<typeof OmpBashResponseSchema>;
 export type OmpSettingsGetRequest = z.infer<typeof OmpSettingsGetRequestSchema>;
 export type OmpSettingsGetResponse = z.infer<typeof OmpSettingsGetResponseSchema>;

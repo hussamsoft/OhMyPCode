@@ -248,10 +248,17 @@ export class FakeOmpSession implements OmpRuntimeSession {
   readonly modeRequests: Array<Record<string, unknown>> = [];
   slashCommandResult: OmpSlashCommandResult = { outcome: "consumed", output: "ok" };
   bashResult: OmpBashResult = { output: "ok\n", exitCode: 0, cancelled: false, truncated: false };
+  pythonResult: OmpPythonResult = {
+    output: "42\n",
+    exitCode: 0,
+    cancelled: false,
+    truncated: false,
+  };
   settingsResult: OmpSettingsResult = { revision: 1, settings: [] };
   keybindingsResult: OmpKeybindingsResult = { keybindings: [] };
   readonly slashCommandRequests: Array<{ command: string; args?: string }> = [];
-  readonly bashRequests: string[] = [];
+  readonly bashRequests: Array<{ command: string; excludeFromContext: boolean }> = [];
+  readonly pythonRequests: Array<{ code: string; excludeFromContext: boolean }> = [];
   readonly settingUpdates: Array<{ path: string; value: unknown }> = [];
   readonly keybindingUpdates: Array<{ keybinding: string; keys: string }> = [];
   readonly toolSelectionRequests: string[][] = [];
@@ -537,9 +544,14 @@ export class FakeOmpSession implements OmpRuntimeSession {
     return this.modesState;
   }
 
-  async runBash(command: string): Promise<OmpBashResult> {
-    this.bashRequests.push(command);
+  async runBash(command: string, excludeFromContext = false): Promise<OmpBashResult> {
+    this.bashRequests.push({ command, excludeFromContext });
     return this.bashResult;
+  }
+
+  async runPython(code: string, excludeFromContext = false): Promise<OmpPythonResult> {
+    this.pythonRequests.push({ code, excludeFromContext });
+    return this.pythonResult;
   }
 
   async runSlashCommand(command: string, args?: string): Promise<OmpSlashCommandResult> {

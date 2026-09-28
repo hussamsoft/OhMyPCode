@@ -21,7 +21,9 @@ export interface OmpAgentWorkspace {
 export interface OmpServerFixture {
   toolRequests(): string[][];
   /** Commands the composer dispatched to the fork's `bash` RPC, in order. */
-  bashRequests(): string[];
+  bashRequests(): Array<{ command: string; excludeFromContext: boolean }>;
+  /** Code the composer dispatched to the fork's `python` RPC, in order. */
+  pythonRequests(): Array<{ code: string; excludeFromContext: boolean }>;
   /** Text of every message sent down the ordinary prompt path, in order. */
   messageRequests(): string[];
 }
@@ -66,7 +68,8 @@ export async function seedOmpAgentWorkspace(options: {
 
 export async function installOmpServerCapabilities(page: Page): Promise<OmpServerFixture> {
   const toolRequests: string[][] = [];
-  const bashRequests: string[] = [];
+  const bashRequests: Array<{ command: string; excludeFromContext: boolean }> = [];
+  const pythonRequests: Array<{ code: string; excludeFromContext: boolean }> = [];
   const messageRequests: string[] = [];
   await page.routeWebSocket(daemonWsRoutePattern(), (webSocket) => {
     const server = webSocket.connectToServer();
@@ -78,6 +81,8 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
             type?: unknown;
             enabledTools?: unknown;
             command?: unknown;
+            code?: unknown;
+            excludeFromContext?: unknown;
             text?: unknown;
           };
         };
@@ -91,7 +96,19 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
           envelope.message?.type === "omp.bash.request" &&
           typeof envelope.message.command === "string"
         ) {
-          bashRequests.push(envelope.message.command);
+          bashRequests.push({
+            command: envelope.message.command,
+            excludeFromContext: envelope.message.excludeFromContext === true,
+          });
+        }
+        if (
+          envelope.message?.type === "omp.python.request" &&
+          typeof envelope.message.code === "string"
+        ) {
+          pythonRequests.push({
+            code: envelope.message.code,
+            excludeFromContext: envelope.message.excludeFromContext === true,
+          });
         }
         if (
           envelope.message?.type === "send_agent_message_request" &&
@@ -126,6 +143,7 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
             ompToolSelection: true,
             ompSlashCommands: true,
             ompBash: true,
+            ompPython: true,
           };
           webSocket.send(JSON.stringify(envelope));
           return;
@@ -138,7 +156,8 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
   });
   return {
     toolRequests: () => toolRequests.map((request) => request.slice()),
-    bashRequests: () => bashRequests.slice(),
+    bashRequests: () => bashRequests.map((request) => ({ ...request })),
+    pythonRequests: () => pythonRequests.map((request) => ({ ...request })),
     messageRequests: () => messageRequests.slice(),
   };
 }

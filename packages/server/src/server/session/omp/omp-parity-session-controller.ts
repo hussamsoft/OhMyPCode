@@ -19,6 +19,7 @@ const OMP_PARITY_MESSAGE_TYPES: ReadonlySet<SessionInboundMessage["type"]> = new
   "omp.session.switch.request",
   "omp.agents.list.request",
   "omp.bash.request",
+  "omp.python.request",
 ]);
 
 type OmpParityRequest = Extract<
@@ -35,7 +36,8 @@ type OmpParityRequest = Extract<
       | "omp.keybindings.set.request"
       | "omp.session.switch.request"
       | "omp.agents.list.request"
-      | "omp.bash.request";
+      | "omp.bash.request"
+      | "omp.python.request";
   }
 >;
 
@@ -47,6 +49,7 @@ export interface OmpParitySessionControllerOptions {
     | "goalAction"
     | "runOmpSlashCommand"
     | "runOmpBash"
+    | "runOmpPython"
     | "getOmpSettings"
     | "setOmpSetting"
     | "getOmpKeybindings"
@@ -139,8 +142,27 @@ export class OmpParitySessionController {
         }
 
         case "omp.bash.request": {
-          const result = await this.options.agentManager.runOmpBash(msg.agentId, msg.command);
+          const result = await this.options.agentManager.runOmpBash(
+            msg.agentId,
+            msg.command,
+            msg.excludeFromContext === true,
+          );
           this.emitResponse("omp.bash.response", msg.requestId, {
+            output: result.output,
+            exitCode: result.exitCode,
+            cancelled: result.cancelled,
+            truncated: result.truncated,
+          });
+          return;
+        }
+
+        case "omp.python.request": {
+          const result = await this.options.agentManager.runOmpPython(
+            msg.agentId,
+            msg.code,
+            msg.excludeFromContext === true,
+          );
+          this.emitResponse("omp.python.response", msg.requestId, {
             output: result.output,
             exitCode: result.exitCode,
             cancelled: result.cancelled,
@@ -250,7 +272,8 @@ export class OmpParitySessionController {
       | "omp.keybindings.set.response"
       | "omp.session.switch.response"
       | "omp.agents.list.response"
-      | "omp.bash.response",
+      | "omp.bash.response"
+      | "omp.python.response",
     requestId: string,
     payload: Record<string, unknown>,
   ): void {
@@ -270,6 +293,8 @@ export class OmpParitySessionController {
         return "omp_command_failed";
       case "omp.bash.request":
         return "omp_bash_failed";
+      case "omp.python.request":
+        return "omp_python_failed";
       case "omp.settings.get.request":
       case "omp.settings.set.request":
         return "omp_setting_failed";

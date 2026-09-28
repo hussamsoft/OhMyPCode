@@ -98,6 +98,7 @@ import {
   type OmpKeybindingsResult,
   type OmpSetKeybindingResult,
   type OmpBashResult,
+  type OmpPythonResult,
   type OmpSettingsResult,
   type OmpSetSettingResult,
   type OmpSlashCommandResult,
@@ -1307,8 +1308,12 @@ export class OmpAgentSession implements AgentSession, OmpParitySession, OmpVibeS
     return result;
   }
 
-  async runBash(command: string): Promise<OmpBashResult> {
-    return await this.runtimeSession.runBash(command);
+  async runBash(command: string, excludeFromContext = false): Promise<OmpBashResult> {
+    return await this.runtimeSession.runBash(command, excludeFromContext);
+  }
+
+  async runPython(code: string, excludeFromContext = false): Promise<OmpPythonResult> {
+    return await this.runtimeSession.runPython(code, excludeFromContext);
   }
 
   async getSettings(): Promise<OmpSettingsResult> {
