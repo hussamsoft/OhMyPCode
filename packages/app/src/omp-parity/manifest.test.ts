@@ -39,6 +39,7 @@ const VALID_GUI_HOMES = new Set([
   "omp-tools-control",
   "omp_vibe",
   "omp-status-bar",
+  "omp-mode-control",
   "omp_settings",
   "omp_keybindings",
   "omp_context",
