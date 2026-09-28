@@ -57,6 +57,7 @@ import {
   type OmpParitySession,
   type OmpKeybindingsResult,
   type OmpSetKeybindingResult,
+  type OmpBashResult,
   type OmpSettingsResult,
   type OmpSetSettingResult,
   type OmpSlashCommandResult,
@@ -178,6 +179,7 @@ export type OmpParityErrorCode =
   | "omp_parity_unavailable"
   | "omp_mode_conflict"
   | "omp_command_failed"
+  | "omp_bash_failed"
   | "omp_setting_failed"
   | "omp_keybinding_failed"
   | "omp_goal_action_failed"
@@ -196,6 +198,7 @@ export class AgentManagerOmpParityError extends Error {
 }
 
 const OMP_PARITY_ERROR_CODES: ReadonlySet<string> = new Set<OmpParityErrorCode>([
+  "omp_bash_failed",
   "omp_parity_unavailable",
   "omp_mode_conflict",
   "omp_command_failed",
@@ -1540,6 +1543,10 @@ export class AgentManager {
     args?: string,
   ): Promise<OmpSlashCommandResult> {
     return await this.requireOmpModeSession(agentId).runSlashCommand(name, args);
+  }
+
+  async runOmpBash(agentId: string, command: string): Promise<OmpBashResult> {
+    return await this.requireOmpModeSession(agentId).runBash(command);
   }
 
   async getOmpSettings(agentId: string): Promise<OmpSettingsResult> {

@@ -97,6 +97,7 @@ import {
   type OmpSetModeResult,
   type OmpKeybindingsResult,
   type OmpSetKeybindingResult,
+  type OmpBashResult,
   type OmpSettingsResult,
   type OmpSetSettingResult,
   type OmpSlashCommandResult,
@@ -1304,6 +1305,10 @@ export class OmpAgentSession implements AgentSession, OmpParitySession, OmpVibeS
     this.supportsOmpSlashCommands = true;
     void this.refreshModes();
     return result;
+  }
+
+  async runBash(command: string): Promise<OmpBashResult> {
+    return await this.runtimeSession.runBash(command);
   }
 
   async getSettings(): Promise<OmpSettingsResult> {

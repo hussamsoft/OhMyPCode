@@ -18,6 +18,7 @@ const OMP_PARITY_MESSAGE_TYPES: ReadonlySet<SessionInboundMessage["type"]> = new
   "omp.keybindings.set.request",
   "omp.session.switch.request",
   "omp.agents.list.request",
+  "omp.bash.request",
 ]);
 
 type OmpParityRequest = Extract<
@@ -33,7 +34,8 @@ type OmpParityRequest = Extract<
       | "omp.keybindings.get.request"
       | "omp.keybindings.set.request"
       | "omp.session.switch.request"
-      | "omp.agents.list.request";
+      | "omp.agents.list.request"
+      | "omp.bash.request";
   }
 >;
 
@@ -44,6 +46,7 @@ export interface OmpParitySessionControllerOptions {
     | "setOmpMode"
     | "goalAction"
     | "runOmpSlashCommand"
+    | "runOmpBash"
     | "getOmpSettings"
     | "setOmpSetting"
     | "getOmpKeybindings"
@@ -132,6 +135,17 @@ export class OmpParitySessionController {
             msg.args,
           );
           this.emitResponse("omp.command.run.response", msg.requestId, mapSlashResult(result));
+          return;
+        }
+
+        case "omp.bash.request": {
+          const result = await this.options.agentManager.runOmpBash(msg.agentId, msg.command);
+          this.emitResponse("omp.bash.response", msg.requestId, {
+            output: result.output,
+            exitCode: result.exitCode,
+            cancelled: result.cancelled,
+            truncated: result.truncated,
+          });
           return;
         }
 
@@ -235,7 +249,8 @@ export class OmpParitySessionController {
       | "omp.keybindings.get.response"
       | "omp.keybindings.set.response"
       | "omp.session.switch.response"
-      | "omp.agents.list.response",
+      | "omp.agents.list.response"
+      | "omp.bash.response",
     requestId: string,
     payload: Record<string, unknown>,
   ): void {
@@ -253,6 +268,8 @@ export class OmpParitySessionController {
     switch (msg.type) {
       case "omp.command.run.request":
         return "omp_command_failed";
+      case "omp.bash.request":
+        return "omp_bash_failed";
       case "omp.settings.get.request":
       case "omp.settings.set.request":
         return "omp_setting_failed";

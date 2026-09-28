@@ -23,6 +23,7 @@ import type {
   OmpSetKeybindingResult,
   OmpSettingsResult,
   OmpSetSettingResult,
+  OmpBashResult,
   OmpSlashCommandResult,
   OmpVibeSendResult,
   OmpVibeSpawnResult,
@@ -112,6 +113,7 @@ export interface OmpRuntimeSession {
   ): Promise<OmpSetModeResult>;
   goalAction(action: "pause" | "resume" | "drop"): Promise<OmpModesResult>;
   runSlashCommand(command: string, args?: string): Promise<OmpSlashCommandResult>;
+  runBash(command: string): Promise<OmpBashResult>;
   getSettings(): Promise<OmpSettingsResult>;
   setSetting(path: string, value: unknown): Promise<OmpSetSettingResult>;
   getKeybindings(): Promise<OmpKeybindingsResult>;

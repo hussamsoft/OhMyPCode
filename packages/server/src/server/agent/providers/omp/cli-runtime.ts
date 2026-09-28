@@ -39,6 +39,7 @@ import {
   OmpSetKeybindingResultSchema,
   OmpSettingsResultSchema,
   OmpSetSettingResultSchema,
+  OmpBashResultSchema,
   OmpSlashCommandResultSchema,
   OmpVibeKillResultSchema,
   OmpVibeWaitResultSchema,
@@ -70,6 +71,7 @@ import {
   type OmpSetModeResult,
   type OmpKeybindingsResult,
   type OmpSetKeybindingResult,
+  type OmpBashResult,
   type OmpSettingsResult,
   type OmpSetSettingResult,
   type OmpSlashCommandResult,
@@ -342,6 +344,10 @@ class OmpCliRuntimeSession implements OmpRuntimeSession {
         ...(args === undefined ? {} : { args }),
       }),
     );
+  }
+
+  async runBash(command: string): Promise<OmpBashResult> {
+    return OmpBashResultSchema.parse(await this.request({ type: "bash", command }));
   }
 
   async getSettings(): Promise<OmpSettingsResult> {

@@ -15,6 +15,7 @@ import type {
   OmpSetKeybindingResult,
   OmpSettingsResult,
   OmpSetSettingResult,
+  OmpBashResult,
   OmpSlashCommandResult,
   OmpAvailableAgentCatalogEntry,
   VibeEnterResult,
@@ -32,6 +33,7 @@ export type {
   OmpSetKeybindingResult,
   OmpSettingsResult,
   OmpSetSettingResult,
+  OmpBashResult,
   OmpSlashCommandResult,
   OmpAvailableAgentCatalogEntry,
   VibeEnterResult,
@@ -809,6 +811,7 @@ export interface OmpParitySession {
    */
   listAvailableAgents(): Promise<OmpAgentCatalogEntry[]>;
   runSlashCommand(name: string, args?: string): Promise<OmpSlashCommandResult>;
+  runBash(command: string): Promise<OmpBashResult>;
   getSettings(): Promise<OmpSettingsResult>;
   setSetting(path: string, value: unknown): Promise<OmpSetSettingResult>;
   getKeybindings(): Promise<OmpKeybindingsResult>;

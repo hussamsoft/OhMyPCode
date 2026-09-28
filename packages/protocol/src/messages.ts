@@ -1984,6 +1984,23 @@ export const OmpCommandRunRequestSchema = z.object({
   requestId: z.string(),
 });
 
+/**
+ * Dispatch a shell command against an OMP agent's session.
+ *
+ * The composer arms this for a `!`-prefixed submission rather than sending the
+ * text as a prompt: the daemon accepts a prefixed message as prose and does not
+ * execute it, so a prompt cannot carry the command.
+ *
+ * There is deliberately no `excludeFromContext` field. The fork's `bash` RPC
+ * carries only `command`, so the `!!` variant has nothing to map onto yet.
+ */
+export const OmpBashRequestSchema = z.object({
+  type: z.literal("omp.bash.request"),
+  agentId: z.string(),
+  command: z.string().min(1),
+  requestId: z.string(),
+});
+
 export const OmpSettingsGetRequestSchema = z.object({
   type: z.literal("omp.settings.get.request"),
   agentId: z.string(),
@@ -3675,6 +3692,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   OmpSetModeRequestSchema,
   OmpGoalActionRequestSchema,
   OmpCommandRunRequestSchema,
+  OmpBashRequestSchema,
   OmpSettingsGetRequestSchema,
   OmpSettingsSetRequestSchema,
   OmpKeybindingsGetRequestSchema,
@@ -6840,6 +6858,17 @@ export const OmpCommandRunResponseSchema = z.object({
   }),
 });
 
+export const OmpBashResponseSchema = z.object({
+  type: z.literal("omp.bash.response"),
+  payload: z.object({
+    requestId: z.string(),
+    output: z.string(),
+    exitCode: z.number().int().nullable().optional(),
+    cancelled: z.boolean().optional(),
+    truncated: z.boolean().optional(),
+  }),
+});
+
 export const OmpSettingEntrySchema = z.object({
   path: z.string(),
   type: z.string(),
@@ -7759,6 +7788,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   OmpSetModeResponseSchema,
   OmpGoalActionResponseSchema,
   OmpCommandRunResponseSchema,
+  OmpBashResponseSchema,
   OmpSettingsGetResponseSchema,
   OmpSettingsSetResponseSchema,
   OmpKeybindingsGetResponseSchema,
@@ -8011,6 +8041,8 @@ export type OmpGoalActionResponse = z.infer<typeof OmpGoalActionResponseSchema>;
 export type OmpVibeKillResponse = z.infer<typeof OmpVibeKillResponseSchema>;
 export type OmpCommandRunRequest = z.infer<typeof OmpCommandRunRequestSchema>;
 export type OmpCommandRunResponse = z.infer<typeof OmpCommandRunResponseSchema>;
+export type OmpBashRequest = z.infer<typeof OmpBashRequestSchema>;
+export type OmpBashResponse = z.infer<typeof OmpBashResponseSchema>;
 export type OmpSettingsGetRequest = z.infer<typeof OmpSettingsGetRequestSchema>;
 export type OmpSettingsGetResponse = z.infer<typeof OmpSettingsGetResponseSchema>;
 export type OmpSettingsSetRequest = z.infer<typeof OmpSettingsSetRequestSchema>;

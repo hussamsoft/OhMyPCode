@@ -616,6 +616,26 @@ export const OmpSlashCommandResultSchema = z.union([
   OmpSetModeResultSchema,
 ]);
 
+/**
+ * Result of the fork's `bash` RPC. The composer arms a `!`-prefixed submission
+ * into this call rather than a prompt, because the daemon accepts a prefixed
+ * message as prose and does not execute it.
+ *
+ * `excludeFromContext` is deliberately absent: the fork's RPC carries only
+ * `command`, so the `!!` variant cannot be expressed over the wire yet.
+ */
+export const OmpBashResultSchema = z.object({
+  exitCode: z.number().int().nullable().optional(),
+  cancelled: z.boolean().optional(),
+  workingDir: z.string().optional(),
+  output: z.string(),
+  truncated: z.boolean().optional(),
+  totalLines: z.number().int().nonnegative().optional(),
+  totalBytes: z.number().int().nonnegative().optional(),
+  outputLines: z.number().int().nonnegative().optional(),
+  outputBytes: z.number().int().nonnegative().optional(),
+});
+
 const OmpSettingsUpdateEventSchema = z
   .object({
     type: z.literal("settings_update"),
@@ -777,6 +797,7 @@ export const OmpRpcCommandSchema = z.discriminatedUnion("type", [
   z.object({ ...OmpCommandBase, type: z.literal("get_session_stats") }),
   z.object({ ...OmpCommandBase, type: z.literal("set_session_name"), name: z.string().min(1) }),
   z.object({ ...OmpCommandBase, type: z.literal("get_available_commands") }),
+  z.object({ ...OmpCommandBase, type: z.literal("bash"), command: z.string() }),
   z.object({
     ...OmpCommandBase,
     type: z.literal("set_subagent_subscription"),
@@ -987,6 +1008,7 @@ export type OmpSettingEntry = z.infer<typeof OmpSettingEntrySchema>;
 export type OmpSettingsResult = z.infer<typeof OmpSettingsResultSchema>;
 export type OmpSetSettingResult = z.infer<typeof OmpSetSettingResultSchema>;
 export type OmpSlashCommandResult = z.infer<typeof OmpSlashCommandResultSchema>;
+export type OmpBashResult = z.infer<typeof OmpBashResultSchema>;
 export type OmpSettingsUpdateEvent = z.infer<typeof OmpSettingsUpdateEventSchema>;
 export type VibeWorkerSnapshot = OmpVibeWorker;
 export type VibeStateResult = OmpVibeState;

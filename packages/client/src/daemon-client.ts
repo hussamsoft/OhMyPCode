@@ -103,6 +103,7 @@ import type {
   OmpProviderLoginRespondResponse,
   OmpProviderLoginCancelResponse,
   OmpProviderLogoutResponse,
+  OmpBashResponse,
   OmpCommandRunResponse,
   OmpSettingsGetResponse,
   OmpSettingsSetResponse,
@@ -530,6 +531,7 @@ export type OmpProviderLoginStartPayload = OmpProviderLoginStartResponse["payloa
 export type OmpProviderLoginRespondPayload = OmpProviderLoginRespondResponse["payload"];
 export type OmpProviderLoginCancelPayload = OmpProviderLoginCancelResponse["payload"];
 export type OmpProviderLogoutPayload = OmpProviderLogoutResponse["payload"];
+export type OmpBashResponsePayload = OmpBashResponse["payload"];
 export type OmpCommandRunPayload = OmpCommandRunResponse["payload"];
 export type OmpSettingsGetPayload = OmpSettingsGetResponse["payload"];
 export type OmpSettingsSetPayload = OmpSettingsSetResponse["payload"];
@@ -5440,6 +5442,28 @@ export class DaemonClient {
         agentId,
         name,
         ...(args === undefined ? {} : { args }),
+      },
+    });
+  }
+
+  /**
+   * Run a shell command against an OMP agent's session.
+   *
+   * Used by the composer's `!` arm. It is a command dispatch rather than a
+   * prompt submission because the daemon treats a `!`-prefixed message as prose
+   * and does not execute it.
+   */
+  async runOmpBash(
+    agentId: string,
+    command: string,
+    options?: { requestId?: string },
+  ): Promise<OmpBashResponsePayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: {
+        type: "omp.bash.request",
+        agentId,
+        command,
       },
     });
   }
