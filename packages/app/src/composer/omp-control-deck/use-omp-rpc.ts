@@ -91,7 +91,13 @@ function useOmpAgentScope(serverId: string | null | undefined) {
 
 function useOmpSupportsFeature(
   serverId: string | null | undefined,
-  feature: "ompModes" | "ompSettings" | "ompSlashCommands" | "ompKeybindings" | "ompAgentCatalog",
+  feature:
+    | "ompModes"
+    | "ompSettings"
+    | "ompSlashCommands"
+    | "ompKeybindings"
+    | "ompAgentCatalog"
+    | "ompBash",
 ): boolean {
   return useSessionStore(
     (state) => state.sessions[serverId ?? ""]?.serverInfo?.features?.[feature] === true,
@@ -484,12 +490,10 @@ export function useOmpBash(
   agentId: string | null | undefined,
 ): UseOmpBashResult {
   const { client, isConnected } = useOmpAgentScope(serverId);
-  // Deliberately not gated on `ompSlashCommands`. A bash execution is not a
-  // slash command, and the server advertises no separate capability for it --
-  // the fork accepts `bash` unconditionally. Borrowing the slash flag reported
-  // every bash-capable server without slash support as unavailable. Connection
-  // is the real precondition; a server that cannot run it answers with an error.
-  const supportsOmpBash = isConnected;
+  // A real capability, not the slash flag and not bare connectivity. The server
+  // advertises ompBash only when a runtime is actually launchable, so a host
+  // without one reports the arm unavailable instead of dispatching into a void.
+  const supportsOmpBash = useOmpSupportsFeature(serverId, "ompBash");
   const mutation = useMutation({
     mutationFn: async (command: string): Promise<OmpBashResponsePayload> => {
       if (!client || !agentId) {
@@ -500,8 +504,8 @@ export function useOmpBash(
   });
   const run = useCallback(
     async (command: string): Promise<OmpBashResponsePayload> => {
-      if (!supportsOmpBash) {
-        throw new Error("OMP host is not connected");
+      if (!isConnected || !supportsOmpBash) {
+        throw new Error("OMP bash capability unavailable on this server/agent");
       }
       return await mutation.mutateAsync(command);
     },

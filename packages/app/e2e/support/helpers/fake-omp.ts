@@ -125,6 +125,7 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
             ompVibe: true,
             ompToolSelection: true,
             ompSlashCommands: true,
+            ompBash: true,
           };
           webSocket.send(JSON.stringify(envelope));
           return;

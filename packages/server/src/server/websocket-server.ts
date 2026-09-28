@@ -1810,6 +1810,10 @@ export class VoiceAssistantWebSocketServer {
               ompVibe: true,
               ompToolSelection: true,
               ompSlashCommands: true,
+              // The fork's `bash` RPC, reached by the composer's `!` arm. Advertised
+              // separately from slash commands: a host with one is not obliged to
+              // have the other, and the arm must not assume either.
+              ompBash: true,
               ompSettings: true,
               ompModes: true,
               ompKeybindings: true,

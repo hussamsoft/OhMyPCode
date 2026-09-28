@@ -5,6 +5,13 @@ import {
   openOmpAgentRoute,
   seedOmpAgentWorkspace,
 } from "../support/helpers/fake-omp";
+import { dropFileOnComposer, expectAttachmentPill } from "../support/helpers/composer";
+
+const DROPPED_FILE = {
+  name: "config.json",
+  mimeType: "application/json",
+  buffer: Buffer.from(JSON.stringify({ composer: "drop" })),
+};
 
 const WIDE_VIEWPORT = { width: 1280, height: 900 };
 const HALF_WIDTH_VIEWPORT = { width: 900, height: 700 };
@@ -182,6 +189,34 @@ test.describe("OMP desktop control deck", () => {
       // ...and not down the prompt path at all.
       await expect.poll(() => server.messageRequests()).toEqual([]);
       await expect(chip).toHaveCount(0);
+    } finally {
+      await agent.cleanup();
+    }
+  });
+
+  // A command cannot carry a browser element or a PR context. The earlier fork
+  // cleared the attachments and never sent them, so this pins the fall-through
+  // against a real dropped file rather than a mock.
+  test("falls through to the prompt path when the draft carries an attachment", async ({
+    page,
+  }) => {
+    const agent = await seedOmpAgentWorkspace({
+      repoPrefix: "omp-bash-attached-",
+      title: "OMP bash attached",
+    });
+    try {
+      const server = await openOmpAgentRoute(page, agent);
+      const input = page.getByRole("textbox", { name: "Message agent..." }).first();
+      await dropFileOnComposer(page, DROPPED_FILE);
+      await expectAttachmentPill(page, "composer-file-attachment-pill");
+      await input.fill("!echo hi");
+
+      // The chip still arms -- the draft text is a command.
+      await expect(page.getByTestId("omp-bash-armed")).toBeVisible();
+
+      await input.press("Enter");
+      // ...but submit must not divert while a file rides along.
+      await expect.poll(() => server.bashRequests()).toEqual([]);
     } finally {
       await agent.cleanup();
     }

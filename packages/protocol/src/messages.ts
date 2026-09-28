@@ -4098,6 +4098,9 @@ export const ServerInfoStatusPayloadSchema = z
         ompVibe: z.boolean().optional(),
         ompToolSelection: z.boolean().optional(),
         ompSlashCommands: z.boolean().optional(),
+        // The fork's `bash` RPC, reached by the composer's `!` arm. Separate from
+        // ompSlashCommands: a host can have either without the other.
+        ompBash: z.boolean().optional(),
         ompSettings: z.boolean().optional(),
         ompModes: z.boolean().optional(),
         ompKeybindings: z.boolean().optional(),
