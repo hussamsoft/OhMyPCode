@@ -20,6 +20,8 @@ export interface OmpAgentWorkspace {
 
 export interface OmpServerFixture {
   toolRequests(): string[][];
+  /** Commands the composer dispatched to the fork's `bash` RPC, in order. */
+  bashRequests(): string[];
 }
 
 export function configureFakeOmpScenario(scenario: FakeOmpScenario): void {
@@ -62,19 +64,26 @@ export async function seedOmpAgentWorkspace(options: {
 
 export async function installOmpServerCapabilities(page: Page): Promise<OmpServerFixture> {
   const toolRequests: string[][] = [];
+  const bashRequests: string[] = [];
   await page.routeWebSocket(daemonWsRoutePattern(), (webSocket) => {
     const server = webSocket.connectToServer();
     webSocket.onMessage((message) => {
       const raw = typeof message === "string" ? message : message.toString("utf8");
       try {
         const envelope = JSON.parse(raw) as {
-          message?: { type?: unknown; enabledTools?: unknown };
+          message?: { type?: unknown; enabledTools?: unknown; command?: unknown };
         };
         if (
           envelope.message?.type === "set_agent_tools_request" &&
           Array.isArray(envelope.message.enabledTools)
         ) {
           toolRequests.push(envelope.message.enabledTools.map(String));
+        }
+        if (
+          envelope.message?.type === "omp.bash.request" &&
+          typeof envelope.message.command === "string"
+        ) {
+          bashRequests.push(envelope.message.command);
         }
       } catch {
         // Non-JSON frames pass through unchanged.
@@ -101,6 +110,7 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
             ...payload.features,
             ompVibe: true,
             ompToolSelection: true,
+            ompSlashCommands: true,
           };
           webSocket.send(JSON.stringify(envelope));
           return;
@@ -111,7 +121,10 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
       webSocket.send(message);
     });
   });
-  return { toolRequests: () => toolRequests.map((request) => request.slice()) };
+  return {
+    toolRequests: () => toolRequests.map((request) => request.slice()),
+    bashRequests: () => bashRequests.slice(),
+  };
 }
 
 export async function openOmpAgentRoute(

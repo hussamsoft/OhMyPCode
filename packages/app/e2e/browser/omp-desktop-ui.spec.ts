@@ -155,6 +155,57 @@ test.describe("OMP desktop control deck", () => {
     }
   });
 
+  test("arms the ! trigger and dispatches the command instead of a message", async ({ page }) => {
+    const agent = await seedOmpAgentWorkspace({
+      repoPrefix: "omp-bash-trigger-",
+      title: "OMP bash trigger",
+    });
+    try {
+      const server = await openOmpAgentRoute(page, agent);
+      const input = page.getByRole("textbox", { name: "Message agent..." }).first();
+
+      // A bare sigil arms nothing: there is no command to dispatch yet.
+      await input.fill("!");
+      await expect(page.getByTestId("omp-bash-armed")).toHaveCount(0);
+
+      // The chip appears the moment the draft addresses the arm.
+      await input.fill("!echo ohmypcode");
+      const chip = page.getByTestId("omp-bash-armed");
+      await expect(chip).toBeVisible();
+      await expect(page.getByTestId("omp-bash-armed-command")).toHaveText("echo ohmypcode");
+
+      await input.press("Enter");
+
+      // It went out as a bash RPC carrying the command without the sigil...
+      await expect.poll(() => server.bashRequests()).toEqual(["echo ohmypcode"]);
+      await expect(chip).toHaveCount(0);
+    } finally {
+      await agent.cleanup();
+    }
+  });
+
+  test("does not arm !! and submits it as an ordinary prompt", async ({ page }) => {
+    const agent = await seedOmpAgentWorkspace({
+      repoPrefix: "omp-bash-unsupported-",
+      title: "OMP bash unsupported",
+    });
+    try {
+      const server = await openOmpAgentRoute(page, agent);
+      const input = page.getByRole("textbox", { name: "Message agent..." }).first();
+
+      // The fork's bash RPC carries only `command`, so the exclude-from-context
+      // arm cannot be expressed. It must not advertise itself as armed.
+      await input.fill("!!echo ohmypcode");
+      await expect(page.getByTestId("omp-bash-armed")).toHaveCount(0);
+
+      await input.press("Enter");
+      // Nothing was dispatched as a command; it went down the prompt path.
+      await expect.poll(() => server.bashRequests()).toEqual([]);
+    } finally {
+      await agent.cleanup();
+    }
+  });
+
   test("updates the tool count atomically on success and rolls back a failed toggle", async ({
     page,
   }) => {

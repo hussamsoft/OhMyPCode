@@ -24,6 +24,7 @@ import type {
   OmpSetKeybindingResult,
   OmpSettingsResult,
   OmpSetSettingResult,
+  OmpBashResult,
   OmpSlashCommandResult,
   VibeEnterResult,
   VibeExitResult,
@@ -246,9 +247,11 @@ export class FakeOmpSession implements OmpRuntimeSession {
   setModeError: Error | null = null;
   readonly modeRequests: Array<Record<string, unknown>> = [];
   slashCommandResult: OmpSlashCommandResult = { outcome: "consumed", output: "ok" };
+  bashResult: OmpBashResult = { output: "ok\n", exitCode: 0, cancelled: false, truncated: false };
   settingsResult: OmpSettingsResult = { revision: 1, settings: [] };
   keybindingsResult: OmpKeybindingsResult = { keybindings: [] };
   readonly slashCommandRequests: Array<{ command: string; args?: string }> = [];
+  readonly bashRequests: string[] = [];
   readonly settingUpdates: Array<{ path: string; value: unknown }> = [];
   readonly keybindingUpdates: Array<{ keybinding: string; keys: string }> = [];
   readonly toolSelectionRequests: string[][] = [];
@@ -532,6 +535,11 @@ export class FakeOmpSession implements OmpRuntimeSession {
       };
     }
     return this.modesState;
+  }
+
+  async runBash(command: string): Promise<OmpBashResult> {
+    this.bashRequests.push(command);
+    return this.bashResult;
   }
 
   async runSlashCommand(command: string, args?: string): Promise<OmpSlashCommandResult> {
