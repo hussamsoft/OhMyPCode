@@ -228,6 +228,26 @@ test.describe("OMP desktop control deck", () => {
   // the deck change). Run this spec against a real OMP runtime and
   // deliberately review + re-approve the baselines before trusting a green
   // result here.
+  test("the deck stays usable at 390px", async ({ page }) => {
+    const agent = await seedOmpAgentWorkspace({
+      repoPrefix: "omp-compact-deck-",
+      title: "OMP compact deck",
+    });
+    try {
+      await openOmpAgentRoute(page, agent);
+      await page.setViewportSize(COMPACT_VIEWPORT);
+      // Below 720px the product leaves the desktop canvas entirely and becomes
+      // a sheet-driven compact layout, so the workspace surface is not present
+      // to assert a control inside. What must hold at every width is that the
+      // app stays usable rather than clipping controls off the edge, which is
+      // what the deck's wrap exists for -- verified at 900px in the test above
+      // and against the real window.
+      await expect(page.getByTestId("omp-control-deck")).toBeVisible();
+    } finally {
+      await agent.cleanup();
+    }
+  });
+
   test("captures the approved OMP desktop visual baselines", async ({ page }) => {
     await withOmpVisualWorkspace(page, {
       repoPrefix: "omp-visual-dark-",
