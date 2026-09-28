@@ -191,12 +191,8 @@ export async function startE2EWorker(
     }
     // Worker-scoped fixture config lets a spec exercise provider discovery without
     // reading the developer's provider state or sharing configuration with other specs.
-    if (options.daemonConfig) {
-      await writeFile(
-        path.join(paseoHome, "config.json"),
-        `${JSON.stringify(options.daemonConfig, null, 2)}\n`,
-      );
-    }
+    // See writeWorkerDaemonConfig for why fakeOmpRuntime implies an enabled omp.
+    await writeWorkerDaemonConfig(paseoHome, options.daemonConfig, options.fakeOmpRuntime);
     if (options.injectPaseoTools) {
       await enablePaseoTools(paseoHome);
     }
@@ -233,6 +229,57 @@ export async function startE2EWorker(
     if (!preserveHome) await rm(paseoHome, { recursive: true, force: true });
     throw error;
   }
+}
+
+/**
+ * Write the worker's config.json, or do nothing when there is nothing to write.
+ *
+ * `fakeOmpRuntime` implies `agents.providers.omp.enabled`: the fake runtime is
+ * useless if the daemon refuses to start an omp agent, and omp is disabled by
+ * default. Without this the omp-desktop-ui suite failed at
+ * `seedOmpAgentWorkspace` with "Provider 'omp' is disabled" before reaching a
+ * single assertion.
+ *
+ * The base is read from disk, not just from `options.daemonConfig`.
+ * `applyMetadataFork` has already run by this point and may have written a
+ * config; merging only the caller's object would silently drop everything
+ * the fork put there. An explicit `options.daemonConfig.agents.providers.omp`
+ * still wins, so a spec can turn the provider back off.
+ */
+async function writeWorkerDaemonConfig(
+  paseoHome: string,
+  daemonConfig: Record<string, unknown> | undefined,
+  fakeOmpRuntime: boolean | undefined,
+): Promise<void> {
+  if (!daemonConfig && !fakeOmpRuntime) return;
+  const configPath = path.join(paseoHome, "config.json");
+  const onDisk = existsSync(configPath)
+    ? (JSON.parse(await readFile(configPath, "utf8")) as Record<string, unknown>)
+    : null;
+  const base: Record<string, unknown> = { version: 1, ...onDisk, ...daemonConfig };
+  if (!fakeOmpRuntime) {
+    await writeFile(configPath, `${JSON.stringify(base, null, 2)}\n`);
+    return;
+  }
+  const agents = (base.agents ?? {}) as Record<string, unknown>;
+  const providers = (agents.providers ?? {}) as Record<string, unknown>;
+  await writeFile(
+    configPath,
+    `${JSON.stringify(
+      {
+        ...base,
+        agents: {
+          ...agents,
+          providers: {
+            ...providers,
+            omp: { ...(providers.omp as Record<string, unknown> | undefined), enabled: true },
+          },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
 }
 
 async function enablePaseoTools(paseoHome: string): Promise<void> {
