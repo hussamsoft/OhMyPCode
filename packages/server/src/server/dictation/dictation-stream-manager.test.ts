@@ -163,20 +163,20 @@ describe("DictationStreamManager (provider-agnostic provider)", () => {
     expect(sttProvider.lastLanguage).toBe("en");
   });
 
-  it("uses PASEO_DICTATION_LANGUAGE when set", async () => {
+  it("uses OMPCODE_DICTATION_LANGUAGE when set", async () => {
     const sttProvider = await startWithResolvedDictationLanguage({
       env: {
-        PASEO_DICTATION_LANGUAGE: "pt",
+        OMPCODE_DICTATION_LANGUAGE: "pt",
       } as NodeJS.ProcessEnv,
     });
 
     expect(sttProvider.lastLanguage).toBe("pt");
   });
 
-  it("treats empty PASEO_DICTATION_LANGUAGE as unset", async () => {
+  it("treats empty OMPCODE_DICTATION_LANGUAGE as unset", async () => {
     const sttProvider = await startWithResolvedDictationLanguage({
       env: {
-        PASEO_DICTATION_LANGUAGE: "  ",
+        OMPCODE_DICTATION_LANGUAGE: "  ",
       } as NodeJS.ProcessEnv,
     });
 
@@ -202,7 +202,7 @@ describe("DictationStreamManager (provider-agnostic provider)", () => {
   it("uses env dictation language over settings dictation STT language", async () => {
     const sttProvider = await startWithResolvedDictationLanguage({
       env: {
-        PASEO_DICTATION_LANGUAGE: "pt",
+        OMPCODE_DICTATION_LANGUAGE: "pt",
       } as NodeJS.ProcessEnv,
       persisted: {
         features: {

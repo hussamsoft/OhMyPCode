@@ -123,21 +123,21 @@ describe("STTManager", () => {
     expect(fakeStt.lastLanguage).toBe("en");
   });
 
-  it("uses PASEO_VOICE_LANGUAGE over PASEO_DICTATION_LANGUAGE", async () => {
+  it("uses OMPCODE_VOICE_LANGUAGE over OMPCODE_DICTATION_LANGUAGE", async () => {
     const fakeStt = await transcribeWithResolvedVoiceLanguage({
       env: {
-        PASEO_VOICE_LANGUAGE: "pt",
-        PASEO_DICTATION_LANGUAGE: "es",
+        OMPCODE_VOICE_LANGUAGE: "pt",
+        OMPCODE_DICTATION_LANGUAGE: "es",
       } as NodeJS.ProcessEnv,
     });
 
     expect(fakeStt.lastLanguage).toBe("pt");
   });
 
-  it("uses PASEO_DICTATION_LANGUAGE when PASEO_VOICE_LANGUAGE is unset", async () => {
+  it("uses OMPCODE_DICTATION_LANGUAGE when OMPCODE_VOICE_LANGUAGE is unset", async () => {
     const fakeStt = await transcribeWithResolvedVoiceLanguage({
       env: {
-        PASEO_DICTATION_LANGUAGE: "pt",
+        OMPCODE_DICTATION_LANGUAGE: "pt",
       } as NodeJS.ProcessEnv,
     });
 
@@ -147,8 +147,8 @@ describe("STTManager", () => {
   it("treats empty voice language env vars as unset", async () => {
     const fakeStt = await transcribeWithResolvedVoiceLanguage({
       env: {
-        PASEO_VOICE_LANGUAGE: "",
-        PASEO_DICTATION_LANGUAGE: "  ",
+        OMPCODE_VOICE_LANGUAGE: "",
+        OMPCODE_DICTATION_LANGUAGE: "  ",
       } as NodeJS.ProcessEnv,
     });
 
@@ -174,7 +174,7 @@ describe("STTManager", () => {
   it("uses env voice language over settings voice STT language", async () => {
     const fakeStt = await transcribeWithResolvedVoiceLanguage({
       env: {
-        PASEO_VOICE_LANGUAGE: "pt",
+        OMPCODE_VOICE_LANGUAGE: "pt",
       } as NodeJS.ProcessEnv,
       persisted: {
         features: {
