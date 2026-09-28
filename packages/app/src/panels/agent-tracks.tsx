@@ -60,7 +60,28 @@ export const AgentTracks = memo(function AgentTracks({
   const canDetachSubagents = useSessionStore(
     (state) => state.sessions[serverId]?.serverInfo?.features?.agentDetach === true,
   );
-  const hasVibe = useOmpVibeStore((state) => state.stateByAgent[agentId]?.enabled === true);
+  // The vibe store is seeded by `VibeStrip`, which lives *inside* the track bar
+  // this gate decides whether to render. Gating on the store alone is a
+  // bootstrap deadlock: the store is empty, so the bar returns null, so the
+  // strip never mounts, so nothing ever seeds the store. It stayed empty
+  // forever and the strip was unreachable.
+  //
+  // The agent's `omp_vibe` feature is the same fact from a source that does
+  // not depend on the component mounting, so the bar can render on it and the
+  // strip's own hydration can run.
+  const vibeEnabledInStore = useOmpVibeStore(
+    (state) => state.stateByAgent[agentId]?.enabled === true,
+  );
+  // Both hooks are called unconditionally -- short-circuiting on `||` between
+  // two hooks would break the rules of hooks and skip a subscription on some
+  // renders.
+  const vibeEnabledByFeature = useSessionStore((state) => {
+    const features = state.sessions[serverId]?.agents.get(agentId)?.features;
+    return (
+      features?.some((feature) => feature.id === "omp_vibe" && feature.value === true) === true
+    );
+  });
+  const hasVibe = vibeEnabledInStore || vibeEnabledByFeature;
   const archiveSubagent = useArchiveSubagent({ serverId });
   const detachSubagent = useDetachSubagent({ serverId });
   const handleOpenSubagent = useCallback(
