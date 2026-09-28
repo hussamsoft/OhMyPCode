@@ -2834,15 +2834,14 @@ export class OmpAgentClient implements AgentClient {
     const { runtimeProviderParams, modelRoleParams } = resolveOmpProviderParams(
       options.providerParams,
     );
-    const runtimeSettings = mergeOmpRuntimeSettings(
-      {
-        command: {
-          mode: "replace",
-          argv: ["omp"],
-        },
-      },
-      options.runtimeSettings,
-    );
+    // No baseline `command` here. A `{ mode: "replace", argv: ["omp"] }` base
+    // used to be supplied, which buildOmpLaunch applies ahead of the runtime's
+    // own resolution — so the desktop's OMP_COMMAND pointer to the bundled
+    // runtime was overwritten for every real agent session, and the agent
+    // resolved `omp` through PATH. Only an explicit caller-supplied
+    // runtimeSettings now decides the binary; with none, OmpCliRuntime falls
+    // back to resolveDefaultOmpCommand(), which honours OMP_COMMAND.
+    const runtimeSettings = mergeOmpRuntimeSettings(undefined, options.runtimeSettings);
     this.logger = options.logger;
     this.runtimeSettings = runtimeSettings;
     this.providerParams = runtimeProviderParams;

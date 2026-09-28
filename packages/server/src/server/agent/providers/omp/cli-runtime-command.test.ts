@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { resolveDefaultOmpCommand } from "./cli-runtime.js";
 import { buildOmpLaunch } from "./runtime.js";
 import { createOmpRuntimeForTest } from "./agent.js";
+import { mergeOmpRuntimeSettings } from "./provider-config.js";
 
 /**
  * The OMP binary the agent actually runs.
@@ -82,5 +83,32 @@ describe("createRuntime (the agent's own factory)", () => {
       if (previous === undefined) delete process.env.OMP_COMMAND;
       else process.env.OMP_COMMAND = previous;
     }
+  });
+});
+
+describe("OmpAgentClient runtime settings", () => {
+  it("does not install a baseline command that would override OMP_COMMAND", () => {
+    // The client constructor used to pass
+    //   mergeOmpRuntimeSettings({ command: { mode: "replace", argv: ["omp"] } }, ...)
+    // and buildOmpLaunch applies mode "replace" ahead of the runtime's own
+    // resolution. That baseline overwrote the desktop's OMP_COMMAND pointer for
+    // every real agent session, so the packaged app kept launching the PATH
+    // binary even after createRuntime stopped hardcoding the command.
+    //
+    // With no caller-supplied runtimeSettings there must now be no command at
+    // all, so OmpCliRuntime falls through to resolveDefaultOmpCommand().
+    expect(mergeOmpRuntimeSettings(undefined, undefined)).toBeUndefined();
+    expect(mergeOmpRuntimeSettings(undefined, {})?.command).toBeUndefined();
+
+    // An explicit caller setting still wins, and still replaces.
+    const pinned = mergeOmpRuntimeSettings(undefined, {
+      command: { mode: "replace", argv: ["C:/user/pinned/omp.exe"] },
+    });
+    const launch = buildOmpLaunch({
+      command: resolveDefaultOmpCommand({ OMP_COMMAND: "C:/bundled/omp.exe" }),
+      runtimeSettings: pinned,
+      session: { cwd: "C:/work" },
+    });
+    expect(launch.argv[0]).toBe("C:/user/pinned/omp.exe");
   });
 });
