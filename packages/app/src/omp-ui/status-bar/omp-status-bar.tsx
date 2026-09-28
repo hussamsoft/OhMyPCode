@@ -4,6 +4,7 @@ import { StyleSheet } from "react-native-unistyles";
 import { useTranslation } from "react-i18next";
 import type { AgentUsage } from "@ohmypcode/protocol/agent-types";
 import { getStatusLinePreset, type OmpStatusLinePresetDef } from "./presets";
+import { useStatusBarClock, useTurnElapsed } from "./use-status-bar-clock";
 import {
   STATUS_LINE_SEGMENT_IDS,
   type StatusLinePreset,
@@ -17,6 +18,16 @@ import {
  * renderer falls back to "—" for any segment whose source is `undefined`,
  * rather than fabricating data -- the catalog stays exhaustive.
  */
+/** Just enough provider-quota state for the `usage` segment. */
+export interface StatusBarProviderUsage {
+  /** Remaining percentage, 0-100. */
+  remainingPct: number;
+  /** Provider the balance belongs to, for the accessible label. */
+  providerId?: string | null;
+  /** When the window resets, if the provider reports one. */
+  resetLabel?: string | null;
+}
+
 export interface OmpStatusBarData {
   preset: StatusLinePreset;
   /**
@@ -47,6 +58,23 @@ export interface OmpStatusBarData {
   subagentCount?: number | null;
   /** Current sub-mode label (plan / build / etc.); absent = no mode. */
   modeLabel?: string | null;
+  /**
+   * Provider quota balance, already cached by `useProviderUsage`. Passed in
+   * rather than fetched here: the status bar must not drive a network call,
+   * and the usage hook's own stale window is what makes a permanent segment
+   * affordable.
+   */
+  providerUsage?: StatusBarProviderUsage | null;
+  /** Wall-clock time as an ISO-ish local time string; the caller owns the tick. */
+  clockTime?: string | null;
+  /** Elapsed time on the in-flight turn, formatted. */
+  turnElapsed?: string | null;
+  /** Identity of the OMP session this panel is bound to. */
+  sessionIdentity?: string | null;
+  /** Collaboration availability for this agent, from its capability flags. */
+  collabAvailable?: boolean | null;
+  /** Agent run status, which the elapsed-turn clock turns on and off. */
+  agentStatus?: string | null;
   /** Segments whose data really isn't available yet -- the renderer shows "—". */
   unavailable?: ReadonlySet<StatusLineSegmentId>;
   /** Compose-time customization (24h time, hidden-stage counts, etc.). */
@@ -152,6 +180,11 @@ interface SegmentInputs {
   sessionName?: string | null;
   subagentCount?: number | null;
   modeLabel?: string | null;
+  providerUsage?: StatusBarProviderUsage | null;
+  clockTime?: string | null;
+  turnElapsed?: string | null;
+  sessionIdentity?: string | null;
+  collabAvailable?: boolean | null;
 }
 
 type SegmentRenderer = (inputs: SegmentInputs) => SegmentView | null;
@@ -197,11 +230,14 @@ const SEGMENT_RENDERERS: Record<StatusLineSegmentId, SegmentRenderer> = {
     i.lastUsage?.contextWindowMaxTokens === undefined
       ? null
       : { text: formatTokenCount(i.lastUsage.contextWindowMaxTokens) },
-  // The remaining segments don't yet have data sources in the app store. Skipping
-  // them keeps the catalog exhaustive without fabricating values.
-  time_spent: constant(null),
-  time: constant(null),
-  session: constant(null),
+  // Elapsed time on the in-flight turn, and wall-clock. The caller owns both
+  // clocks and passes formatted strings: a status bar that started its own
+  // interval would re-render the composer on a timer for the whole session.
+  time_spent: (i) => (i.turnElapsed ? { text: i.turnElapsed } : null),
+  time: (i) => (i.clockTime ? { text: i.clockTime } : null),
+  // The agent id is what the host and the fork both key on, so it is the only
+  // session identity the app actually holds.
+  session: (i) => (i.sessionIdentity ? { text: i.sessionIdentity } : null),
   hostname: constant(null),
   cache_read: (i) => ({ text: formatTokenCount(i.lastUsage?.cachedInputTokens) }),
   // The aggregate exposes only the cache read total today.
@@ -214,9 +250,20 @@ const SEGMENT_RENDERERS: Record<StatusLineSegmentId, SegmentRenderer> = {
     return { text: `${pct.toFixed(0)}%` };
   },
   session_name: (i) => (i.sessionName ? { text: i.sessionName } : null),
-  // Provider quota windows live in `@/provider-usage`; no inline wiring yet.
-  usage: constant(null),
-  collab: constant(null),
+  // Provider quota, carried in from `useProviderUsage`. Tone follows how much
+  // is left, so a nearly-exhausted window is visible without reading the number.
+  usage: (i) => {
+    const usage = i.providerUsage;
+    if (!usage) return null;
+    const remaining = Math.round(usage.remainingPct);
+    return {
+      text: `${remaining}%${usage.resetLabel ? ` · ${usage.resetLabel}` : ""}`,
+      tone: remaining <= 10 ? "error" : remaining <= 25 ? "warning" : "success",
+    };
+  },
+  // Collab is a capability, not a live count: the app has no channel-level
+  // state to render, and showing a bare "yes" would imply one.
+  collab: (i) => (i.collabAvailable ? { text: "collab", tone: "success" } : null),
   stream: constant(null),
   vim: constant(null),
 };
@@ -232,6 +279,11 @@ function renderSegment(id: StatusLineSegmentId, ctx: RenderContext): SegmentView
     sessionName,
     subagentCount,
     modeLabel,
+    providerUsage,
+    clockTime,
+    turnElapsed,
+    sessionIdentity,
+    collabAvailable,
   } = ctx.data;
   const renderer = SEGMENT_RENDERERS[id];
   return renderer({
@@ -243,6 +295,11 @@ function renderSegment(id: StatusLineSegmentId, ctx: RenderContext): SegmentView
     sessionName,
     subagentCount,
     modeLabel,
+    providerUsage,
+    clockTime,
+    turnElapsed,
+    sessionIdentity,
+    collabAvailable,
   });
 }
 
@@ -341,6 +398,23 @@ function OmpStatusBarComponent({ data }: OmpStatusBarProps): ReactElement {
     [data.unavailable],
   );
 
+  // Clocks live here rather than in the panel, and only tick when the active
+  // preset actually contains the segment. A preset without `time` schedules
+  // nothing at all.
+  const wantsTime = leftSegments.includes("time") || rightSegments.includes("time");
+  const wantsElapsed = leftSegments.includes("time_spent") || rightSegments.includes("time_spent");
+  const clockTime = useStatusBarClock(wantsTime);
+  const turnElapsed = useTurnElapsed(data.agentStatus, wantsElapsed);
+
+  const resolvedData = useMemo<OmpStatusBarData>(
+    () => ({
+      ...data,
+      clockTime: data.clockTime ?? clockTime,
+      turnElapsed: data.turnElapsed ?? turnElapsed,
+    }),
+    [data, clockTime, turnElapsed],
+  );
+
   return (
     <View
       style={styles.root}
@@ -351,7 +425,7 @@ function OmpStatusBarComponent({ data }: OmpStatusBarProps): ReactElement {
       <SegmentRow
         ids={leftSegments}
         separator={separator}
-        data={data}
+        data={resolvedData}
         unavailable={unavailable}
         side="left"
       />
@@ -359,7 +433,7 @@ function OmpStatusBarComponent({ data }: OmpStatusBarProps): ReactElement {
       <SegmentRow
         ids={rightSegments}
         separator={separator}
-        data={data}
+        data={resolvedData}
         unavailable={unavailable}
         side="right"
       />

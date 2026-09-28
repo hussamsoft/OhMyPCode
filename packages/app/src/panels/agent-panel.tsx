@@ -30,7 +30,10 @@ import { OmpHookWidget } from "@/omp-ui/hook-widget/hook-widget";
 import { useOmpHook } from "@/omp-ui/hook-widget/use-omp-hook";
 import { OmpStatusBar, type OmpStatusBarData } from "@/omp-ui/status-bar/omp-status-bar";
 import { getStatusLinePreset } from "@/omp-ui/status-bar/presets";
+import { useProviderUsage } from "@/provider-usage/use-provider-usage";
+import { formatResetLabel } from "@/provider-usage/format";
 import type { StatusLineSegmentId } from "@/omp-ui/status-bar/segments";
+import type { StatusBarProviderUsage } from "@/omp-ui/status-bar/omp-status-bar";
 import { OmpTodoRail } from "@/omp-ui/todo-rail";
 import { Composer } from "@/composer";
 import { useWorkspaceHasDiffStat } from "@/composer/workspace-diff-stat";
@@ -1213,6 +1216,46 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     const record = session.agents.get(agentId) ?? session.agentDetails.get(agentId) ?? null;
     return record?.currentModeId ?? null;
   });
+  // Feeds the status bar's elapsed-turn clock and the collab segment. Both are
+  // read here rather than deep inside the bar so the bar stays a pure
+  // renderer of whatever the panel already knows.
+  const agentRunState = useSessionStore((state) => {
+    const session = state.sessions[serverId];
+    if (!session) return null;
+    const record = session.agents.get(agentId) ?? session.agentDetails.get(agentId) ?? null;
+    return {
+      status: record?.status ?? null,
+      collabAvailable: record?.capabilities?.ompCollab === true,
+    };
+  });
+  const { view: providerUsageView } = useProviderUsage(serverId ?? null, {
+    enabled: showPersistentChrome,
+  });
+  // The tightest window is the one a user would be surprised by running out of,
+  // so the segment reports the smallest remaining percentage across all
+  // providers rather than whichever happens to be first.
+  const statusBarProviderUsage = useMemo<StatusBarProviderUsage | null>(() => {
+    if (providerUsageView.kind !== "ready") return null;
+    const tightest = providerUsageView.payload.providers
+      .flatMap((provider) =>
+        provider.windows.map((window) => ({
+          remainingPct: window.remainingPct ?? null,
+          resetsAt: window.resetsAt ?? null,
+          providerId: provider.providerId,
+        })),
+      )
+      .filter(
+        (entry): entry is { remainingPct: number; resetsAt: string | null; providerId: string } =>
+          entry.remainingPct !== null,
+      )
+      .sort((left, right) => left.remainingPct - right.remainingPct)[0];
+    if (!tightest) return null;
+    return {
+      remainingPct: tightest.remainingPct,
+      providerId: tightest.providerId,
+      resetLabel: formatResetLabel(tightest.resetsAt),
+    };
+  }, [providerUsageView]);
   const archiveFinishedSubagents = useArchiveFinishedSubagents({
     serverId,
     parentAgentId: agentId,
@@ -1307,6 +1350,10 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
             sessionName: agentTitle,
             subagentCount: subagentRows.length,
             modeLabel: agentCurrentModeId,
+            providerUsage: statusBarProviderUsage,
+            sessionIdentity: agentId,
+            collabAvailable: agentRunState?.collabAvailable ?? false,
+            agentStatus: agentRunState?.status ?? null,
           }
         : null,
     [
@@ -1319,6 +1366,10 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       agentTitle,
       subagentRows.length,
       agentCurrentModeId,
+      statusBarProviderUsage,
+      agentId,
+      agentRunState?.collabAvailable,
+      agentRunState?.status,
     ],
   );
   const composerChromeOverlay =
