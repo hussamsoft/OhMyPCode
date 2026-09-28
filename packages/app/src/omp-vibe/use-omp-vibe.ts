@@ -39,14 +39,23 @@ export function useOmpVibe(serverId: string, agentId: string) {
    * (utils/agent-snapshots.ts), so a re-read through the typed RPC is the same
    * approach `useOmpModes` takes for exactly this reason.
    */
-  const vibeFeatureEnabled = useSessionStore((store) => {
-    const features = store.sessions[serverId]?.agents.get(agentId)?.features;
-    const toggle = features?.find((feature) => feature.id === "omp_vibe");
-    return toggle?.value === true;
-  });
+  // The strip is persistent chrome, so it hydrates on mount rather than
+  // waiting for a signal it cannot observe. It used to key off the
+  // `omp_vibe` agent feature, but that list only refreshes when a full agent
+  // snapshot is refetched, and the only thing that would prompt one is the
+  // `provider_state_updated` event the app has no handler for — so the flag
+  // never flipped and the store never seeded. One RPC on mount is the same
+  // cost `useOmpModes` already pays, and it does not care which path turned
+  // Vibe on.
   useEffect(() => {
-    if (!client || !capabilities.canUseVibe) return;
-    if (!vibeFeatureEnabled) return;
+    // Deliberately not gated on `capabilities.canUseVibe`. That flag needs
+    // BOTH the server feature and the agent's own `supportsOmpVibe`, and the
+    // latter is only set once something has read the vibe state — so on a
+    // fresh session it is false, the gate blocked the very read that would
+    // have set it, and the strip never appeared. The strip is read-only
+    // chrome; hydrating it is harmless. The capability check still guards
+    // every mutation below via `requireCapability`.
+    if (!client) return;
     let cancelled = false;
     const hydrate = async () => {
       const { state: remoteState } = await client.getOmpVibeState(agentId);
@@ -61,7 +70,7 @@ export function useOmpVibe(serverId: string, agentId: string) {
     return () => {
       cancelled = true;
     };
-  }, [agentId, capabilities.canUseVibe, client, vibeFeatureEnabled]);
+  }, [agentId, client]);
 
   const state = useOmpVibeStore((store) => store.stateByAgent[agentId] ?? null);
   const selectedWorkerId = useOmpVibeStore((store) => store.selectedWorkerByAgent[agentId] ?? null);

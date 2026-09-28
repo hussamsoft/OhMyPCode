@@ -1,12 +1,18 @@
 // @vitest-environment jsdom
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useOmpVibe } from "./use-omp-vibe";
 import { useOmpVibeStore } from "./store";
 
-const { client } = vi.hoisted(() => ({
+const { client, sessionState } = vi.hoisted(() => ({
   client: {
     waitOmpVibeWorkers: vi.fn(),
+    getOmpVibeState: vi.fn(),
+  },
+  // Mutable so a test can model the composer's real path: the Vibe segment
+  // toggles through the agent feature list, not through `enter`.
+  sessionState: {
+    features: [] as Array<{ id: string; type: string; value: unknown }>,
   },
 }));
 
@@ -23,7 +29,13 @@ vi.mock("@/hooks/use-omp-capabilities", () => ({
 
 vi.mock("@/stores/session-store", () => ({
   useSessionStore: (selector: (state: { sessions: Record<string, unknown> }) => unknown) =>
-    selector({ sessions: {} }),
+    selector({
+      sessions: {
+        "server-1": {
+          agents: new Map([["agent-1", { features: sessionState.features }]]),
+        },
+      },
+    }),
 }));
 
 describe("useOmpVibe pending operations", () => {
@@ -46,5 +58,33 @@ describe("useOmpVibe pending operations", () => {
       timeoutMs: 30_000,
     });
     expect(useOmpVibeStore.getState().pendingByAgent["agent-1"]).toBeUndefined();
+  });
+});
+
+describe("useOmpVibe hydration", () => {
+  beforeEach(() => {
+    useOmpVibeStore.getState().clearAgent("agent-1");
+  });
+
+  it("seeds the store from the nested payload.state when the omp_vibe feature flips on", async () => {
+    // This is the composer's actual path: the Vibe segment calls
+    // setFeature("omp_vibe"), which never goes through `enter`, so the
+    // feature-watch effect is the only thing that can seed the store. The
+    // response nests the state under `state`, so an unwrap that is wrong here
+    // fails silently and the strip never appears.
+    sessionState.features = [{ id: "omp_vibe", type: "toggle", value: true }];
+    client.getOmpVibeState.mockResolvedValue({
+      requestId: "req-1",
+      state: { revision: 1, enabled: true, workers: [] },
+    });
+
+    renderHook(() => useOmpVibe("server-1", "agent-1"));
+
+    await waitFor(() => {
+      const seeded = useOmpVibeStore.getState().stateByAgent["agent-1"];
+      expect(seeded, "store was never seeded from payload.state").toBeDefined();
+      expect(seeded?.enabled).toBe(true);
+      expect(seeded?.revision).toBe(1);
+    });
   });
 });
