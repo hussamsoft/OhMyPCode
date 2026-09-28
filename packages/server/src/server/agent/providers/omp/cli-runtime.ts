@@ -76,7 +76,20 @@ import {
   type OmpVibeWaitResult,
 } from "./rpc-types.js";
 
-const DEFAULT_OMP_COMMAND: [string, ...string[]] = [process.env.OMP_COMMAND ?? "omp"];
+/**
+ * The OMP binary to launch, as `[executable, ...prefixArgs]`.
+ *
+ * `OMP_COMMAND` is what the packaged desktop sets to point at its bundled
+ * runtime (packages/desktop/src/daemon/daemon-manager.ts). Resolved per call
+ * rather than once at module load so the value reflects the environment the
+ * daemon actually runs under, and so it is observable from a test.
+ */
+export function resolveDefaultOmpCommand(
+  env: NodeJS.ProcessEnv = process.env,
+): [string, ...string[]] {
+  const override = env.OMP_COMMAND?.trim();
+  return [override && override.length > 0 ? override : "omp"];
+}
 const DEFAULT_COMMANDS_RPC_NAME = "get_available_commands";
 
 export interface OmpCliRuntimeOptions {
@@ -95,7 +108,7 @@ export class OmpCliRuntime implements OmpRuntime {
   private readonly spawnProcess?: (launch: OmpRuntimeLaunch) => ChildProcessWithoutNullStreams;
 
   constructor(private readonly options: OmpCliRuntimeOptions) {
-    this.command = options.command ?? DEFAULT_OMP_COMMAND;
+    this.command = options.command ?? resolveDefaultOmpCommand();
     this.commandsRpcName = options.commandsRpcName ?? DEFAULT_COMMANDS_RPC_NAME;
     this.spawnProcess = options.spawnProcess;
   }

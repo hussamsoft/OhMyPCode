@@ -892,12 +892,33 @@ function createRuntime(
   return new OmpCliRuntime({
     logger,
     runtimeSettings,
-    command: ["omp"],
+    // `command` is deliberately omitted so OmpCliRuntime falls back to
+    // DEFAULT_OMP_COMMAND, which resolves OMP_COMMAND. The packaged desktop
+    // sets that to its bundled runtime (packages/desktop/src/daemon/
+    // daemon-manager.ts:361). Passing a hardcoded ["omp"] here bypassed the
+    // override and always resolved through PATH, so the agent ran whatever
+    // `omp` happened to be installed -- which on a machine with a stock omp
+    // newer than the bundle silently disabled the whole fork RPC surface
+    // (get_tool_catalog, get_modes, set_setting, get_keybindings), and the
+    // composer showed "Tool selection unavailable" with no explanation.
+    // An explicit runtimeSettings.command still wins: buildOmpLaunch applies
+    // it with mode "replace".
     commandsRpcName: "get_available_commands",
     readyTimeoutMs: providerParams.readyTimeoutMs,
     requestTimeoutMs: providerParams.rpcTimeoutMs,
   });
 }
+
+/**
+ * Test-only re-export of the private {@link createRuntime}.
+ *
+ * The regression this guards is invisible to the type checker: passing
+ * `command: ["omp"]` typechecks fine and only misbehaves at spawn time, by
+ * resolving the agent through PATH instead of the bundled runtime the desktop
+ * points OMP_COMMAND at. cli-runtime-command.test.ts asserts on the argv this
+ * factory produces so that cannot come back unnoticed.
+ */
+export const createOmpRuntimeForTest = createRuntime;
 
 export class OmpAgentSession implements AgentSession, OmpParitySession, OmpVibeSession {
   readonly provider: AgentProvider = OMP_PROVIDER;
