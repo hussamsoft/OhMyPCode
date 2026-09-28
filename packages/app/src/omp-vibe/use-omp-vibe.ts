@@ -26,6 +26,43 @@ export function useOmpVibe(serverId: string, agentId: string) {
     if (hydratedState) seedOmpVibeState(agentId, hydratedState);
   }, [agentId, runtimeVibe]);
   const capabilities = useOmpCapabilities(serverId, agentId);
+
+  /**
+   * The composer's Vibe segment toggles through the agent *feature* list
+   * (`setFeature("omp_vibe")`), not through `enter` below, so refreshing only
+   * inside `enter`/`exit` left the store untouched for that caller and the
+   * strip stayed hidden while the segment showed checked. Watching the feature
+   * flag covers every path that can change it.
+   *
+   * The `provider_state_updated` event would be the general answer, but the app
+   * has no handler for it and `runtimeInfo.extra` is snapshot-only
+   * (utils/agent-snapshots.ts), so a re-read through the typed RPC is the same
+   * approach `useOmpModes` takes for exactly this reason.
+   */
+  const vibeFeatureEnabled = useSessionStore((store) => {
+    const features = store.sessions[serverId]?.agents.get(agentId)?.features;
+    const toggle = features?.find((feature) => feature.id === "omp_vibe");
+    return toggle?.value === true;
+  });
+  useEffect(() => {
+    if (!client || !capabilities.canUseVibe) return;
+    if (!vibeFeatureEnabled) return;
+    let cancelled = false;
+    const hydrate = async () => {
+      const next = await client.getOmpVibeState(agentId);
+      if (cancelled) return;
+      const parsed = parseOmpVibeState(next);
+      if (parsed) seedOmpVibeState(agentId, parsed);
+    };
+    // Best-effort hydration. A failure here must not surface as an error: the
+    // feature flag is already the source of truth for whether Vibe is on, and
+    // the strip simply shows no workers until the next refresh.
+    void hydrate().catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [agentId, capabilities.canUseVibe, client, vibeFeatureEnabled]);
+
   const state = useOmpVibeStore((store) => store.stateByAgent[agentId] ?? null);
   const selectedWorkerId = useOmpVibeStore((store) => store.selectedWorkerByAgent[agentId] ?? null);
   const pending = useOmpVibeStore((store) => store.pendingByAgent[agentId] ?? null);
