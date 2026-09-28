@@ -98,6 +98,13 @@ import {
 
 function initRepo(): { tempDir: string; repoDir: string } {
   const tempDir = realpathSync.native(mkdtempSync(join(tmpdir(), "checkout-git-test-")));
+  // `git rev-parse` walks up the directory tree, so a temp directory is only
+  // "not a git repo" if nothing above it is one. That holds on a typical
+  // machine and is false wherever the home directory is version-controlled --
+  // which made the non-git cases below resolve instead of throwing, and read
+  // as a checkout bug rather than an environment assumption. The ceiling stops
+  // git at this temp root so the fixture is self-contained.
+  process.env.GIT_CEILING_DIRECTORIES = tempDir;
   const repoDir = join(tempDir, "repo");
   mkdirSync(repoDir, { recursive: true });
   execFileSync("git", ["init", "-b", "main"], { cwd: repoDir });
