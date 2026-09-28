@@ -8,7 +8,18 @@ import {
   type LayoutChangeEvent,
   type PressableStateCallbackType,
 } from "react-native";
-import { Brain, Settings2, Shield, Sparkles, Wrench } from "lucide-react-native";
+import {
+  Brain,
+  ClipboardList,
+  Hammer,
+  Repeat,
+  Settings2,
+  Shield,
+  Sparkles,
+  Target,
+  UserCheck,
+  Wrench,
+} from "lucide-react-native";
 import { getAgentFeatureIcon, type AgentControlIcon } from "@/agent-controls/icons";
 import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
 import { Combobox, ComboboxItem, type ComboboxOption } from "@/components/ui/combobox";
@@ -29,6 +40,7 @@ import {
   resolveOmpMcpServerGroupState,
   resolveMcpServerName,
   resolveOmpLabelVisibility,
+  OMP_ADVISOR_ENABLED_PATH,
   OMP_APPROVAL_MODE_OPTIONS,
   OMP_APPROVAL_MODE_PATH,
   resolveOmpApprovalModeId,
@@ -38,7 +50,13 @@ import {
 } from "./model";
 import { useOmpModeSetter, useOmpModes, useOmpSettingSetter, useOmpSettings } from "./use-omp-rpc";
 import type { OmpModesState } from "@ohmypcode/protocol/messages";
-export { OMP_VIBE_FEATURE_ID, OMP_APPROVAL_MODE_PATH, resolveOmpEnabledTools } from "./model";
+export {
+  OMP_VIBE_FEATURE_ID,
+  OMP_ADVISOR_ENABLED_PATH,
+  OMP_APPROVAL_MODE_PATH,
+  resolveOmpEnabledTools,
+} from "./model";
+
 export type { OmpApprovalMode } from "./model";
 
 export type OmpDeckSource = "live" | "draft";
@@ -80,8 +98,24 @@ export interface OmpControlDeckProps {
   onDropdownClose?: () => void;
 }
 
-function getModeIcon(enabled: boolean): AgentControlIcon {
-  return enabled ? Sparkles : Brain;
+/**
+ * One icon per mode segment.
+ *
+ * These were previously derived from a single `isVibe` boolean, so all five
+ * segments rendered the same glyph and only Vibe differed — the row read as
+ * one repeated icon rather than five modes. Each mode now gets the mark that
+ * means something: what you are doing, not how it happens to be drawn.
+ */
+const OMP_MODE_ICONS: Record<OmpMode, AgentControlIcon> = {
+  build: Hammer,
+  plan: ClipboardList,
+  vibe: Sparkles,
+  goal: Target,
+  loop: Repeat,
+};
+
+function getModeIcon(mode: OmpMode): AgentControlIcon {
+  return OMP_MODE_ICONS[mode] ?? Brain;
 }
 
 interface OmpIconProps {
@@ -192,7 +226,7 @@ function OmpModeSegmentChip({
   onSelect(id: OmpMode): void;
 }) {
   const { t } = useTranslation();
-  const Icon = getModeIcon(segment.id === "vibe");
+  const Icon = getModeIcon(segment.id);
   const baseAccessibilityLabel = t("agentControls.omp.selectMode", { value: label });
   const accessibilityLabel = disabledReason
     ? `${baseAccessibilityLabel}. ${disabledReason}`
@@ -220,6 +254,106 @@ function OmpModeSegmentChip({
         testID={segment.testID}
       />
       {pending ? <ThemedLoadingSpinner /> : null}
+    </View>
+  );
+}
+
+/**
+ * Advisor on/off.
+ *
+ * OMP exposes this only as the `advisor.enabled` setting — there is no
+ * advisor field on the modes result and no mode transition for it — so it is a
+ * setting write, not a `setOmpMode` call. It lives in the deck rather than
+ * only in the settings sheet because it changes what every turn costs, which
+ * is a composer-time decision, not a preference to go hunting for.
+ *
+ * Rendered as a compact switch with a label rather than a ControlChip: it is
+ * a boolean with no third state, and a chip's dropdown affordance would
+ * suggest options it does not have.
+ */
+function OmpAdvisorToggle({
+  serverId,
+  agentId,
+  disabled,
+}: {
+  serverId?: string | null;
+  agentId?: string | null;
+  disabled?: boolean;
+}) {
+  const { t } = useTranslation();
+  const settingsQuery = useOmpSettings(serverId ?? null, agentId ?? null);
+  const settingSetter = useOmpSettingSetter(serverId ?? null, agentId ?? null);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const entry = useMemo(
+    () => settingsQuery.settings.find((item) => item.path === OMP_ADVISOR_ENABLED_PATH),
+    [settingsQuery.settings],
+  );
+  // Absent means "not reported" rather than "off": a server without the
+  // setting must not show a toggle that silently does nothing. Until the
+  // entry arrives, treat the control as unavailable instead of defaulting to
+  // disabled, which would read as "advisor is off" when it is unknown.
+  const available = entry !== undefined;
+  const enabled = entry?.value === true;
+  const handleToggle = useCallback(async () => {
+    if (!available || pending) return;
+    setPending(true);
+    setError(null);
+    try {
+      await settingSetter.setSetting({
+        path: OMP_ADVISOR_ENABLED_PATH,
+        value: !enabled,
+      });
+    } catch (cause) {
+      setError(toErrorMessage(cause));
+    } finally {
+      setPending(false);
+    }
+  }, [available, enabled, pending, settingSetter]);
+  // Memoized rather than inlined: a fresh object/closure in JSX re-renders
+  // every child on each parent render (react-perf/jsx-no-new-object-as-prop).
+  const accessibilityState = useMemo(
+    () => ({ checked: enabled, disabled: Boolean(disabled) || pending }),
+    [disabled, enabled, pending],
+  );
+  const accessibilityLabel = t("agentControls.omp.openAdvisor");
+  const onPress = useCallback(() => void handleToggle(), [handleToggle]);
+  const errorLabel = error
+    ? t("agentControls.omp.advisorUnavailable")
+    : t("agentControls.omp.openAdvisor");
+  if (!available) return null;
+  return (
+    <View style={styles.advisorSlot}>
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={accessibilityState}
+        accessibilityLabel={accessibilityLabel}
+        disabled={disabled || pending}
+        onPress={onPress}
+        style={styles.advisorToggle}
+        testID="omp-advisor-toggle"
+        // Explicit, like ControlChip does for its radios: react-native-web
+        // does not derive `aria-checked` from accessibilityState, and this is
+        // the attribute a screen reader announces for role="switch".
+        aria-checked={enabled}
+      >
+        <ThemedOmpIcon icon={UserCheck} size={14} />
+        <Text style={styles.advisorLabel}>{t("agentControls.omp.advisor")}</Text>
+        {/* A hand-drawn track rather than <Switch>: nesting one inside the
+            Pressable would give the control two press targets, so a tap
+            toggles twice and lands back where it started. */}
+        <View style={[styles.advisorTrack, enabled && styles.advisorTrackOn]}>
+          <View style={[styles.advisorThumb, enabled && styles.advisorThumbOn]} />
+        </View>
+      </Pressable>
+      {/* A failed write leaves the switch showing the old value, which would
+          otherwise be indistinguishable from "the toggle didn't register".
+          Say so rather than swallow it. */}
+      {error ? (
+        <Text accessibilityRole="alert" numberOfLines={1} style={styles.advisorError}>
+          {errorLabel}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -1065,6 +1199,11 @@ export function OmpControlDeck({
   return (
     <View style={styles.deck} onLayout={onLayout} testID="omp-control-deck">
       <OmpModeControl vibe={vibe} serverId={serverId} agentId={agentId} />
+      <View
+        style={styles.groupDivider}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      />
       <View style={styles.modelSlot}>{modelSelector}</View>
       <OmpThinkingControl
         options={thinkingOptions}
@@ -1095,6 +1234,12 @@ export function OmpControlDeck({
         disabled={disabled || toolsUnavailable}
         testID="omp-tools-control"
       />
+      <View
+        style={styles.groupDivider}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      />
+      <OmpAdvisorToggle serverId={serverId} agentId={agentId} disabled={disabled} />
       <ControlChip
         icon={Settings2}
         label={t("agentControls.omp.settings")}
@@ -1135,6 +1280,58 @@ const styles = StyleSheet.create((theme) => ({
     // case where even label-less chips do not fit.
     flexWrap: "wrap",
     gap: theme.spacing[1],
+  },
+  advisorToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[1],
+    paddingHorizontal: theme.spacing[2],
+    minHeight: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface1,
+  },
+  advisorLabel: {
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.sm,
+  },
+  advisorTrack: {
+    width: 28,
+    height: 16,
+    borderRadius: 8,
+    padding: 2,
+    backgroundColor: theme.colors.surface3,
+    justifyContent: "center",
+  },
+  advisorTrackOn: {
+    backgroundColor: theme.colors.accent,
+  },
+  advisorThumb: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: theme.colors.background,
+  },
+  advisorThumbOn: {
+    alignSelf: "flex-end",
+  },
+  advisorSlot: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[1],
+  },
+  advisorError: {
+    maxWidth: 140,
+    color: theme.colors.statusDanger,
+    fontSize: theme.fontSize.sm,
+  },
+  groupDivider: {
+    width: 1,
+    alignSelf: "stretch",
+    marginVertical: 6,
+    marginHorizontal: theme.spacing[1],
+    backgroundColor: theme.colors.border,
   },
   modeGroup: {
     flexDirection: "row",

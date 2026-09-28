@@ -3,8 +3,8 @@
  */
 import React, { type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentToolDefinition } from "@ohmypcode/protocol/agent-types";
 import { OmpControlDeck, type OmpToolControls } from "./index";
 
@@ -33,6 +33,16 @@ vi.mock("@/components/ui/combobox", () => ({
 vi.mock("@/composer/agent-controls/mode-control", () => ({
   AgentModeControl: () => null,
 }));
+const settingsState = vi.hoisted(() => ({
+  settings: [] as unknown[],
+  setSetting: async (_input: { path: string; value: unknown }) => ({
+    requestId: "set-1",
+    path: "",
+    value: null,
+    revision: 1,
+  }),
+}));
+
 vi.mock("./use-omp-rpc", () => ({
   useOmpModes: () => ({
     modes: {
@@ -59,7 +69,7 @@ vi.mock("./use-omp-rpc", () => ({
     lastResult: null,
   }),
   useOmpSettings: () => ({
-    settings: [],
+    settings: settingsState.settings,
     revision: 0,
     isLoading: false,
     isFetching: false,
@@ -67,9 +77,7 @@ vi.mock("./use-omp-rpc", () => ({
     refresh: async () => {},
   }),
   useOmpSettingSetter: () => ({
-    setSetting: async () => {
-      throw new Error("not used in this test");
-    },
+    setSetting: settingsState.setSetting,
     isPending: false,
     error: null,
     lastResult: null,
@@ -109,6 +117,10 @@ vi.mock("lucide-react-native", () => {
     "CircleAlert",
     "CircleHelp",
     "Clock3",
+    "ClipboardList",
+    "Hammer",
+    "Repeat",
+    "Target",
     "Compass",
     "Copy",
     "CornerDownLeft",
@@ -413,5 +425,51 @@ describe("OMP control deck MCP server grouping", () => {
     const serverRow = sheet.querySelector<HTMLElement>('[data-testid="omp-mcp-server-fs"]');
     if (!serverRow) throw new Error("fs server row missing");
     expect(serverRow.getAttribute("aria-disabled")).not.toBe("true");
+  });
+});
+
+describe("advisor toggle", () => {
+  beforeEach(() => {
+    settingsState.settings = [];
+  });
+
+  const ADVISOR_OFF = { path: "advisor.enabled", value: false, type: "boolean" };
+
+  it("renders nothing when the server does not report advisor.enabled", () => {
+    // An absent entry means "not reported", not "off". A disabled switch would
+    // claim advisor is off when the truth is unknown; a live one would be a
+    // control that silently does nothing.
+    const { container } = renderDeck({
+      rows: tools,
+      canUse: true,
+      list: async () => tools,
+      set: async () => tools,
+    });
+    expect(container.querySelector('[data-testid="omp-advisor-toggle"]')).toBeNull();
+  });
+
+  it("writes advisor.enabled through set_setting when toggled on", async () => {
+    settingsState.settings = [ADVISOR_OFF];
+    const setSetting = vi.fn(async () => ({
+      requestId: "set-1",
+      path: "advisor.enabled",
+      value: true,
+      revision: 2,
+    }));
+    settingsState.setSetting = setSetting as unknown as typeof settingsState.setSetting;
+
+    const { container } = renderDeck({
+      rows: tools,
+      canUse: true,
+      list: async () => tools,
+      set: async () => tools,
+    });
+    const toggle = container.querySelector('[data-testid="omp-advisor-toggle"]');
+    expect(toggle, "advisor toggle should render when the setting is reported").not.toBeNull();
+    expect(toggle?.getAttribute("aria-checked")).toBe("false");
+
+    fireEvent.click(toggle as Element);
+    await waitFor(() => expect(setSetting).toHaveBeenCalled());
+    expect(setSetting).toHaveBeenCalledWith({ path: "advisor.enabled", value: true });
   });
 });

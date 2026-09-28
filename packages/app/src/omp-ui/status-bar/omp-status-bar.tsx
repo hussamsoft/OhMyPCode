@@ -364,16 +364,18 @@ export const OmpStatusBar = memo(OmpStatusBarComponent);
 
 const styles = StyleSheet.create((theme) => ({
   root: {
-    minHeight: 28,
+    // Reads as a quiet footnote on the composer, not a band of its own. It
+    // used to be a filled surface2 slab with a border above *and* below,
+    // sandwiched between the transcript and the composer, which read as a
+    // stray ribbon cutting the pane in half. No fill, and a single hairline
+    // on the transcript side, keeps the information without the interruption.
+    minHeight: 24,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: theme.spacing[3],
-    paddingVertical: theme.spacing[1],
-    backgroundColor: theme.colors.surface2,
+    paddingBottom: theme.spacing[1],
     borderTopWidth: theme.borderWidth[1],
     borderTopColor: theme.colors.border,
-    borderBottomWidth: theme.borderWidth[1],
-    borderBottomColor: theme.colors.border,
     gap: theme.spacing[2],
   },
   row: {

@@ -4,6 +4,17 @@ export const OMP_VIBE_FEATURE_ID = "omp_vibe";
 export const OMP_APPROVAL_MODE_PATH = "tools.approvalMode";
 
 /**
+ * `advisor.enabled` setting. Mirrors `cfgAdvisorEnabled` in
+ * `vendor/oh-my-pi/packages/coding-agent/src/advisor/settings.ts`: a boolean,
+ * default false, that opts a protocol host into a second model (the `advisor`
+ * role) which passively reviews each turn and injects notes.
+ *
+ * OMP surfaces it only through `get_settings`; there is no advisor field on
+ * `OmpModesResult`, so this is a setting write, not a mode transition.
+ */
+export const OMP_ADVISOR_ENABLED_PATH = "advisor.enabled";
+
+/**
  * Five-segment OMP mode taxonomy rendered by the composer control deck:
  * Build is the implicit "no plan/goal/loop/vibe" baseline, the other four
  * are explicit selections via the OMP `setOmpMode` RPC (plan/goal/loop)
