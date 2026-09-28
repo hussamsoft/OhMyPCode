@@ -26,7 +26,13 @@ export function resolvePaseoHome(env: NodeJS.ProcessEnv = process.env): string {
       );
     }
   }
-  raw ??= "~/.paseo";
+  // Default to the OhMyPCode home. The legacy `~/.paseo` name is not a safe
+  // fallback here: it holds a different server-id and a different daemon
+  // password than `~/.ohmypcode`, so a daemon that lands there while the
+  // desktop expects `~/.ohmypcode` fails every handshake with "invalid
+  // daemon password" and never returns a server id. Both the desktop
+  // (packages/desktop/src/product-bootstrap.ts) and this resolver must agree.
+  raw ??= "~/.ohmypcode";
   const resolved = path.resolve(expandHomeDir(raw));
   return resolved;
 }

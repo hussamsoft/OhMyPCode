@@ -37,17 +37,22 @@ describe("resolvePaseoHome", () => {
     }
   });
 
-  test("defaults to ~/.paseo when neither is set", () => {
-    expect(resolvePaseoHome({})).toBe(path.join(homedir(), ".paseo"));
+  test("defaults to ~/.ohmypcode when neither is set", () => {
+    // The desktop resolves the same directory via
+    // packages/desktop/src/product-bootstrap.ts. If these two disagree the
+    // daemon mints a different server-id than the desktop expects, and every
+    // handshake fails with "invalid daemon password" -- the failure the
+    // packaged app showed before both sides were renamed together.
+    expect(resolvePaseoHome({})).toBe(path.join(homedir(), ".ohmypcode"));
   });
 
   test("empty or whitespace-only env values are treated as unset, not resolved to cwd", () => {
     // Regression: path.resolve("") returns process.cwd(), so OHMYPCODE_HOME/
     // PASEO_HOME set to an empty string (rather than truly unset) silently
     // made the daemon operate out of whatever directory it was launched
-    // from instead of the intended ~/.paseo default.
-    expect(resolvePaseoHome({ OHMYPCODE_HOME: "" })).toBe(path.join(homedir(), ".paseo"));
-    expect(resolvePaseoHome({ OHMYPCODE_HOME: "   " })).toBe(path.join(homedir(), ".paseo"));
+    // from instead of the intended ~/.ohmypcode default.
+    expect(resolvePaseoHome({ OHMYPCODE_HOME: "" })).toBe(path.join(homedir(), ".ohmypcode"));
+    expect(resolvePaseoHome({ OHMYPCODE_HOME: "   " })).toBe(path.join(homedir(), ".ohmypcode"));
     const parent = mkdtempSync(path.join(tmpdir(), "paseo-home-parent-"));
     const paseoHome = path.join(parent, "home");
     try {

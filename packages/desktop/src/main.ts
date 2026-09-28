@@ -1,5 +1,14 @@
 process.emitWarning = (() => {}) as typeof process.emitWarning;
 
+// Must run before anything reads the daemon home. `resolvePaseoHome` in
+// packages/server/src/server/paseo-home.ts prefers OHMYPCODE_HOME and only
+// falls back to the legacy `~/.paseo` when it is unset, so leaving it unset
+// splits the desktop and its daemon across two homes holding two different
+// server-ids and daemon passwords. That surfaces to the user as
+// "Desktop daemon did not return a server id" plus an endless
+// "invalid daemon password" loop in ~/.paseo/daemon.log.
+import { initializeOhMyPCodeEnvironment } from "./product-bootstrap.js";
+initializeOhMyPCodeEnvironment();
 import log from "electron-log/main";
 log.transports.console.level = "info";
 log.initialize({ spyRendererConsole: true });
@@ -108,10 +117,16 @@ import {
 import { AgentNavigationInbox, parseAgentDeepLinkFromArgv } from "./agent-navigation.js";
 
 const DEV_SERVER_URL = process.env.EXPO_DEV_URL ?? "http://localhost:8081";
-const APP_SCHEME = "paseo";
+// Registered in packages/desktop/electron-builder.yml under
+// `protocols[].schemes` and allowlisted in the daemon's
+// fixedAllowedOrigins (packages/server/src/server/bootstrap.ts:719-720).
+const APP_SCHEME = "ohmypcode";
 const PASEO_DEBUG = process.env.PASEO_DEBUG === "1";
 const DISABLE_SINGLE_INSTANCE_LOCK = process.env.PASEO_DISABLE_SINGLE_INSTANCE_LOCK === "1";
-const APP_NAME = process.env.PASEO_TEST_APP_NAME?.trim() || "Paseo";
+// Matches `productName` in electron-builder.yml. This is what seeds
+// app.getPath("userData"), so leaving it as "Paseo" is what produced the
+// `AppData/Roaming/Paseo` user-data dir in the packaged app.
+const APP_NAME = process.env.PASEO_TEST_APP_NAME?.trim() || "OhMyPCode";
 const DESKTOP_WINDOW_CHROME_MODE = resolveDesktopWindowChromeMode({
   platform: process.platform,
   override: process.env.PASEO_DESKTOP_WINDOW_CONTROLS,
