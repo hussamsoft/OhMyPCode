@@ -23,6 +23,14 @@ async function setOmpTheme(page: Page, theme: "ohMyPCode" | "light"): Promise<vo
 }
 
 async function stabilizeVisualFixture(page: Page, projectLabel: string): Promise<void> {
+  // Everything hidden here is state the fixture cannot pin, not product chrome.
+  // The workspace-status-indicator-* dot is a sidebar row's live session state
+  // (loading / running / needs_input / attention / done), so its colour depends
+  // on when the capture lands. It renders inside SidebarWorkspaceRowContent, a
+  // level deeper than the direct-child mask below, which is why it survived and
+  // showed up as a lone 14x16 blob of the last 195-pixel drift.
+  // project-status-* is the sibling git/busy indicator, unpinnable for the same
+  // reason: it reads the seeded temp repo's real dirty state.
   await page.addStyleTag({
     content: `
       [data-testid^="sidebar-workspace-row-"] > *:not([data-testid="workspace-row-title"]),
@@ -33,7 +41,9 @@ async function stabilizeVisualFixture(page: Page, projectLabel: string): Promise
       [data-testid="agent-composer-chrome"],
       [data-testid="omp-mode-badge"],
       [data-testid="omp-hook-widget-belowEditor"],
-      [data-testid="omp-todo-rail"] {
+      [data-testid^="omp-todo-rail"],
+      [data-testid^="project-status-"],
+      [data-testid^="workspace-status-indicator-"] {
         display: none !important;
       }
     `,
