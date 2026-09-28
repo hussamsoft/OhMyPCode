@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import pino from "pino";
 import {
   type CheckoutDiffSubscriber,
@@ -221,6 +221,17 @@ function createGitSnapshot(
     forge: { featuresEnabled: false, pullRequest: null, error: null },
   };
 }
+
+// `git rev-parse` walks the tree *upward*, so "this directory is not a git
+// repository" only holds when nothing above it is one. That is true on a
+// typical machine and false wherever the home directory is version
+// controlled -- which made every fixture in this file look like a repository,
+// and turned an assertion about a git error into an assertion about the
+// machine's directory layout. Pinning the ceiling at the OS temp root, where
+// these fixtures live, makes them self-contained wherever they run.
+beforeAll(() => {
+  process.env.GIT_CEILING_DIRECTORIES ??= tmpdir();
+});
 
 describe("CheckoutSession", () => {
   describe("status", () => {

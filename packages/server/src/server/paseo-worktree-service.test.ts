@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { beforeAll } from "vitest";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
@@ -849,6 +850,17 @@ test("does not mark GitHub PR checkout worktrees as eligible for first-agent ren
       .toString()
       .trim(),
   ).toBe("pr-123");
+});
+
+// `git rev-parse` walks the tree *upward*, so "this directory is not a git
+// repository" only holds when nothing above it is one. That is true on a
+// typical machine and false wherever the home directory is version
+// controlled -- which made every fixture in this file look like a repository,
+// and turned an assertion about a git error into an assertion about the
+// machine's directory layout. Pinning the ceiling at the OS temp root, where
+// these fixtures live, makes them self-contained wherever they run.
+beforeAll(() => {
+  process.env.GIT_CEILING_DIRECTORIES ??= tmpdir();
 });
 
 test("does not mutate registries or broadcast when core worktree creation fails", async () => {
