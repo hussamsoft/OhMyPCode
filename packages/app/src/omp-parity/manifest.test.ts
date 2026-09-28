@@ -79,6 +79,42 @@ describe("OMP Parity Manifest", () => {
     }
   });
 
+  it("only marks an rpc row as GUI-homed when the protocol can dispatch it", () => {
+    // The failure this guards against, found by auditing five surfaces: a row
+    // keeps claiming a host capability long after the work lands, because
+    // nothing compared the row against the code implementing it. Four surfaces
+    // went stale that way -- 384 setting rows, 27 status-line segments, 9 mode
+    // rows, 2 composer triggers -- and `parity:check` stayed green
+    // throughout, because it verifies the manifest against OMP's name
+    // inventory and the doc against the manifest, never against the host.
+    //
+    // For an `rpc` row the host capability is concrete and checkable: the row
+    // must name the `omp.*.request` message that dispatches it, and that
+    // message must exist. A command the host cannot send is not reachable,
+    // whatever the row claims.
+    const dispatchable = new Set(
+      [...messagesSource.matchAll(/z\.literal\("(omp\.[a-z_.]+\.request)"\)/g)].map(
+        (match) => match[1]!,
+      ),
+    );
+    expect(
+      dispatchable.size,
+      "no omp.*.request literals found in messages.ts -- the source or the pattern moved",
+    ).toBeGreaterThan(0);
+
+    for (const entry of OMP_PARITY_MANIFEST) {
+      if (entry.surface !== "rpc" || entry.guiHome === "terminal:omp-tui") continue;
+      expect(
+        entry.dispatch,
+        `rpc row "${entry.id}" claims guiHome "${entry.guiHome}" but names no dispatch -- a GUI-homed rpc row must say which omp.*.request message sends it`,
+      ).toBeTruthy();
+      expect(
+        entry.dispatch && dispatchable.has(entry.dispatch),
+        `rpc row "${entry.id}" names dispatch "${entry.dispatch ?? "(none)"}", which is not an omp.*.request message in the protocol`,
+      ).toBe(true);
+    }
+  });
+
   it("COMPAT() tags in messages.ts carry a removal anchor", () => {
     // Every `// COMPAT(<id>): ...` comment in the protocol source needs
     // either an `added in v<x.y.z>` token (so we know when it was added)

@@ -27,6 +27,14 @@ interface OmpParityEntry {
   guiHome: string;
   /** Server capability feature flag required for RPC transport */
   capability?: string;
+  /**
+   * The `omp.*.request` message that dispatches this command, for `rpc`
+   * rows. Required whenever `guiHome` is not the terminal escape hatch:
+   * a command the host cannot send is not reachable, whatever the row
+   * claims. `omp.command.run.request` is the generic channel that carries
+   * the RPC commands with no message of their own.
+   */
+  dispatch?: string;
   /** Rationale when mapped to terminal:omp-tui escape hatch */
   reason?: string;
 }
@@ -1901,6 +1909,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_agents_hub",
     capability: "ompAgentCatalog",
+    dispatch: "omp.agents.list.request",
     reason:
       "Read-only catalog of bundled + user + project + extension-package agents; powers the available-agents list cell in the omp_agents_hub panel. Spawn/execute is intentionally NOT modelled here -- the fork does not expose it over RPC yet, and any spawn action stays TUI-only.",
   },
@@ -1956,6 +1965,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_keybindings",
     capability: "ompKeybindings",
+    dispatch: "omp.keybindings.get.request",
   },
   {
     id: "rpc:get_last_assistant_text",
@@ -2018,6 +2028,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_settings",
     capability: "ompSettings",
+    dispatch: "omp.settings.get.request",
   },
   {
     id: "rpc:get_state",
@@ -2053,6 +2064,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp-tools-control",
     capability: "ompToolSelection",
+    dispatch: "omp.command.run.request",
   },
   {
     id: "rpc:get_tree",
@@ -2070,6 +2082,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_goal",
     capability: "ompModes",
+    dispatch: "omp.goal.action.request",
     reason:
       "Pauses, resumes, or drops an active or paused goal directly. Distinct from the mode-set cycle: this command calls the goal runtime's pause/resume/drop directly (matching `/goal pause` / `/goal resume` / `/goal drop` in the OMP TUI). Reactivating goal mode through the mode-set toggle starts a fresh goal (OMP's own `set_mode` semantics), so pause/resume/drop always go through this dedicated command. Capability gate: `omp_goal` checks `supportsOmpModes` (and `supportsOmpSlashCommands` for the in-panel `/goal` quick-verb) before dispatching this RPC.",
   },
@@ -2214,6 +2227,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_keybindings",
     capability: "ompKeybindings",
+    dispatch: "omp.keybindings.set.request",
   },
   {
     id: "rpc:set_mode",
@@ -2249,6 +2263,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_settings",
     capability: "ompSettings",
+    dispatch: "omp.settings.set.request",
   },
   {
     id: "rpc:set_steering_mode",
@@ -2293,6 +2308,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp-tools-control",
     capability: "ompToolSelection",
+    dispatch: "omp.command.run.request",
   },
   {
     id: "rpc:steer",
@@ -2310,6 +2326,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_sessions",
     capability: "ompSessionSwitch",
+    dispatch: "omp.session.switch.request",
   },
   {
     id: "rpc:vibe_enter",
@@ -2318,6 +2335,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_vibe",
     capability: "ompVibe",
+    dispatch: "omp.vibe.enter.request",
   },
   {
     id: "rpc:vibe_exit",
@@ -2326,6 +2344,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_vibe",
     capability: "ompVibe",
+    dispatch: "omp.vibe.exit.request",
   },
   {
     id: "rpc:vibe_kill",
@@ -2334,6 +2353,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_vibe",
     capability: "ompVibe",
+    dispatch: "omp.vibe.kill.request",
   },
   {
     id: "rpc:vibe_list",
@@ -2342,6 +2362,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_vibe",
     capability: "ompVibe",
+    dispatch: "omp.vibe.status.request",
   },
   {
     id: "rpc:vibe_send",
@@ -2350,6 +2371,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_vibe",
     capability: "ompVibe",
+    dispatch: "omp.vibe.send.request",
   },
   {
     id: "rpc:vibe_spawn",
@@ -2358,6 +2380,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_vibe",
     capability: "ompVibe",
+    dispatch: "omp.vibe.spawn.request",
   },
   {
     id: "rpc:vibe_status",
@@ -2366,6 +2389,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_vibe",
     capability: "ompVibe",
+    dispatch: "omp.vibe.status.request",
   },
   {
     id: "rpc:vibe_wait",
@@ -2374,6 +2398,7 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     transport: "rpc",
     guiHome: "omp_vibe",
     capability: "ompVibe",
+    dispatch: "omp.vibe.wait.request",
   },
   {
     id: "segment:cache_hit",
