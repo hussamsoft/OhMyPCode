@@ -217,6 +217,10 @@ test.describe("OMP desktop control deck", () => {
       await input.press("Enter");
       // ...but submit must not divert while a file rides along.
       await expect.poll(() => server.bashRequests()).toEqual([]);
+      // And it is not swallowed: the text goes out as an ordinary message, which
+      // is what carries the attachment. Asserting only that bash was skipped
+      // would pass for a submit that quietly dropped everything on the floor.
+      await expect.poll(() => server.messageRequests()).toEqual(["!echo hi"]);
     } finally {
       await agent.cleanup();
     }
