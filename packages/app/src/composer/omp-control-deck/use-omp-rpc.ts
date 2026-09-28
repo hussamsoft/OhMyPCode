@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type {
+  OmpBashResponsePayload,
   OmpCommandRunPayload,
   OmpKeybindingsSetPayload,
   OmpModesGetPayload,
@@ -450,6 +451,60 @@ export function useOmpSlashCommand(
   return {
     run,
     supported: isConnected && supportsOmpSlashCommands,
+    isPending: mutation.isPending,
+    error: mutation.error instanceof Error ? mutation.error : null,
+    lastResult: mutation.data ?? null,
+  };
+}
+
+export interface UseOmpBashResult {
+  run: (command: string) => Promise<OmpBashResponsePayload>;
+  /** Whether the connection + server capability allow calling `run` at all. */
+  supported: boolean;
+  isPending: boolean;
+  error: Error | null;
+  lastResult: OmpBashResponsePayload | null;
+}
+
+/**
+ * Run a shell command against the OMP session behind the composer's `!` arm.
+ *
+ * This is a command dispatch, not a prompt submission. The daemon accepts a
+ * `!`-prefixed message as prose and does not execute it, so the composer has to
+ * hand the command to the fork's `bash` RPC explicitly. Verified against the
+ * bundled runtime: `prompt` yields no execution, `bash` yields exit code 0 and
+ * the output.
+ *
+ * The `!!` (exclude-from-context) variant is deliberately not offered: the
+ * fork's `bash` RPC carries only `command`, so there is nothing to map that
+ * flag onto yet.
+ */
+export function useOmpBash(
+  serverId: string | null | undefined,
+  agentId: string | null | undefined,
+): UseOmpBashResult {
+  const { client, isConnected } = useOmpAgentScope(serverId);
+  const supportsOmpBash = useOmpSupportsFeature(serverId, "ompSlashCommands");
+  const mutation = useMutation({
+    mutationFn: async (command: string): Promise<OmpBashResponsePayload> => {
+      if (!client || !agentId) {
+        throw new Error("OMP host client unavailable");
+      }
+      return await client.runOmpBash(agentId, command);
+    },
+  });
+  const run = useCallback(
+    async (command: string): Promise<OmpBashResponsePayload> => {
+      if (!isConnected || !supportsOmpBash) {
+        throw new Error("OMP bash capability unavailable on this server/agent");
+      }
+      return await mutation.mutateAsync(command);
+    },
+    [isConnected, mutation, supportsOmpBash],
+  );
+  return {
+    run,
+    supported: isConnected && supportsOmpBash,
     isPending: mutation.isPending,
     error: mutation.error instanceof Error ? mutation.error : null,
     lastResult: mutation.data ?? null,

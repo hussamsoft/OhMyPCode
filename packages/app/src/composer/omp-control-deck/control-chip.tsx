@@ -93,8 +93,11 @@ export const ControlChip = forwardRef<View, ControlChipProps>(function ControlCh
       style={style}
       testID={testID}
     >
+      {/* A missing glyph must not take the whole composer down. Every icon map
+          is a lookup by name, and a name with no entry resolves to undefined --
+          which React rejects as an element type. */}
       <View style={styles.icon}>
-        <Icon size={compact ? 18 : 16} color={iconColor} />
+        {Icon ? <Icon size={compact ? 18 : 16} color={iconColor} /> : null}
       </View>
       {showLabel ? <Text style={styles.label}>{label}</Text> : null}
       <Text numberOfLines={1} style={selected ? styles.selectedValue : styles.value}>

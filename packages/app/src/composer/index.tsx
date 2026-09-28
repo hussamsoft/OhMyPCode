@@ -111,10 +111,12 @@ import { useKeyboardActionHandler } from "@/hooks/use-keyboard-action-handler";
 import type { KeyboardActionDefinition } from "@/keyboard/keyboard-action-dispatcher";
 import type { MessageInputKeyboardActionKind } from "@/keyboard/actions";
 import { submitAgentInput } from "@/composer/submit";
+import { parseOmpBashTrigger } from "@/composer/omp-bash-trigger";
+import { BashArmedChip } from "@/composer/omp-control-deck/bash-armed-chip";
 import { createMessageSubmissionWriter } from "@/composer/submission/writer";
 import { ComposerKeyboardScopeProvider, useComposerKeyboardScope } from "@/composer/keyboard-scope";
 import { useAppSettings } from "@/hooks/use-settings";
-import { useOmpSlashCommand } from "@/composer/omp-control-deck/use-omp-rpc";
+import { useOmpBash, useOmpSlashCommand } from "@/composer/omp-control-deck/use-omp-rpc";
 import { useOmpCapabilities } from "@/hooks/use-omp-capabilities";
 import { openOmpVibeTarget } from "@/workspace-tabs/open-omp-vibe-target";
 import { openOmpSettingsTarget } from "@/workspace-tabs/open-omp-settings-target";
@@ -1452,6 +1454,15 @@ function ComposerContentImpl({
   );
 
   const ompSlash = useOmpSlashCommand(serverId, agentId);
+  const ompBash = useOmpBash(serverId, agentId);
+  // Armed state tracks the live draft, not the submitted text: the chip is what
+  // tells the user the submit button currently means "run a command".
+  const composerText = useSyncExternalStore(
+    textSource.subscribe,
+    textSource.getSnapshot,
+    textSource.getSnapshot,
+  );
+  const bashArmed = parseOmpBashTrigger(composerText);
 
   const runOmpSlashCommand = useCallback(
     async (input: { name: string; args?: string }): Promise<void> => {
@@ -1711,6 +1722,37 @@ function ComposerContentImpl({
       outgoingAttachments: ComposerAttachment[],
       forceSend?: boolean,
     ) => {
+      // A `!`-prefixed draft is a command, not a message. The daemon accepts a
+      // prefixed prompt as prose and runs nothing, so it is dispatched to the
+      // fork's `bash` RPC instead of the message path.
+      const bashTrigger = parseOmpBashTrigger(outgoingMessage);
+      if (bashTrigger.trigger === "bash") {
+        if (blurOnSubmit) {
+          messageInputRef.current?.blur();
+        }
+        clearDraft("sent");
+        replaceUserInput("");
+        setSelectedAttachments([]);
+        setSendError(null);
+        setIsProcessing(true);
+        try {
+          const result = await ompBash.run(bashTrigger.command);
+          const failed = result.exitCode !== 0 && result.exitCode !== undefined;
+          const summary = result.output.trim() || `$ ${bashTrigger.command}`;
+          toast.show(failed ? `${summary}\n\nexit code ${result.exitCode}` : summary, {
+            variant: failed ? "error" : "success",
+          });
+          setIsProcessing(false);
+        } catch (error) {
+          setIsProcessing(false);
+          const message =
+            error instanceof Error ? error.message : t("composer.errors.failedToSend");
+          setSendError(message);
+          toast.show(message, { variant: "error" });
+        }
+        return;
+      }
+
       const result = await submitAgentInput({
         message: outgoingMessage,
         attachments: outgoingAttachments,
@@ -2515,6 +2557,8 @@ function ComposerContentImpl({
                 ref={forgeAutoAttachRef}
                 onResolvingChange={setIsForgeResolving}
               />
+
+              {bashArmed.trigger === "bash" ? <BashArmedChip command={bashArmed.command} /> : null}
 
               {/* MessageInput handles everything: text, dictation, attachments, all buttons */}
               <RenderProfile id="MessageInput">
