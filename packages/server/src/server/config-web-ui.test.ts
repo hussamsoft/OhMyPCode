@@ -47,21 +47,21 @@ describe("daemon web UI config", () => {
     expectBundledWebUiDistDir(config.webUi.distDir);
   });
 
-  test("PASEO_WEB_UI_ENABLED overrides persisted setting", async () => {
+  test("OMPCODE_WEB_UI_ENABLED overrides persisted setting", async () => {
     const home = await createPaseoHome({
       version: 1,
       features: { webUi: { enabled: true } },
     });
 
-    const config = loadConfig(home, { env: { PASEO_WEB_UI_ENABLED: "false" } });
+    const config = loadConfig(home, { env: { OMPCODE_WEB_UI_ENABLED: "false" } });
 
     expect(config.webUi.enabled).toBe(false);
   });
 
-  test("PASEO_WEB_UI_ENABLED=true enables web UI", async () => {
+  test("OMPCODE_WEB_UI_ENABLED=true enables web UI", async () => {
     const home = await createPaseoHome({ version: 1 });
 
-    const config = loadConfig(home, { env: { PASEO_WEB_UI_ENABLED: "true" } });
+    const config = loadConfig(home, { env: { OMPCODE_WEB_UI_ENABLED: "true" } });
 
     expect(config.webUi.enabled).toBe(true);
   });
@@ -73,7 +73,7 @@ describe("daemon web UI config", () => {
     });
 
     const config = loadConfig(home, {
-      env: { PASEO_WEB_UI_ENABLED: "false" },
+      env: { OMPCODE_WEB_UI_ENABLED: "false" },
       cli: { webUiEnabled: true },
     });
 
@@ -87,18 +87,18 @@ describe("daemon web UI config", () => {
     });
 
     const config = loadConfig(home, {
-      env: { PASEO_WEB_UI_ENABLED: "true" },
+      env: { OMPCODE_WEB_UI_ENABLED: "true" },
       cli: { webUiEnabled: false },
     });
 
     expect(config.webUi.enabled).toBe(false);
   });
 
-  test("resolves PASEO_WEB_UI_DIST_DIR as absolute path", async () => {
+  test("resolves OMPCODE_WEB_UI_DIST_DIR as absolute path", async () => {
     const home = await createPaseoHome({ version: 1 });
     const distDir = path.join(os.tmpdir(), "paseo-web-ui-dist");
 
-    const config = loadConfig(home, { env: { PASEO_WEB_UI_DIST_DIR: distDir } });
+    const config = loadConfig(home, { env: { OMPCODE_WEB_UI_DIST_DIR: distDir } });
 
     expect(config.webUi.distDir).toBe(path.resolve(distDir));
   });
@@ -114,14 +114,14 @@ describe("daemon web UI config", () => {
     expect(config.webUi.distDir).toBe(path.join(home, "web-ui-dist"));
   });
 
-  test("PASEO_WEB_UI_DIST_DIR overrides persisted distDir", async () => {
+  test("OMPCODE_WEB_UI_DIST_DIR overrides persisted distDir", async () => {
     const home = await createPaseoHome({
       version: 1,
       features: { webUi: { distDir: "/persisted/dist" } },
     });
     const envDir = path.join(os.tmpdir(), "env-dist");
 
-    const config = loadConfig(home, { env: { PASEO_WEB_UI_DIST_DIR: envDir } });
+    const config = loadConfig(home, { env: { OMPCODE_WEB_UI_DIST_DIR: envDir } });
 
     expect(config.webUi.distDir).toBe(path.resolve(envDir));
   });

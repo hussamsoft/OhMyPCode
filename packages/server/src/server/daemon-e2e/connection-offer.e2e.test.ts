@@ -208,11 +208,11 @@ describe("ConnectionOfferV2 (daemon E2E)", () => {
     const env = {
       ...process.env,
       PASEO_HOME: tempHome,
-      PASEO_LISTEN: `0.0.0.0:${port}`,
+      OMPCODE_LISTEN: `0.0.0.0:${port}`,
       OPENAI_API_KEY: "",
-      PASEO_DICTATION_ENABLED: "0",
-      PASEO_VOICE_MODE_ENABLED: "0",
-      PASEO_LOG_FORMAT: "json",
+      OMPCODE_DICTATION_ENABLED: "0",
+      OMPCODE_VOICE_MODE_ENABLED: "0",
+      OMPCODE_LOG_FORMAT: "json",
     };
 
     const stdoutLines: string[] = [];

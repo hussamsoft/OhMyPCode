@@ -18,7 +18,7 @@ import type {
 import { bufferToWorkerBytes } from "./worker-bytes.js";
 
 const modelsDir =
-  process.env.PASEO_LOCAL_MODELS_DIR ?? path.join(homedir(), ".paseo", "models", "local-speech");
+  process.env.OMPCODE_LOCAL_MODELS_DIR ?? path.join(homedir(), ".paseo", "models", "local-speech");
 const shouldDownload = process.env.PASEO_SPEECH_E2E_DOWNLOAD === "1";
 const workerSpeechTest = hasParakeetModel(modelsDir) || shouldDownload ? test : test.skip;
 
@@ -59,7 +59,7 @@ function resolveWorkerExecArgv(): string[] {
 }
 
 function forkWorker(): ChildProcess {
-  const env = { ...process.env, PASEO_LOG_LEVEL: "silent" };
+  const env = { ...process.env, OMPCODE_LOG_LEVEL: "silent" };
   applySherpaLoaderEnv(env);
   const worker = fork(fileURLToPath(resolveWorkerUrl()), [], {
     env,
