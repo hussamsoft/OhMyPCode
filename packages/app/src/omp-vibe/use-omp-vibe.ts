@@ -49,9 +49,9 @@ export function useOmpVibe(serverId: string, agentId: string) {
     if (!vibeFeatureEnabled) return;
     let cancelled = false;
     const hydrate = async () => {
-      const next = await client.getOmpVibeState(agentId);
+      const { state: remoteState } = await client.getOmpVibeState(agentId);
       if (cancelled) return;
-      const parsed = parseOmpVibeState(next);
+      const parsed = parseOmpVibeState(remoteState);
       if (parsed) seedOmpVibeState(agentId, parsed);
     };
     // Best-effort hydration. A failure here must not surface as an error: the
@@ -112,10 +112,14 @@ export function useOmpVibe(serverId: string, agentId: string) {
    * typed RPC rather than trusting a push nobody consumes.
    */
   const refreshFromDaemon = useCallback(async () => {
-    const next = await client!.getOmpVibeState(agentId);
-    const parsed = parseOmpVibeState(next);
+    // `omp.vibe.status.response` carries the state under `payload.state`, not
+    // at the top level -- parsing the payload directly always failed and
+    // silently returned null, so the store never seeded and the strip stayed
+    // hidden while the mode segment (reading the feature list) showed checked.
+    const { state: remoteState } = await client!.getOmpVibeState(agentId);
+    const parsed = parseOmpVibeState(remoteState);
     if (parsed) seedOmpVibeState(agentId, parsed);
-    return next;
+    return remoteState;
   }, [agentId, client]);
 
   const enter = useCallback(

@@ -58,3 +58,20 @@ describe("OMP Vibe model", () => {
     expect(buildOmpVibeStatusAnnouncement(next, next)).toBeNull();
   });
 });
+
+describe("vibe status response shape", () => {
+  it("rejects the response payload and accepts payload.state", () => {
+    // `omp.vibe.status.response` carries the state nested under `state`, not
+    // at the top level. Parsing the whole payload silently returned null —
+    // `.passthrough()` lets the unknown `state` key through but the required
+    // `revision`/`enabled`/`workers` are absent — so the store never seeded and
+    // the Vibe strip stayed hidden while the mode segment, reading the feature
+    // list, showed Vibe checked.
+    const state = { revision: 1, enabled: true, workers: [] };
+    const payload = { requestId: "req-1", state };
+
+    expect(parseOmpVibeState(payload)).toBeNull();
+    expect(parseOmpVibeState(state)).not.toBeNull();
+    expect(parseOmpVibeState(state)).toMatchObject({ enabled: true, revision: 1 });
+  });
+});
