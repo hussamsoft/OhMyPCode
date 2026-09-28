@@ -5,10 +5,13 @@ import {
   History,
   Layers,
   PanelLeft,
+  Plug,
   Plus,
+  Puzzle,
   Search,
   Server,
   Settings,
+  Sparkles,
 } from "lucide-react-native";
 import { memo, useCallback, useMemo, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
@@ -38,8 +41,12 @@ import { useWorkspace } from "@/stores/session-store-hooks";
 import { useOpenAddProject } from "@/hooks/use-open-add-project";
 import { useImportSession } from "@/hooks/use-import-session";
 import { openHostOverview } from "@/navigation/settings-navigation";
+import { buildSettingsHostSectionRoute } from "@/utils/host-routes";
 import { canCreateWorktreeForProjectKind } from "@/projects/host-projects";
 import { useHostFeature } from "@/runtime/host-features";
+import { useRailAgentId } from "@/components/sidebar/rail-agent-binding";
+import { openOmpVibeTarget } from "@/workspace-tabs/open-omp-vibe-target";
+import { openOmpPluginsTarget } from "@/workspace-tabs/open-omp-plugins-target";
 
 const foregroundColorMapping = (theme: Theme) => ({ color: theme.colors.foreground });
 const foregroundMutedColorMapping = (theme: Theme) => ({
@@ -55,6 +62,9 @@ const ThemedSettings = withUnistyles(Settings);
 const ThemedServer = withUnistyles(Server);
 const ThemedPanelLeft = withUnistyles(PanelLeft);
 const ThemedLayers = withUnistyles(Layers);
+const ThemedSparkles = withUnistyles(Sparkles);
+const ThemedPuzzle = withUnistyles(Puzzle);
+const ThemedPlug = withUnistyles(Plug);
 
 const PlusAccentGlyph = function PlusAccentGlyph() {
   return <ThemedPlus size={ICON_SIZE.md} strokeWidth={2.4} uniProps={foregroundColorMapping} />;
@@ -84,6 +94,15 @@ const PanelLeftGlyph = function PanelLeftGlyph() {
 };
 const LayersGlyph = function LayersGlyph() {
   return <ThemedLayers size={ICON_SIZE.md} uniProps={foregroundMutedColorMapping} />;
+};
+const SparklesGlyph = function SparklesGlyph() {
+  return <ThemedSparkles size={ICON_SIZE.md} uniProps={foregroundMutedColorMapping} />;
+};
+const PuzzleGlyph = function PuzzleGlyph() {
+  return <ThemedPuzzle size={ICON_SIZE.md} uniProps={foregroundMutedColorMapping} />;
+};
+const PlugGlyph = function PlugGlyph() {
+  return <ThemedPlug size={ICON_SIZE.md} uniProps={foregroundMutedColorMapping} />;
 };
 const SettingsGlyph = function SettingsGlyph() {
   return <ThemedSettings size={ICON_SIZE.md} uniProps={foregroundMutedColorMapping} />;
@@ -295,6 +314,30 @@ export const DesktopNavigationRail = memo(function DesktopNavigationRail() {
     }
   }, [activeWorkspaceServerId, hosts]);
 
+  const railAgentId = useRailAgentId();
+
+  // The three OMP entries the rail is meant to carry. Vibe team and Plugins are
+  // agent-scoped -- their targets resolve the owning workspace from an agentId
+  // -- so they need the binding and disable themselves when there is no agent,
+  // rather than navigating somewhere arbitrary. Providers is server-scoped and
+  // follows the same host fallback the Hosts button already uses.
+  const handleOpenVibeTeam = useCallback(() => {
+    if (!railAgentId) return;
+    const target = openOmpVibeTarget({ agentId: railAgentId, workerId: null });
+    if (target) router.push(target as never);
+  }, [railAgentId]);
+
+  const handleOpenPlugins = useCallback(() => {
+    if (!railAgentId) return;
+    const target = openOmpPluginsTarget({ agentId: railAgentId });
+    if (target) router.push(target as never);
+  }, [railAgentId]);
+
+  const handleOpenProviders = useCallback(() => {
+    const serverId = activeWorkspaceServerId ?? hosts[0]?.serverId;
+    if (serverId) router.push(buildSettingsHostSectionRoute(serverId, "providers"));
+  }, [activeWorkspaceServerId, hosts]);
+
   const showUsage = isWeb;
   const hasHosts = hosts.length > 0;
 
@@ -342,6 +385,33 @@ export const DesktopNavigationRail = memo(function DesktopNavigationRail() {
           isActive={pathnameIncludes("/sessions")}
           onPress={handleOpenSessions}
           glyph={HistoryGlyph}
+        />
+        <RailButton
+          testID="rail-vibe-team"
+          label={t("ompUi.vibe.teamTitle", { defaultValue: "Vibe team" })}
+          shortcutKeys={null}
+          isActive={false}
+          onPress={handleOpenVibeTeam}
+          disabled={!railAgentId}
+          glyph={SparklesGlyph}
+        />
+        <RailButton
+          testID="rail-plugins"
+          label={t("ompUi.plugins.title", { defaultValue: "Plugins" })}
+          shortcutKeys={null}
+          isActive={false}
+          onPress={handleOpenPlugins}
+          disabled={!railAgentId}
+          glyph={PuzzleGlyph}
+        />
+        <RailButton
+          testID="rail-providers"
+          label={t("ompProviders.title", { defaultValue: "Providers" })}
+          shortcutKeys={null}
+          isActive={false}
+          onPress={handleOpenProviders}
+          disabled={!activeWorkspaceServerId && hosts.length === 0}
+          glyph={PlugGlyph}
         />
         <RailButton
           testID="rail-schedules"
