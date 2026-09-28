@@ -16,6 +16,16 @@ export default defineConfig({
   test: {
     environment: "node",
     exclude: [...configDefaults.exclude, "e2e/**"],
+    /**
+     * Vitest's 5s default is too tight for this suite when the machine is
+     * loaded. Three separate tests timed out at the default during one full
+     * run and every one of them passes in isolation -- which is the worst kind
+     * of failure for a release gate, because a red suite reads as a product
+     * regression and is really just contention. Thirty seconds still catches a
+     * genuine hang, which is what the default is protecting against; it just
+     * stops a busy CI worker from manufacturing false failures.
+     */
+    testTimeout: 30_000,
     projects: [
       {
         extends: true,
