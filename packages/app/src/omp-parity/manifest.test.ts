@@ -79,6 +79,54 @@ describe("OMP Parity Manifest", () => {
     }
   });
 
+  it("only tracks modes OMP can actually return", () => {
+    // A fourth class of manifest failure, and the only one that asserted a
+    // capability OMP does not have: `mode:loop_paused` sat in the manifest for
+    // the whole project. It is absent from `get_modes`'s enum and from OMP's
+    // own rpc-types, and the manifest also carried a `loopModePaused` boolean
+    // alongside a `mode` string with no paused variant for loop -- only plan
+    // and goal have those.
+    //
+    // The rpc guard next door cannot catch this: a phantom on the `mode`
+    // surface is not an rpc row. Deriving the enum from the schema that
+    // defines it makes the class unrepresentable, and a future OMP that adds a
+    // mode will fail here until the manifest acknowledges it.
+    const schemaSource = fs.readFileSync(
+      path.join(
+        root,
+        "packages",
+        "server",
+        "src",
+        "server",
+        "agent",
+        "providers",
+        "omp",
+        "rpc-types.ts",
+      ),
+      "utf8",
+    );
+    const enumMatch = schemaSource.match(/mode:\s*z\.enum\(\[([^\]]+)\]\)/);
+    expect(enumMatch, "could not find the OmpModesResult mode enum in rpc-types.ts").toBeTruthy();
+    const ompModes = new Set(
+      [...(enumMatch?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((match) => match[1]!),
+    );
+    expect(ompModes.size, "parsed an empty mode enum -- the schema shape moved").toBeGreaterThan(0);
+
+    // `vibe` is entered rather than cycled, and advisor/fast/prewalk are
+    // toggles and settings rather than get_modes values. They are deliberately
+    // tracked on this surface because the composer drives all of them, so the
+    // set is declared here rather than inferred -- an unlisted name fails.
+    const NON_GET_MODES = new Set(["vibe", "advisor", "fast", "prewalk"]);
+
+    for (const entry of OMP_PARITY_MANIFEST) {
+      if (entry.surface !== "mode") continue;
+      expect(
+        ompModes.has(entry.name) || NON_GET_MODES.has(entry.name),
+        `mode row "${entry.id}" tracks "${entry.name}", which get_modes can never return (enum: ${[...ompModes].join(", ")}) and which is not a declared non-mode`,
+      ).toBe(true);
+    }
+  });
+
   it("only marks an rpc row as GUI-homed when the protocol can dispatch it", () => {
     // The failure this guards against, found by auditing five surfaces: a row
     // keeps claiming a host capability long after the work lands, because
