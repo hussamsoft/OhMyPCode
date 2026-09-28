@@ -117,6 +117,35 @@ class DeterministicOmpSession extends FakeOmpSession {
       },
     ];
     this.toolCatalog = structuredClone(toolCatalog);
+    // The settings the composer actually reads. Left empty, the deck sees a
+    // server that reports no settings at all, so Access falls back to its
+    // default and the Advisor toggle hides itself (it renders nothing when
+    // `advisor.enabled` is not reported) — both indistinguishable from the
+    // controls being broken.
+    this.settingsResult = {
+      revision: 1,
+      settings: [
+        {
+          path: "tools.approvalMode",
+          type: "enum",
+          values: ["always-ask", "write", "yolo"],
+          default: "yolo",
+          value: "yolo",
+          configured: true,
+          credential: false,
+          ui: { tab: "interaction", group: "Approvals", label: "Tool Approval" },
+        },
+        {
+          path: "advisor.enabled",
+          type: "boolean",
+          default: false,
+          value: false,
+          configured: false,
+          credential: false,
+          ui: { tab: "model", group: "Advisor", label: "Enable Advisor" },
+        },
+      ],
+    };
     this.state = {
       ...this.state,
       model: this.models[0],
