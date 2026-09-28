@@ -22,6 +22,8 @@ export interface OmpServerFixture {
   toolRequests(): string[][];
   /** Commands the composer dispatched to the fork's `bash` RPC, in order. */
   bashRequests(): string[];
+  /** Text of every message sent down the ordinary prompt path, in order. */
+  messageRequests(): string[];
 }
 
 export function configureFakeOmpScenario(scenario: FakeOmpScenario): void {
@@ -65,13 +67,19 @@ export async function seedOmpAgentWorkspace(options: {
 export async function installOmpServerCapabilities(page: Page): Promise<OmpServerFixture> {
   const toolRequests: string[][] = [];
   const bashRequests: string[] = [];
+  const messageRequests: string[] = [];
   await page.routeWebSocket(daemonWsRoutePattern(), (webSocket) => {
     const server = webSocket.connectToServer();
     webSocket.onMessage((message) => {
       const raw = typeof message === "string" ? message : message.toString("utf8");
       try {
         const envelope = JSON.parse(raw) as {
-          message?: { type?: unknown; enabledTools?: unknown; command?: unknown };
+          message?: {
+            type?: unknown;
+            enabledTools?: unknown;
+            command?: unknown;
+            text?: unknown;
+          };
         };
         if (
           envelope.message?.type === "set_agent_tools_request" &&
@@ -84,6 +92,12 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
           typeof envelope.message.command === "string"
         ) {
           bashRequests.push(envelope.message.command);
+        }
+        if (
+          envelope.message?.type === "send_agent_message_request" &&
+          typeof envelope.message.text === "string"
+        ) {
+          messageRequests.push(envelope.message.text);
         }
       } catch {
         // Non-JSON frames pass through unchanged.
@@ -124,6 +138,7 @@ export async function installOmpServerCapabilities(page: Page): Promise<OmpServe
   return {
     toolRequests: () => toolRequests.map((request) => request.slice()),
     bashRequests: () => bashRequests.slice(),
+    messageRequests: () => messageRequests.slice(),
   };
 }
 

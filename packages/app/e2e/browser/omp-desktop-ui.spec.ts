@@ -177,7 +177,10 @@ test.describe("OMP desktop control deck", () => {
       await input.press("Enter");
 
       // It went out as a bash RPC carrying the command without the sigil...
+      // It went out as a bash RPC carrying the command without the sigil...
       await expect.poll(() => server.bashRequests()).toEqual(["echo ohmypcode"]);
+      // ...and not down the prompt path at all.
+      await expect.poll(() => server.messageRequests()).toEqual([]);
       await expect(chip).toHaveCount(0);
     } finally {
       await agent.cleanup();
@@ -199,8 +202,10 @@ test.describe("OMP desktop control deck", () => {
       await expect(page.getByTestId("omp-bash-armed")).toHaveCount(0);
 
       await input.press("Enter");
-      // Nothing was dispatched as a command; it went down the prompt path.
+      // Nothing was dispatched as a command...
       await expect.poll(() => server.bashRequests()).toEqual([]);
+      // ...and the text is not swallowed either: it goes down the prompt path.
+      await expect.poll(() => server.messageRequests()).toEqual(["!!echo ohmypcode"]);
     } finally {
       await agent.cleanup();
     }
