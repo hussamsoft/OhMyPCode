@@ -312,6 +312,26 @@ describe("OmpModeControl segments", () => {
     expect(container.querySelector('[data-testid="omp-mode-loop"]')).not.toBeNull();
   });
 
+  it("renders each segment name exactly once, not doubled", () => {
+    // Regression: the packaged app showed "Build Build", "Plan Plan",
+    // "Vibe Vibe", "Goal Goal" in the composer. ControlChip renders its
+    // `label` and its `value` as two separate <Text> nodes, and the mode
+    // segment passed the same string for both.
+    const { container } = renderModeControl({});
+    for (const [id, name] of [
+      ["build", "Build"],
+      ["plan", "Plan"],
+      ["vibe", "Vibe"],
+      ["goal", "Goal"],
+      ["loop", "Loop"],
+    ] as const) {
+      const chip = container.querySelector(`[data-testid="omp-mode-${id}"]`);
+      expect(chip, `segment ${id} is missing`).not.toBeNull();
+      // Exactly the name, so a doubled render ("Build Build") fails here.
+      expect((chip?.textContent ?? "").trim(), `segment ${id} text`).toBe(name);
+    }
+  });
+
   it("marks the active mode as selected based on the modes state", () => {
     hooks.modeHook.modes = { ...MODE_STATE_BASE, goalModeEnabled: true };
     const { container } = renderModeControl({});

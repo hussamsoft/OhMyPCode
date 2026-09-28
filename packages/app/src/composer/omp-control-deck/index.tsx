@@ -206,6 +206,11 @@ function OmpModeSegmentChip({
         icon={Icon}
         label={label}
         value={label}
+        // ControlChip renders `label` then `value`. The mode segments pass the
+        // same string for both, which printed every segment name twice
+        // ("Build Build", "Plan Plan", ...). The value alone is the visible
+        // text; `label` is retained for the accessible name.
+        showLabel={false}
         accessibilityRole="radio"
         accessibilityLabel={accessibilityLabel}
         selected={selected}
@@ -328,12 +333,12 @@ export function OmpModeControl({
         ))}
       </View>
       {visibleError ? (
-        <Text accessibilityRole="alert" style={styles.inlineError}>
+        <Text accessibilityRole="alert" numberOfLines={1} style={styles.inlineError}>
           {visibleError.message}
         </Text>
       ) : null}
       {modesError && !visibleError ? (
-        <Text accessibilityRole="alert" style={styles.inlineError}>
+        <Text accessibilityRole="alert" numberOfLines={1} style={styles.inlineError}>
           {toErrorMessage(modesError)}
         </Text>
       ) : null}

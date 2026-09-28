@@ -13,7 +13,7 @@ import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "reac
 import * as Clipboard from "expo-clipboard";
 import { useTranslation } from "react-i18next";
 import { openExternalUrl } from "@/utils/open-external-url";
-import { PRODUCT_ISSUE_URL } from "@/constants/product";
+import { PRODUCT_ISSUE_URL, PRODUCT_REPO_URL } from "@/constants/product";
 import { BookOpen, Copy, RotateCw, TriangleAlert } from "lucide-react-native";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { OmpLogo } from "@/components/icons/omp-logo";
@@ -31,7 +31,7 @@ interface StartupSplashScreenProps {
 }
 
 const GITHUB_ISSUE_URL = `${PRODUCT_ISSUE_URL}/new`;
-const DOCS_URL = "https://paseo.sh/docs";
+const DOCS_URL = PRODUCT_REPO_URL;
 
 const LOGO_SIZE = 96;
 const SHIMMER_PEAK_WIDTH = 120;
