@@ -569,12 +569,19 @@ export class FakeOmpSession implements OmpRuntimeSession {
   async enterVibe(prompt?: string): Promise<VibeEnterResult> {
     this.vibeRequests.push({ type: "vibe_enter", ...(prompt === undefined ? {} : { prompt }) });
     if (this.vibeStatusError) throw this.vibeStatusError;
+    // Keep the reported state consistent with the result. Without this the
+    // double answered "enabled: true" from enterVibe and then "enabled: false"
+    // from getVibeStatus, so any test asserting the state after entering was
+    // asserting a contradiction. The e2e fixture's DeterministicOmpSession
+    // already did this; this is the base the server unit tests share.
+    this.vibeState = { ...this.vibeState, revision: this.vibeState.revision + 1, enabled: true };
     return { enabled: true, accepted: prompt !== undefined };
   }
 
   async exitVibe(): Promise<VibeExitResult> {
     this.vibeRequests.push({ type: "vibe_exit" });
     if (this.vibeStatusError) throw this.vibeStatusError;
+    this.vibeState = { ...this.vibeState, revision: this.vibeState.revision + 1, enabled: false };
     return { enabled: false, killedWorkers: 0 };
   }
 
