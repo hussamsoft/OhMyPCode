@@ -61,24 +61,53 @@ export function useOmpVibe(serverId: string, agentId: string) {
     return client!.getOmpVibeState(agentId);
   }, [agentId, client, requireCapability]);
 
+  /**
+   * Re-read the state after a mutation and push it into the store.
+   *
+   * The server emits `provider_state_updated` with `stateKey: "vibe"`, but the
+   * app has no handler for that event — `runtimeInfo.extra` is only ever
+   * populated from the full agent snapshot (utils/agent-snapshots.ts), and the
+   * store is seeded only by the effect keyed on it. So a vibe entered from the
+   * composer never reached the store and the Vibe strip stayed hidden while
+   * the mode segment, which reads the feature list, correctly showed checked.
+   *
+   * This mirrors what `useOmpModes` already does: re-validate through the
+   * typed RPC rather than trusting a push nobody consumes.
+   */
+  const refreshFromDaemon = useCallback(async () => {
+    const next = await client!.getOmpVibeState(agentId);
+    const parsed = parseOmpVibeState(next);
+    if (parsed) seedOmpVibeState(agentId, parsed);
+    return next;
+  }, [agentId, client]);
+
   const enter = useCallback(
-    (prompt?: string) => {
+    async (prompt?: string) => {
       requireCapability("canUseVibe");
-      return client!.enterOmpVibe({ agentId, ...(prompt !== undefined ? { prompt } : {}) });
+      const result = await client!.enterOmpVibe({
+        agentId,
+        ...(prompt !== undefined ? { prompt } : {}),
+      });
+      // A failed enter throws, so the store is only refreshed on success --
+      // which is what makes the composer roll the segment back.
+      await refreshFromDaemon();
+      return result;
     },
-    [agentId, client, requireCapability],
+    [agentId, client, refreshFromDaemon, requireCapability],
   );
 
   const exit = useCallback(async () => {
     requireCapability("canUseVibe");
     begin({ kind: "exit", workerId: null });
     try {
-      return await client!.exitOmpVibe(agentId);
+      const result = await client!.exitOmpVibe(agentId);
+      await refreshFromDaemon();
+      return result;
     } catch (error) {
       clearPending(agentId);
       throw error;
     }
-  }, [agentId, begin, clearPending, client, requireCapability]);
+  }, [agentId, begin, clearPending, client, refreshFromDaemon, requireCapability]);
 
   const spawn = useCallback(
     async (input: SpawnOmpVibeWorkerInput) => {
