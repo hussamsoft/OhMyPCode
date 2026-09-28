@@ -63,10 +63,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "composerTrigger:#<number>",
     surface: "composerTrigger",
     name: "#<number>",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "session",
+    guiHome: "omp-tools-control",
     reason:
-      "Composer prompt trigger; escape hatch via bundled OMP TUI terminal until Phase 9 input deck triggers land",
+      "Bare #<number> is recognised by extractForgeRefs and auto-attached as a GitHub issue/PR ref by composer/forge-auto-attach.ts",
   },
   {
     id: "composerTrigger:$",
@@ -90,10 +90,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "composerTrigger:/",
     surface: "composerTrigger",
     name: "/",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "session",
+    guiHome: "slash-palette",
     reason:
-      "Composer prompt trigger; escape hatch via bundled OMP TUI terminal until Phase 9 input deck triggers land",
+      "Composer slash-command palette: composer/index.tsx builds runOmpSlashCommand and hands it to use-agent-autocomplete, which dispatches it",
   },
   {
     id: "composerTrigger:@file",

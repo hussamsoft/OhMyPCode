@@ -8,10 +8,10 @@ Total tracked entries: **866**.
 | `composerTrigger` | `!` | `terminal` | `terminal:omp-tui` | — |
 | `composerTrigger` | `!!` | `terminal` | `terminal:omp-tui` | — |
 | `composerTrigger` | `#` | `terminal` | `terminal:omp-tui` | — |
-| `composerTrigger` | `#<number>` | `terminal` | `terminal:omp-tui` | — |
+| `composerTrigger` | `#<number>` | `session` | `omp-tools-control` | — |
 | `composerTrigger` | `$` | `terminal` | `terminal:omp-tui` | — |
 | `composerTrigger` | `$$` | `terminal` | `terminal:omp-tui` | — |
-| `composerTrigger` | `/` | `terminal` | `terminal:omp-tui` | — |
+| `composerTrigger` | `/` | `session` | `slash-palette` | — |
 | `composerTrigger` | `@file` | `terminal` | `terminal:omp-tui` | — |
 | `flag` | `--add-dir` | `terminal` | `terminal:omp-tui` | — |
 | `flag` | `--advisor` | `terminal` | `terminal:omp-tui` | — |
