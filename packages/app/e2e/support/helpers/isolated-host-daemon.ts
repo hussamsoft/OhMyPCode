@@ -24,6 +24,22 @@ export interface IsolatedHostDaemonOptions {
   paseoHome?: string;
   preserveHome?: boolean;
   publishedVersion?: string;
+  /**
+   * Reserve this port instead of picking one. A fixture entry that has to know
+   * the port before it starts (the fake OMP daemon asserts on
+   * `E2E_FAKE_OMP_DAEMON_PORT` matching the listen address) cannot be handed a
+   * port chosen inside the spawn, so the caller reserves it first and passes
+   * it in.
+   */
+  port?: number;
+  /**
+   * Replace the daemon entry point, for fixtures that need a daemon built
+   * from injected components rather than the real runtime. Resolved by tsx
+   * against `serverDir`. Only available in the unpublished path: a published
+   * build has no sources to run, so asking for one there is a configuration
+   * error rather than something to ignore.
+   */
+  entryScript?: string;
 }
 
 async function getAvailablePort(): Promise<number> {
@@ -77,13 +93,33 @@ async function waitForServer(port: number, child: ChildProcess): Promise<void> {
   );
 }
 
+/**
+ * The port an isolated daemon should bind.
+ *
+ * A caller may reserve one — a fixture entry that asserts the port it is about
+ * to bind cannot be handed a port chosen inside the spawn. Otherwise one is
+ * picked, skipping the ports that must stay free (6767/6768 belong to the real
+ * app and its dev daemon, and E2E_DAEMON_PORT belongs to the primary worker).
+ */
+async function resolveDaemonPort(reserved: number | undefined): Promise<number> {
+  const primaryPort = Number(process.env.E2E_DAEMON_PORT ?? 0);
+  const isReserved = (port: number) => port === 6767 || port === 6768 || port === primaryPort;
+  if (reserved !== undefined) {
+    if (isReserved(reserved)) {
+      throw new Error(`Reserved e2e daemon port ${reserved} must stay free`);
+    }
+    return reserved;
+  }
+  let port = await getAvailablePort();
+  while (isReserved(port)) port = await getAvailablePort();
+  return port;
+}
+
 export async function startIsolatedHostDaemon(
   serverId: string,
   options: IsolatedHostDaemonOptions = {},
 ): Promise<IsolatedHostDaemon> {
-  const primaryPort = Number(process.env.E2E_DAEMON_PORT ?? 0);
-  let port = await getAvailablePort();
-  while (port === 6767 || port === 6768 || port === primaryPort) port = await getAvailablePort();
+  const port = await resolveDaemonPort(options.port);
 
   const metroPort = process.env.E2E_METRO_PORT;
   if (!metroPort) throw new Error("E2E_METRO_PORT is required to start an isolated host daemon");
@@ -154,19 +190,38 @@ export async function startIsolatedHostDaemon(
         ...process.env,
         ...options.environment,
         PASEO_HOME: paseoHome,
+        // The OhMyPCode name for the same directory. `resolvePaseoHome` reads
+        // OHMYPCODE_HOME first, so a fixture entry resolving its home through
+        // the modern name was getting only the legacy one — and the fake OMP
+        // daemon refuses to start without it.
+        OHMYPCODE_HOME: paseoHome,
         PASEO_SERVER_ID: serverId,
         PASEO_LISTEN: `127.0.0.1:${port}`,
         PASEO_CORS_ORIGINS: `http://localhost:${metroPort}`,
         PASEO_RELAY_ENABLED: options.mutableRelay ? undefined : "0",
         PASEO_NODE_ENV: "development",
         NODE_ENV: "development",
+        // A fixture entry asserts the port it is about to bind, so it has to
+        // be told before the spawn, not learned from it afterwards.
+        E2E_DAEMON_PORT: String(port),
+        ...(options.entryScript ? { E2E_FAKE_OMP_DAEMON_PORT: String(port) } : {}),
       }),
       stdio: ["ignore", "ignore", "pipe"],
       detached: false,
     };
+    if (publishedPackageRoot && options.entryScript) {
+      throw new Error(
+        `entryScript (${options.entryScript}) cannot be used with a published build; ` +
+          "fixture daemon entries only exist as sources in the repo.",
+      );
+    }
     const child = publishedPackageRoot
       ? spawn(process.execPath, ["dist/scripts/supervisor-entrypoint.js"], spawnOptions)
-      : spawnTsx("scripts/supervisor-entrypoint.ts", ["--dev"], spawnOptions);
+      : spawnTsx(
+          options.entryScript ?? "scripts/supervisor-entrypoint.ts",
+          ["--dev"],
+          spawnOptions,
+        );
 
     let stderr = "";
     child.stderr?.on("data", (chunk: Buffer) => {

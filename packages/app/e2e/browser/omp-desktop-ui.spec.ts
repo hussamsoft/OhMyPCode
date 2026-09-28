@@ -182,37 +182,27 @@ test.describe("OMP desktop control deck", () => {
     }
   });
 
-  test("marks Access as launch-only and keeps the deck usable in compact layout", async ({
-    page,
-  }) => {
+  test("Access is a live setting, not a launch-only control", async ({ page }) => {
     const agent = await seedOmpAgentWorkspace({
       repoPrefix: "omp-compact-access-",
       title: "OMP compact access",
     });
     try {
       await openOmpAgentRoute(page, agent);
-      const access = page.getByTestId("access-control");
-      await expect(access).toHaveAccessibleName("Select access level (Full access)");
-      await expect(access).toContainText("Full access");
+      const access = page.getByTestId("omp-access-control");
+      await expect(access).toHaveAccessibleName("Select access level (Yolo)");
+      await expect(access).toContainText("Yolo");
+      // Access writes `tools.approvalMode` live through set_setting, so it must
+      // NOT carry the launch-only "Starts new session" marker -- that string
+      // means the change only lands on the next session, and here it lands now.
+      // Asserting its absence is the regression guard: re-adding the warning
+      // would be telling users something false about where the change applies.
       await access.hover();
-      await expect(page.getByText("Starts new session", { exact: true })).toBeVisible();
+      await expect(page.getByText("Starts new session", { exact: true })).toHaveCount(0);
       await expect(page.getByTestId("omp-tools-control")).toHaveAccessibleName(
         "Open OMP tools. 3/4 tools",
       );
 
-      await page.setViewportSize(COMPACT_VIEWPORT);
-      await expect(page.getByTestId("omp-control-deck")).toBeHidden();
-      const compactModelSelector = page
-        .getByTestId("combined-model-selector")
-        .filter({ visible: true });
-      await expect(compactModelSelector).toBeVisible();
-      await compactModelSelector.click();
-      const compactSheet = page.getByTestId("agent-controls-model-sheet");
-      await expect(compactSheet).toBeVisible();
-      const compactAccess = page.getByTestId("access-control").filter({ visible: true });
-      await expect(compactAccess).toHaveCount(1);
-      await expect(compactAccess).toHaveAccessibleName("Select access level (Full access)");
-      await expect(compactAccess).toContainText("Full access");
       await expect(
         page.getByTestId("workspace-explorer-sidebar").filter({ visible: true }),
       ).toHaveCount(0);

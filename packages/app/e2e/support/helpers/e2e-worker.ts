@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import net from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { forkPaseoHomeMetadata, resolvePaseoHomePath } from "./paseo-home-fork";
@@ -169,6 +170,30 @@ async function applyMetadataFork(targetHome: string, providerIds: string[]): Pro
   );
 }
 
+export /**
+ * Reserve a TCP port for a fixture daemon to bind.
+ *
+ * The fake OMP entry asserts `E2E_FAKE_OMP_DAEMON_PORT` equals the listen
+ * address it is about to use, so the port cannot be chosen inside the spawn.
+ * The socket is closed immediately: the port is handed over, not held, and the
+ * window between release and bind is the same one the daemon's own retry loop
+ * already covers.
+ */
+async function reserveE2EDaemonPort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        server.close(() => reject(new Error("Failed to reserve an e2e daemon port")));
+        return;
+      }
+      server.close(() => resolve(address.port));
+    });
+  });
+}
+
 export async function startE2EWorker(
   workerIndex: number,
   options: E2EWorkerOptions = {},
@@ -196,19 +221,38 @@ export async function startE2EWorker(
     if (options.injectPaseoTools) {
       await enablePaseoTools(paseoHome);
     }
+    // The fake OMP runtime lives in a standalone daemon entry
+    // (e2e/support/fake-omp-daemon.mts) that builds a daemon with an injected
+    // DeterministicOmpRuntime. Nothing launched it: the worker always spawned
+    // the real supervisor, so a spec asking for the fake got a real
+    // OmpCliRuntime spawning a real omp binary, which exits 1 in a temp home
+    // with no credentials. Every OMP e2e spec failed in setup.
+    //
+    // The entry asserts the port it is about to bind, so the port is reserved
+    // here and passed down rather than being picked inside the spawn.
+    const fakeOmpEntry = options.fakeOmpRuntime
+      ? "../app/e2e/support/fake-omp-daemon.mts"
+      : undefined;
+    const reservedPort = options.fakeOmpRuntime ? await reserveE2EDaemonPort() : undefined;
     const daemon = await startIsolatedHostDaemon(serverId, {
       paseoHome,
       preserveHome,
+      entryScript: fakeOmpEntry,
+      port: reservedPort,
       environment: {
         NODE_ENV: "development",
         PATH: `${fakeEditorBin}${path.delimiter}${process.env.PATH ?? ""}`,
         PASEO_E2E_EDITOR_RECORD_PATH: editorRecordPath,
+        // The fake entry reads its scenario from this path and refuses to
+        // start without it (fake-omp-daemon.mts:33).
+        ...(options.fakeOmpRuntime ? { E2E_FAKE_OMP_SCENARIO_PATH: fakeOmpScenarioPath } : {}),
         ...options.environment,
       },
     });
-
-    process.env.E2E_DAEMON_PORT = String(daemon.port);
     process.env.E2E_SERVER_ID = daemon.serverId;
+    // For the *test* process. The spawn env already told the daemon; specs
+    // and helpers read this one to build daemon URLs, so both are needed.
+    process.env.E2E_DAEMON_PORT = String(daemon.port);
     process.env.E2E_PASEO_HOME = daemon.paseoHome;
     process.env.E2E_EDITOR_RECORD_PATH = editorRecordPath;
     delete process.env.E2E_RELAY_PORT;
