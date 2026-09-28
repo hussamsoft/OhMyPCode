@@ -12,6 +12,7 @@ import {
   OmpModeControl,
   type OmpVibeControls,
 } from "./index";
+import { isIconOnlyChip } from "./control-chip";
 
 const OMP_TRANSLATION_OVERRIDES: Record<string, string> = {
   "agentControls.omp.build": "Build",
@@ -330,6 +331,16 @@ describe("OmpModeControl segments", () => {
       // Exactly the name, so a doubled render ("Build Build") fails here.
       expect((chip?.textContent ?? "").trim(), `segment ${id} text`).toBe(name);
     }
+  });
+
+  it("does not collapse a mode segment to the fixed-width icon-only box", () => {
+    // Regression: the mode segments hide their separate label (the name would
+    // otherwise print twice) but still render `value`. ControlChip keyed its
+    // 32px icon-only layout off `showLabel`, so "Build" was clipped to "B".
+    expect(isIconOnlyChip({ showLabel: false, value: "Build" })).toBe(false);
+    expect(isIconOnlyChip({ showLabel: true, value: "Build" })).toBe(false);
+    // A chip with genuinely no text is still icon-only.
+    expect(isIconOnlyChip({ showLabel: false, value: "" })).toBe(true);
   });
 
   it("marks the active mode as selected based on the modes state", () => {

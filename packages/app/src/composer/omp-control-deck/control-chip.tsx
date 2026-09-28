@@ -21,6 +21,18 @@ export interface ControlChipProps {
   testID?: string;
 }
 
+/**
+ * Whether a chip renders as a fixed-width icon-only box.
+ *
+ * True only when there is genuinely no text. A chip may hide its separate
+ * `label` while still showing `value` -- the mode segments do, to avoid
+ * printing the name twice -- and treating that as "no text" collapsed them
+ * into a 32px box that clipped "Build" to "B".
+ */
+export function isIconOnlyChip(input: { showLabel: boolean; value: string }): boolean {
+  return !input.showLabel && !input.value;
+}
+
 export const ControlChip = forwardRef<View, ControlChipProps>(function ControlChip(
   {
     icon: Icon,
@@ -46,13 +58,17 @@ export const ControlChip = forwardRef<View, ControlChipProps>(function ControlCh
       styles.control,
       compact ? styles.compact : styles.desktop,
       selected && (accentSelected ? styles.selectedAccent : styles.selected),
-      !showLabel && (compact ? styles.iconOnlyCompact : styles.iconOnly),
+      // The fixed-width icon-only layout is for chips with no text at all --
+      // see isIconOnlyChip. Keying it off `showLabel` alone also collapsed
+      // chips that hide the label but still render `value`, which squeezed
+      // the mode segments' "Build" to "B" inside a 32px box.
+      isIconOnlyChip({ showLabel, value }) && (compact ? styles.iconOnlyCompact : styles.iconOnly),
       (hovered || open) && styles.hovered,
       pressed && styles.pressed,
       focused && styles.focused,
       disabled && styles.disabled,
     ],
-    [accentSelected, compact, disabled, open, selected, showLabel],
+    [accentSelected, compact, disabled, open, selected, showLabel, value],
   );
   const accessibilityState = useMemo(
     () =>
