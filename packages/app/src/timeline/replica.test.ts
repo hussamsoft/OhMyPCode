@@ -665,3 +665,55 @@ describe("SQLite baseline restoration", () => {
     }
   });
 });
+
+describe("dead-agent handling", () => {
+  it("does not retry or surface an error when the daemon no longer knows the agent", async () => {
+    // Regression: a tab restored from persisted state named an agent whose
+    // process died with the previous daemon. The catch-up retried forever and
+    // pinned a "Couldn't refresh agent history" banner over the transcript.
+    useSessionStore.getState().initializeSession(SERVER_ID, null);
+    const errors: string[] = [];
+    const scheduled: Array<() => void> = [];
+    const owner = createViewedTimelineOwner({
+      serverId: SERVER_ID,
+      replica: createTimelineReplica({
+        serverId: SERVER_ID,
+        storage: {
+          readTimeline: () => Promise.resolve(undefined),
+          commitTimeline: () => undefined,
+        },
+        prepareAgent: async () => undefined,
+      }),
+      replaceDemandedAgentIds: () => undefined,
+      drainQueuedAgentMessage: () => undefined,
+      ports: {
+        observe: () => ({ ready: Promise.resolve(), release: async () => undefined }),
+        readCursor: () => undefined,
+        fetchPage: async () => {
+          throw new Error(`Unknown agent '${AGENT_ID}'`);
+        },
+        fetchLatestTail: async () => ({ hasNewer: false, endCursor: null }),
+        reportError: (error: unknown) => {
+          errors.push(error instanceof Error ? error.message : String(error));
+        },
+        schedule: (task: () => void) => {
+          scheduled.push(task);
+          return () => undefined;
+        },
+      },
+    });
+
+    owner.replaceVisibleAgentIds("test", [AGENT_ID]);
+    owner.setConnected(true);
+    owner.setActive(true);
+    await expect.poll(() => errors.length, { timeout: 1000 }).toBe(1);
+
+    // No retry was scheduled: a dead agent can never be caught up, and the
+    // old behaviour looped here forever.
+    expect(scheduled).toHaveLength(0);
+    // The banner is cleared rather than pinned over the transcript.
+    expect(owner.getAgentTimelineError(AGENT_ID)).toBeNull();
+    expect(owner.getAgentTimelineStatus(AGENT_ID)).toBe("ready");
+    owner.dispose();
+  });
+});

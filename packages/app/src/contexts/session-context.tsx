@@ -487,7 +487,11 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
       fetchLatestTail: (agentId) =>
         getHostRuntimeStore().fetchAgentTimeline(serverId, agentId, planTimelineTailFetch()),
       reportError: (error) => {
-        console.warn("[Session] viewed timeline synchronization failed", { serverId, error });
+        // Log the message, not the object: console.warn stringifies a
+        // structured RPC error to "[object Object]", which is what made this
+        // un-diagnosable from the log alone.
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`[Session] viewed timeline synchronization failed (${serverId}):`, message);
       },
       schedule: (task, delayMs) => {
         const timeout = setTimeout(task, delayMs);

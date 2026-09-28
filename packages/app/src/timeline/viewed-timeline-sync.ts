@@ -28,6 +28,21 @@ import {
 import { isTimelineResumeSnapshotAuthoritative } from "./timeline-sync-plan";
 import { replaceWithCanonicalStream } from "@/types/stream";
 
+/**
+ * True when the daemon says the agent no longer exists.
+ *
+ * The app persists open tabs across restarts, so a restored tab can name an
+ * agent whose process died with the previous daemon. That is terminal: no
+ * amount of retrying brings it back, and the old behaviour retried forever
+ * while pinning a "Couldn't refresh agent history" banner over the transcript.
+ * The tab is dropped instead, so the user gets their workspace back and the
+ * dead session simply stops being offered.
+ */
+function isAgentGoneError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("Unknown agent");
+}
+
 export interface TimelineReplicaStorage {
   readTimeline(serverId: string, agentId: string): Promise<CachedTimeline | undefined>;
   commitTimeline(serverId: string, agentId: string, timeline: CachedTimeline): void;
@@ -489,6 +504,11 @@ export function createViewedTimelineSync(ports: ViewedTimelineSyncPorts): Viewed
   // owes them a pending state until it settles.
   const manualRetries = new Set<string>();
   const loadedCache = new Set<string>();
+  // Agents the daemon reported as gone. A tombstone, not a retry: without one
+  // the membership pass re-demands the agent on every settle and the fetch
+  // throws again, which spins forever. Latched here and never cleared, so a
+  // restored tab naming a dead agent costs one request, not a busy loop.
+  const deadAgentIds = new Set<string>();
   const cacheLoads = new Map<string, Promise<void>>();
   const listeners = new Set<() => void>();
   let active = true;
@@ -598,6 +618,20 @@ export function createViewedTimelineSync(ports: ViewedTimelineSyncPorts): Viewed
       setVisibilityCatchUpReady(agentId);
     } catch (error) {
       if (catchUps.get(agentId)?.generation === generation) {
+        if (isAgentGoneError(error)) {
+          // Terminal. The daemon has no such agent, so this can never succeed.
+          // Latch a tombstone so the membership pass does not re-demand the
+          // agent and spin, cancel the retry, and drop the error rather than
+          // pinning a "Couldn't refresh agent history" banner over the
+          // transcript for a session that is simply gone.
+          deadAgentIds.add(agentId);
+          cancelCatchUp(agentId);
+          visibilityCatchUpErrors.delete(agentId);
+          loadedCache.add(agentId);
+          notifyListeners();
+          ports.reportError(error);
+          return;
+        }
         const nextRetryDelayMs = getNextRetryDelayMs(catchUps.get(agentId)?.retryDelayMs);
         const cancelRetry = ports.schedule(() => {
           const current = catchUps.get(agentId);
@@ -623,7 +657,16 @@ export function createViewedTimelineSync(ports: ViewedTimelineSyncPorts): Viewed
     if (loadedCache.has(agentId) || cacheLoads.has(agentId)) return;
     const load = ports
       .prepare(agentId)
-      .catch((error) => ports.reportError(error))
+      .catch((error) => {
+        ports.reportError(error);
+        // A dead agent has no cache to load. Latch the tombstone so the
+        // follow-up catch-up is never scheduled against it.
+        if (isAgentGoneError(error)) {
+          deadAgentIds.add(agentId);
+          cancelCatchUp(agentId);
+          visibilityCatchUpErrors.delete(agentId);
+        }
+      })
       .finally(() => {
         cacheLoads.delete(agentId);
         loadedCache.add(agentId);
@@ -704,6 +747,9 @@ export function createViewedTimelineSync(ports: ViewedTimelineSyncPorts): Viewed
       ...acknowledged.filter((id) => !visible.includes(id)),
     ];
     for (const agentId of ordered) {
+      // The daemon said this agent does not exist. Re-demanding it would only
+      // produce the same rejection, so it is never fetched again.
+      if (deadAgentIds.has(agentId)) continue;
       const pendingCatchUp = pendingCatchUps.get(agentId);
       const current = catchUps.get(agentId);
       // Completion of a different chat must not bypass a failed chat's backoff or
@@ -828,6 +874,10 @@ export function createViewedTimelineSync(ports: ViewedTimelineSyncPorts): Viewed
       return () => listeners.delete(listener);
     },
     getAgentTimelineStatus(agentId) {
+      // A dead agent is terminal, not "still catching up". Reporting "pending"
+      // left the workspace showing a spinner for a session that will never
+      // arrive.
+      if (deadAgentIds.has(agentId)) return "ready";
       if (manualRetries.has(agentId)) return "retrying";
       if (visibilityCatchUpErrors.has(agentId)) return "error";
       if (!isDesired(agentId) || visibilityCatchUpPending.has(agentId)) return "pending";
