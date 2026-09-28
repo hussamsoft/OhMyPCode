@@ -1045,6 +1045,10 @@ export class OmpAgentSession implements AgentSession, OmpParitySession, OmpVibeS
       this.state.fastModeEnabled === true,
       this.toggleStates,
       this.lastModesState,
+      // `undefined` until the vibe state has been read at least once, which
+      // keeps the feature out of the list entirely rather than claiming Vibe
+      // is off when it is simply unknown.
+      this.lastVibeState ? this.lastVibeState.enabled : undefined,
     );
   }
 
@@ -1639,6 +1643,33 @@ export class OmpAgentSession implements AgentSession, OmpParitySession, OmpVibeS
         fastModeEnabled: fastMode.enabled,
         fastModeActive: fastMode.active,
       };
+      return;
+    }
+
+    // Vibe is entered and exited rather than cycled, so it takes the same
+    // guarded path the mode toggles do -- the deck's Vibe segment arrives here
+    // as `setFeature("omp_vibe", true)`, and without this branch it fell
+    // through to `Unknown OMP feature: omp_vibe`, leaving Vibe unselectable
+    // from the composer.
+    if (featureId === "omp_vibe") {
+      if (typeof value !== "boolean") {
+        throw new Error(`OMP ${featureId} requires a boolean value`);
+      }
+      if (value) {
+        await this.vibeEnter();
+      } else {
+        await this.vibeExit();
+      }
+      // Re-read rather than assume: `enterVibe` is what fails, and a failed
+      // enter must leave the feature reporting off so the composer rolls the
+      // segment back instead of showing a mode that was never entered.
+      this.lastVibeState = await this.runtimeSession.getVibeStatus();
+      this.emit({
+        type: "provider_state_updated",
+        provider: this.provider,
+        stateKey: "vibe",
+        state: this.lastVibeState as unknown as JsonValue,
+      });
       return;
     }
 

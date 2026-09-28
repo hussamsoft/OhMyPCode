@@ -133,6 +133,7 @@ export function buildOmpLiveFeatures(
   fastModeEnabled: boolean,
   toggleStates: ReadonlyMap<string, boolean>,
   modesState?: OmpModesResult | null,
+  vibeEnabled?: boolean,
 ): AgentFeature[] {
   const features: AgentFeature[] = [
     { ...OMP_FAST_MODE_FEATURE, value: fastModeEnabled },
@@ -179,6 +180,21 @@ export function buildOmpLiveFeatures(
         value: modesState.loopModeEnabled,
       },
     );
+  }
+
+  // Vibe is reported as a feature so the composer's mode segment can derive
+  // its selected state from the same list every other control reads. Without
+  // it the Vibe segment never became checkable, however successfully the
+  // enter/exit RPC succeeded.
+  if (vibeEnabled !== undefined) {
+    features.push({
+      type: "toggle" as const,
+      id: "omp_vibe",
+      label: "Vibe mode",
+      description: "Parallel worker team reviews and advances the task",
+      icon: "sparkles",
+      value: vibeEnabled,
+    });
   }
 
   return features;

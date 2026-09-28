@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 
-import { buildOmpDraftFeatures, parseOmpToggleStatus } from "./feature-definitions.js";
+import {
+  buildOmpDraftFeatures,
+  buildOmpLiveFeatures,
+  parseOmpToggleStatus,
+} from "./feature-definitions.js";
 import { resolveOmpFeatureLaunch, resolveOmpLaunchMode } from "./provider-config.js";
 
 describe("OMP feature definitions", () => {
@@ -92,5 +96,43 @@ describe("OMP feature definitions", () => {
         "--plan-yolo",
       ],
     });
+  });
+});
+
+describe("buildOmpLiveFeatures: vibe", () => {
+  const MODES = {
+    mode: "none",
+    planModeEnabled: false,
+    planModePaused: false,
+    goalModeEnabled: false,
+    goalModePaused: false,
+    loopModeEnabled: false,
+    loopModePaused: false,
+    canEnter: true,
+  } as const;
+
+  it("emits omp_vibe once the vibe state is known", () => {
+    // The composer's Vibe segment derives its selected state from this list,
+    // like every other control. Without the entry the segment could never
+    // become checkable however well the enter RPC worked.
+    const features = buildOmpLiveFeatures(false, new Map(), MODES, true);
+    const vibe = features.find((feature) => feature.id === "omp_vibe");
+    expect(vibe).toBeDefined();
+    expect(vibe?.type).toBe("toggle");
+    expect(vibe?.value).toBe(true);
+  });
+
+  it("reports vibe off once the state is known to be off", () => {
+    const vibe = buildOmpLiveFeatures(false, new Map(), MODES, false).find(
+      (feature) => feature.id === "omp_vibe",
+    );
+    expect(vibe?.value).toBe(false);
+  });
+
+  it("omits omp_vibe entirely while the state is unknown", () => {
+    // Omitted rather than defaulting to false: "off" is a claim, and until the
+    // runtime has been asked, the honest answer is that it is not known.
+    const features = buildOmpLiveFeatures(false, new Map(), MODES, undefined);
+    expect(features.find((feature) => feature.id === "omp_vibe")).toBeUndefined();
   });
 });
