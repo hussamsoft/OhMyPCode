@@ -1,7 +1,6 @@
 import { Text, View } from "react-native";
+import { ompColorFrom } from "@/omp-theme/theme";
 import { StyleSheet } from "react-native-unistyles";
-
-import { OMP_DARK_TOKENS, OMP_LIGHT_TOKENS } from "@/omp-theme/tokens.generated";
 
 /**
  * The composer's armed-execution indicator.
@@ -14,23 +13,18 @@ import { OMP_DARK_TOKENS, OMP_LIGHT_TOKENS } from "@/omp-theme/tokens.generated"
  * `!!` / `$$` run the command but keep its output out of the model's context --
  * a distinction the user cannot infer from the text alone.
  *
- * The colours are resolved from the generated OMP tokens rather than from
- * `theme.colors`, because where OMP colour slots live in the app theme is
- * decided separately. Reading the token here consumes it without pre-empting
- * that call: when the slots land, this is the one place that has to change.
+ * The colours come from `theme.colors.omp`, the slot Phase 7 opened for OMP's
+ * own palette. That indirection is the point: this component no longer knows
+ * which token set is active, and swapping or extending OMP's palette no longer
+ * requires touching a component.
  */
 
-const FALLBACK = "#0088fa";
-
-function resolveToken(name: "bashMode" | "pythonMode", colorScheme: string | undefined): string {
-  const source = colorScheme === "light" ? OMP_LIGHT_TOKENS : OMP_DARK_TOKENS;
-  const value = source[name];
-  return typeof value === "string" && value.length > 0 ? value : FALLBACK;
-}
-
 const styles = StyleSheet.create((theme) => {
-  const bash = resolveToken("bashMode", theme.colorScheme);
-  const python = resolveToken("pythonMode", theme.colorScheme);
+  // Read from the theme rather than the generated token module: Phase 7 put
+  // OMP's palette under colors.omp, so the token follows whatever theme is
+  // active instead of branching on colorScheme here.
+  const bash = ompColorFrom(theme.colors, "bashMode", "#0088fa");
+  const python = ompColorFrom(theme.colors, "pythonMode", "#d97706");
   return {
     chip: {
       alignSelf: "flex-start",
@@ -78,11 +72,7 @@ export function BashArmedChip({
   const doubled = excludeFromContext ? sigil.repeat(2) : sigil;
   const tone = arm === "python" ? styles.python : styles.bash;
   return (
-    <View
-      testID="omp-bash-armed"
-      style={[styles.chip, tone]}
-      accessibilityRole="text"
-    >
+    <View testID="omp-bash-armed" style={[styles.chip, tone]} accessibilityRole="text">
       <Text testID="omp-bash-armed-sigil" style={[styles.sigil, tone]}>
         {doubled}
       </Text>

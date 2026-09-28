@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { useTranslation } from "react-i18next";
 import type { AgentUsage } from "@ohmypcode/protocol/agent-types";
+import { ompColorFrom } from "@/omp-theme/theme";
 import { getStatusLinePreset, type OmpStatusLinePresetDef } from "./presets";
 import { useStatusBarClock, useTurnElapsed } from "./use-status-bar-clock";
 import {
@@ -316,12 +317,16 @@ function buildRenderList(
   return out;
 }
 
-const TONE_COLORS: Record<NonNullable<SegmentView["tone"]>, string | undefined> = {
-  muted: undefined,
-  success: "#15803d",
-  warning: "#d97706",
-  error: "#b91c1c",
-};
+// Resolved from the theme rather than hardcoded. Phase 7 put OMP's palette
+// under colors.omp, and these three tones are OMP's own success/warning/error
+// -- so a tone that changes in the vendor theme now changes here for free,
+// instead of the status bar carrying a second, drifting copy of the palette.
+const toneStyles = StyleSheet.create((theme) => ({
+  muted: { color: undefined },
+  success: { color: ompColorFrom(theme.colors, "success", "#89d281") },
+  warning: { color: ompColorFrom(theme.colors, "warning", "#e4c00f") },
+  error: { color: ompColorFrom(theme.colors, "error", "#fc3a4b") },
+}));
 
 interface SegmentChipProps {
   id: StatusLineSegmentId;
@@ -329,10 +334,10 @@ interface SegmentChipProps {
 }
 
 function SegmentChip({ id, segment }: SegmentChipProps): ReactElement {
-  const toneColor = TONE_COLORS[segment.tone ?? "muted"];
+  const toneColor = toneStyles[segment.tone ?? "muted"];
   return (
     <Text
-      style={[styles.chip, toneColor ? { color: toneColor } : null]}
+      style={[styles.chip, toneColor]}
       accessibilityLabel={`${SEGMENT_LABELS[id]}: ${segment.text}`}
       accessibilityRole="text"
       numberOfLines={1}

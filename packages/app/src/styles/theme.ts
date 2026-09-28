@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import { darkHighlightColors, lightHighlightColors } from "@ohmypcode/highlight";
+import { OMP_DARK_THEME_PALETTE, OMP_LIGHT_THEME_PALETTE } from "@/omp-theme/theme";
 
 export const baseColors = {
   // Base colors
@@ -731,6 +732,12 @@ export function buildDarkTheme(semanticColors: ReturnType<typeof buildDarkSemant
       ...semanticColors,
       palette: baseColors,
       syntax: darkHighlightColors,
+      // OMP's own palette, namespaced rather than merged in. Sixty-six vendor
+      // tokens flattened alongside the app's semantic colours would be
+      // indistinguishable from them and impossible to reason about; under
+      // `omp` they are self-describing at the call site
+      // (theme.colors.omp.bashMode) and nothing else in the theme shifts.
+      omp: OMP_DARK_THEME_PALETTE,
     },
     shadow: darkShadow,
     ...commonTheme,
@@ -794,6 +801,7 @@ export function buildLightTheme(semanticColors: ReturnType<typeof buildLightSema
       ...semanticColors,
       palette: baseColors,
       syntax: lightHighlightColors,
+      omp: OMP_LIGHT_THEME_PALETTE,
     },
     shadow: lightShadow,
     ...commonTheme,

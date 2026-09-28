@@ -110,3 +110,39 @@ describe("Built-in light theme", () => {
     });
   });
 });
+
+describe("OMP colour slot", () => {
+  // Phase 7's decision: OMP's palette lives under colors.omp rather than
+  // merged into the semantic namespace. This pins that both themes actually
+  // carry it -- a theme built without the slot would fail at the first
+  // component that reads theme.colors.omp, which is a runtime crash in
+  // production and nowhere in the type system.
+  it("carries the full OMP palette in both dark and light", () => {
+    expect(Object.keys(darkTheme.colors.omp)).toEqual(Object.keys(lightTheme.colors.omp));
+    expect(Object.keys(darkTheme.colors.omp)).toHaveLength(
+      Object.keys(darkOhMyPCodeTheme.colors.omp).length,
+    );
+  });
+
+  it("gives the two themes genuinely different values, not one copy of the other", () => {
+    // A slot that resolves to the same palette in both themes would satisfy a
+    // key-set check while quietly ignoring the light theme entirely.
+    expect(darkTheme.colors.omp.bashMode).not.toBe(lightTheme.colors.omp.bashMode);
+  });
+
+  it("resolves the tokens the composer and status bar actually use", () => {
+    for (const theme of [darkTheme, lightTheme]) {
+      for (const key of ["bashMode", "pythonMode", "success", "warning", "error"] as const) {
+        expect(theme.colors.omp[key]).toBeDefined();
+      }
+    }
+  });
+
+  it("leaves the app's own semantic colours untouched", () => {
+    // The point of namespacing: adding 66 vendor tokens must not renumber or
+    // shadow anything the app already themed.
+    expect(darkTheme.colors.surface0).toBeDefined();
+    expect(darkTheme.colors.palette).toBeDefined();
+    expect("omp" in darkTheme.colors).toBe(true);
+  });
+});

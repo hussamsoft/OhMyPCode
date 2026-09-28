@@ -1219,14 +1219,22 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   // Feeds the status bar's elapsed-turn clock and the collab segment. Both are
   // read here rather than deep inside the bar so the bar stays a pure
   // renderer of whatever the panel already knows.
-  const agentRunState = useSessionStore((state) => {
+  // Two primitive selectors, deliberately not one that returns an object.
+  // useSessionStore compares its snapshot with Object.is, so a selector that
+  // builds a fresh object reports a change on every single read and
+  // useSyncExternalStore re-renders forever -- an infinite loop that no unit
+  // test catches, because it only appears against a live store subscription.
+  const agentRunStatus = useSessionStore((state) => {
     const session = state.sessions[serverId];
     if (!session) return null;
     const record = session.agents.get(agentId) ?? session.agentDetails.get(agentId) ?? null;
-    return {
-      status: record?.status ?? null,
-      collabAvailable: record?.capabilities?.ompCollab === true,
-    };
+    return record?.status ?? null;
+  });
+  const agentCollabAvailable = useSessionStore((state) => {
+    const session = state.sessions[serverId];
+    if (!session) return false;
+    const record = session.agents.get(agentId) ?? session.agentDetails.get(agentId) ?? null;
+    return record?.capabilities?.ompCollab === true;
   });
   const { view: providerUsageView } = useProviderUsage(serverId ?? null, {
     enabled: showPersistentChrome,
@@ -1352,8 +1360,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
             modeLabel: agentCurrentModeId,
             providerUsage: statusBarProviderUsage,
             sessionIdentity: agentId,
-            collabAvailable: agentRunState?.collabAvailable ?? false,
-            agentStatus: agentRunState?.status ?? null,
+            collabAvailable: agentCollabAvailable,
+            agentStatus: agentRunStatus,
           }
         : null,
     [
@@ -1368,8 +1376,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       agentCurrentModeId,
       statusBarProviderUsage,
       agentId,
-      agentRunState?.collabAvailable,
-      agentRunState?.status,
+      agentCollabAvailable,
+      agentRunStatus,
     ],
   );
   const composerChromeOverlay =

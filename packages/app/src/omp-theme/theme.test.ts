@@ -1,9 +1,10 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, it, test } from "vitest";
 
 import {
   OMP_DARK_APP_ONLY_SURFACES,
   OMP_DARK_THEME_PALETTE,
   OMP_LIGHT_APP_ONLY_SURFACES,
+  ompColorFrom,
   OMP_LIGHT_THEME_PALETTE,
 } from "./theme";
 import {
@@ -73,5 +74,29 @@ describe("OMP app-only surfaces", () => {
     expect(OMP_DARK_APP_ONLY_SURFACES.focusRing).not.toBe(OMP_DARK_THEME_PALETTE.statusLineBg);
     expect(OMP_LIGHT_APP_ONLY_SURFACES.focusRing).toBe(OMP_LIGHT_THEME_PALETTE.accent);
     expect(OMP_LIGHT_APP_ONLY_SURFACES.focusRing).not.toBe(OMP_LIGHT_THEME_PALETTE.statusLineBg);
+  });
+});
+
+describe("ompColorFrom", () => {
+  it("returns the palette value when the slot exists", () => {
+    expect(ompColorFrom({ omp: { bashMode: "#abc" } }, "bashMode", "#fff")).toBe("#abc");
+  });
+
+  // A plugin-supplied theme is built outside this module and need not carry the
+  // slot. Reading through without a guard would let a user theme crash the
+  // composer, which is the failure this guard exists to prevent.
+  it("falls back rather than throwing when the theme has no OMP slot", () => {
+    expect(ompColorFrom({}, "bashMode", "#fff")).toBe("#fff");
+    expect(ompColorFrom(undefined, "bashMode", "#fff")).toBe("#fff");
+  });
+
+  it("falls back when the slot exists but the key does not", () => {
+    expect(ompColorFrom({ omp: {} }, "pythonMode", "#fff")).toBe("#fff");
+  });
+
+  it("falls back when the slot holds a non-colour value", () => {
+    // The palette mirrors the vendor schema verbatim, and that schema is not
+    // colour-only: statusLineSep is a number.
+    expect(ompColorFrom({ omp: { statusLineSep: 244 } }, "statusLineSep", "#fff")).toBe("#fff");
   });
 });

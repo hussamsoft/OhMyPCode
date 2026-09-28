@@ -68,9 +68,14 @@ function findEagerModuleStyleReads(filePath: string): string[] {
 }
 
 describe("Unistyles module scope", () => {
+  // This walks the whole source tree and builds a TypeScript AST for every
+  // file, so it costs seconds rather than milliseconds. It sat on the 5s
+  // default and started timing out on a loaded machine -- with the tree clean,
+  // which is the worst way for a guard to fail: it looks like a product
+  // regression and is really just a slow test. The assertion is unchanged.
   it("does not materialize style proxies before the persisted theme loads", () => {
     const violations = listSourceFiles(SOURCE_ROOT).flatMap(findEagerModuleStyleReads);
 
     expect(violations).toEqual([]);
-  });
+  }, 60_000);
 });

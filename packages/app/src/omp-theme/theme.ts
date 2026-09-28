@@ -300,3 +300,31 @@ export const OMP_LIGHT_APP_ONLY_SURFACES: OmpAppOnlySurfaces = buildOmpAppOnlySu
   OMP_LIGHT_THEME_PALETTE,
   OMP_LIGHT_EXPORT_TOKENS,
 );
+
+/**
+ * Narrow an OMP palette slot to something a style can use as a colour.
+ *
+ * The palette mirrors the vendor schema verbatim, and that schema is not
+ * colour-only: `statusLineSep` is a number, for instance. Consumers that want a
+ * colour should ask for one rather than casting, so a slot that stops being a
+ * colour is a visible fallback instead of a type error three files away.
+ */
+export function ompColor(value: OmpColorValue | undefined, fallback: string): string {
+  return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+/**
+ * Read a slot from a theme's OMP palette, tolerating a theme that has none.
+ *
+ * Plugin-supplied themes are built outside this module and need not carry the
+ * slot. Treating that as a crash would mean a user theme could take down the
+ * composer, so a missing palette degrades to the caller-supplied fallback --
+ * the same colour the slot would have provided, so the UI is unchanged.
+ */
+export function ompColorFrom(
+  colors: { omp?: Partial<Record<string, OmpColorValue>> } | undefined,
+  key: string,
+  fallback: string,
+): string {
+  return ompColor(colors?.omp?.[key], fallback);
+}
