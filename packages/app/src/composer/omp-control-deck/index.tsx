@@ -1127,25 +1127,41 @@ const styles = StyleSheet.create((theme) => ({
     flexShrink: 1,
     flexDirection: "row",
     alignItems: "center",
+    // Controls wrap to a second row rather than overflowing. As a single
+    // non-wrapping row the trailing chips were clipped at the container edge —
+    // "Access" rendered as "Acces" and the settings chip as "Setti…" with no
+    // way to reach it. The label-collapse thresholds in
+    // resolveOmpLabelVisibility cover the in-between case; this covers the
+    // case where even label-less chips do not fit.
+    flexWrap: "wrap",
     gap: theme.spacing[1],
   },
   modeGroup: {
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing[1],
-    flexShrink: 0,
+    // The five segments stay on one line when they fit and wrap when they do
+    // not. `flexShrink: 0` plus a hard `width: 440` on the segment row and
+    // `minWidth: 76` per slot meant the mode cluster alone demanded 380px that
+    // could not give way, pushing the trailing chips off the container edge.
+    flexShrink: 1,
+    flexWrap: "wrap",
   },
   modeSegments: {
-    width: 440,
     flexDirection: "row",
     gap: theme.spacing[1],
+    // Five chips sharing the row rather than a fixed 440px box, so the cluster
+    // gives width back when the deck is tight.
+    flexShrink: 1,
   },
   modeSegmentSlot: {
-    minWidth: 76,
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing[1],
-    flexShrink: 0,
+    // Wide enough for the segment names, but allowed to shrink and wrap rather
+    // than force the row to overflow.
+    minWidth: 0,
+    flexShrink: 1,
   },
   modelSlot: {
     minWidth: 0,
