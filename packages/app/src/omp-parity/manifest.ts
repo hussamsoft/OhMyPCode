@@ -44,19 +44,21 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "composerTrigger:!",
     surface: "composerTrigger",
     name: "!",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "omp-bash-armed",
     reason:
-      "Composer prompt trigger; escape hatch via bundled OMP TUI terminal until Phase 9 input deck triggers land",
+      "Composer trigger; the composer parses the sigil, arms the chip, and dispatches omp.bash.request to the fork's bash RPC. A prompt cannot carry the command -- the daemon treats a prefixed message as prose and runs nothing. Capability gate: the ompBash capability.",
+    dispatch: "omp.bash.request",
   },
   {
     id: "composerTrigger:!!",
     surface: "composerTrigger",
     name: "!!",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "rpc",
+    guiHome: "omp-bash-armed",
     reason:
-      "Composer prompt trigger; escape hatch via bundled OMP TUI terminal until Phase 9 input deck triggers land",
+      "The exclude-from-context arm: runs the command but keeps its output out of the model's context. The flag rides on the bash command itself, reaching the session layer as options.excludeFromContext. Capability gate: the ompBash capability.",
+    dispatch: "omp.bash.request",
   },
   {
     id: "composerTrigger:#",
@@ -80,19 +82,21 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "composerTrigger:$",
     surface: "composerTrigger",
     name: "$",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "session",
+    guiHome: "omp-bash-armed",
     reason:
-      "Composer prompt trigger; escape hatch via bundled OMP TUI terminal until Phase 9 input deck triggers land",
+      "Composer trigger; dispatches omp.python.request to the fork's python RPC, which was added for parity with bash. Only a leading sigil arms it, so a dollar sign mid-sentence stays prose. Capability gate: the ompPython capability.",
+    dispatch: "omp.python.request",
   },
   {
     id: "composerTrigger:$$",
     surface: "composerTrigger",
     name: "$$",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "session",
+    guiHome: "omp-bash-armed",
     reason:
-      "Composer prompt trigger; escape hatch via bundled OMP TUI terminal until Phase 9 input deck triggers land",
+      "The Python exclude-from-context arm. Same flag as !!, carried on the python command. Capability gate: the ompPython capability.",
+    dispatch: "omp.python.request",
   },
   {
     id: "composerTrigger:/",
@@ -1844,9 +1848,20 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     surface: "rpc",
     name: "bash",
     transport: "rpc",
-    guiHome: "terminal:omp-tui",
+    guiHome: "omp-bash-armed",
     reason:
-      "OMP RPC command; escape hatch via bundled OMP TUI terminal until native host dispatch lands",
+      "OMP RPC command; dispatched by the composer behind the ! and !! arms and gated on the ompBash capability, so a host with no launchable runtime reports the arm unavailable instead of failing at dispatch.",
+    dispatch: "omp.bash.request",
+  },
+  {
+    id: "rpc:python",
+    surface: "rpc",
+    name: "python",
+    transport: "rpc",
+    guiHome: "omp-bash-armed",
+    reason:
+      "OMP RPC command added to the vendored fork for parity with bash, dispatched by the composer behind the $ and $$ arms and gated on the ompPython capability.",
+    dispatch: "omp.python.request",
   },
   {
     id: "rpc:branch",

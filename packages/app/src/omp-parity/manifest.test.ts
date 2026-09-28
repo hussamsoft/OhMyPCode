@@ -37,6 +37,7 @@ const VALID_GUI_HOMES = new Set([
   "slash-palette",
   "rename-modal",
   "omp-tools-control",
+  "omp-bash-armed",
   "omp_vibe",
   "omp-status-bar",
   "omp-mode-control",
