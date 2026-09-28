@@ -337,21 +337,65 @@ function mapEntryMessage(entry: OmpSessionEntry): OmpAgentMessage | null {
   return visibleFallback(entry.type, entry);
 }
 
+/**
+ * Session-entry types that carry metadata rather than transcript content.
+ *
+ * Kept in sync with the `SessionEntry` union in
+ * vendor/oh-my-pi/packages/coding-agent/src/session/session-entries.ts.
+ * Anything matched here returns `null` from {@link mapEntryMessage} and never
+ * reaches the transcript. Anything NOT matched falls through to
+ * {@link visibleFallback}, which deliberately withholds the payload — so a
+ * type missing from this list is a correctness bug (a control record shows up
+ * as `[type] Unsupported history record` in the user's transcript), not a
+ * leak. `history-mapper.test.ts` pins the list against the vendored union so
+ * an OMP bump that adds an entry type fails the suite rather than shipping.
+ */
+const CONTROL_ENTRY_TYPES: Record<string, true> = {
+  // SessionEnvelope / bookkeeping.
+  session: true,
+  session_init: true,
+  system: true,
+  system_prompt: true,
+  title: true,
+  title_change: true,
+  // Model/runtime selection. These drive the status bar and mode badge, which
+  // read them from dedicated state, not from the transcript.
+  model_change: true,
+  thinking_level_change: true,
+  service_tier_change: true,
+  // Telemetry. `model_usage` is explicitly documented upstream as "usage from
+  // a model call that does not belong in the conversation transcript".
+  model_usage: true,
+  // Auth/infra pins. `credential_pin` records a *hash* of the serving account;
+  // it is not user content and must never render.
+  credential_pin: true,
+  ttsr_injection: true,
+  // Context lifecycle. The TUI renders these as dividers; the desktop renders
+  // them as ordinary timeline gaps.
+  compaction: true,
+  branch_summary: true,
+  reset_boundary: true,
+  mode_change: true,
+  // Extension + user annotation records.
+  custom: true,
+  label: true,
+  tool_execution: true,
+};
+
 function isControlEntryType(type: string): boolean {
-  return (
-    type === "session" ||
-    type === "session_init" ||
-    type === "system" ||
-    type === "title" ||
-    type === "title_change" ||
-    type === "custom" ||
-    type === "system_prompt" ||
-    type === "model_change" ||
-    type === "thinking_level_change" ||
-    type === "tool_execution" ||
-    type.startsWith("tool_execution_")
-  );
+  // `tool_execution_*` is an open family (tool_execution_start, _end, ...).
+  return CONTROL_ENTRY_TYPES[type] === true || type.startsWith("tool_execution_");
 }
+
+/**
+ * Test-only re-export of {@link isControlEntryType}.
+ *
+ * `history-mapper.test.ts` asserts this predicate against the entry types
+ * declared in the vendored OMP union, so the two cannot drift. Exported
+ * under a distinct name so the production call site keeps reading as a
+ * private detail.
+ */
+export const isControlEntryTypeForTest = isControlEntryType;
 
 function visibleFallback(role: string, value: Record<string, unknown>): OmpAgentMessage {
   let text = "Unsupported history record";

@@ -8,7 +8,12 @@ import { streamOmpCoreHistory, type OmpCapturedUserMessageEntry } from "./messag
 import type { OmpAgentMessage } from "./rpc-types.js";
 import { FakeOmp } from "./test-utils/fake-omp.js";
 import { OMP_HISTORY_MAPPER_HOOKS } from "./history-hooks.js";
-import { streamOmpHistory } from "./history.js";
+import {
+  CONTENT_ENTRY_TYPES,
+  OMP_SESSION_ENTRIES_SOURCE,
+  readOmpSessionEntryTypes,
+} from "./history-entry-types.js";
+import { isControlEntryTypeForTest, streamOmpHistory } from "./history.js";
 
 async function collectHistory(
   messages: OmpAgentMessage[],
@@ -628,5 +633,38 @@ describe("OMP history mapper", () => {
         expect.objectContaining({ id: "NestedChild", status: "completed" }),
       ]),
     );
+  });
+
+  test("control-entry filter covers every type OMP's SessionEntry union declares", () => {
+    // Regression: `model_usage` and `credential_pin` shipped as
+    // "[model_usage] Unsupported history record" rows in the user's
+    // transcript, because CONTROL_ENTRY_TYPES lagged OMP's own union. A
+    // missing type does not fail anywhere -- it degrades silently. So the
+    // filter is checked against the vendored source of truth, and an OMP
+    // bump that adds an entry type fails here instead of shipping.
+    const declared = readOmpSessionEntryTypes(OMP_SESSION_ENTRIES_SOURCE);
+    const contentTypes = CONTENT_ENTRY_TYPES as readonly string[];
+    // Everything OMP declares is either transcript content or a control
+    // entry. `const:` members are constants the regex cannot resolve; they
+    // are checked by name below rather than skipped.
+    const unresolvedConstants = declared.filter((type) => type.startsWith("const:"));
+    for (const type of declared) {
+      if (type.startsWith("const:")) continue;
+      if (contentTypes.includes(type)) continue;
+      expect(
+        isControlEntryTypeForTest(type),
+        `OMP session entry type "${type}" is neither transcript content nor filtered as a control entry; it would render as "[${type}] Unsupported history record"`,
+      ).toBe(true);
+    }
+    // `title_change` is declared via a constant upstream; the filter matches
+    // the literal the constant resolves to.
+    for (const type of unresolvedConstants) {
+      const name = type.slice("const:".length);
+      expect(
+        name,
+        `OMP declares session entry type via constant ${name}, which the entry-type parser cannot resolve. Add its resolved literal to CONTROL_ENTRY_TYPES explicitly.`,
+      ).toBe("TITLE_CHANGE_ENTRY_TYPE");
+      expect(isControlEntryTypeForTest("title_change")).toBe(true);
+    }
   });
 });
