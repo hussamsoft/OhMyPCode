@@ -6,6 +6,7 @@
  * continue to flow through `AgentControls`/`DraftAgentControls` unchanged.
  */
 import { useCallback, useMemo, useRef, type ReactElement, type ReactNode } from "react";
+import { useFetchQuery } from "@/data/query";
 import { View, type View as ViewType } from "react-native";
 import { useShallow } from "zustand/shallow";
 import type { AgentFeature, AgentToolDefinition } from "@ohmypcode/protocol/agent-types";
@@ -185,10 +186,26 @@ export function OmpComposerControls({
     [agentSlice?.features, handleSetFeature, ompCapabilities.canUseVibe],
   );
 
+  // The chip shows "N/M tools", which read "0/0" until the sheet was opened
+  // because the catalog was only ever fetched from inside `list`. The count
+  // is the fastest read of "what can this session do", so it loads up front.
+  const canUseTools = ompCapabilities.canSelectTools;
+  const toolsQuery = useFetchQuery<readonly AgentToolDefinition[]>({
+    queryKey: ["ompAgentTools", serverId, agentId] as const,
+    dataShape: "list",
+    staleTimeMs: 30_000,
+    enabled: Boolean(client) && Boolean(agentId) && canUseTools,
+    queryFn: async () => {
+      if (!client) return [] as AgentToolDefinition[];
+      const payload = await client.listAgentTools(agentId);
+      return payload.tools;
+    },
+  });
+  const toolRows = useMemo(() => toolsQuery.data ?? EMPTY_TOOL_ROWS, [toolsQuery.data]);
+
   const tools = useMemo<OmpToolControls>(() => {
-    const canUseTools = ompCapabilities.canSelectTools;
     return {
-      rows: EMPTY_TOOL_ROWS,
+      rows: toolRows,
       canUse: canUseTools,
       list: async (): Promise<AgentToolDefinition[]> => {
         if (!client || !canUseTools) {
@@ -205,7 +222,7 @@ export function OmpComposerControls({
         return payload.tools;
       },
     };
-  }, [agentId, client, ompCapabilities.canSelectTools]);
+  }, [agentId, canUseTools, client, toolRows]);
 
   const layoutContextValue = useMemo(
     () => ({
