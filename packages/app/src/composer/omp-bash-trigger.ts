@@ -66,3 +66,32 @@ export function parseOmpBashTrigger(text: string): OmpBashTriggerParse {
   }
   return { trigger: "bash", command, unsupported: false };
 }
+
+/**
+ * Whether a parsed draft should actually be dispatched as a command.
+ *
+ * The arm is a pure text transform, so it only takes the draft when nothing else
+ * is riding along:
+ *
+ * - attachments: a command cannot carry a browser element or a PR context, and
+ *   diverting would clear them without ever sending them -- silent data loss.
+ * - a live turn: ordering and queueing belong to the message path, so the
+ *   command is not run beside an in-flight turn.
+ *
+ * Both cases fall through to the ordinary prompt path, where the text is
+ * preserved rather than swallowed.
+ */
+export function shouldDispatchAsBashCommand(input: {
+  trigger: OmpBashTriggerParse;
+  attachmentCount: number;
+  isAgentRunning: boolean;
+  forceSend?: boolean;
+}): boolean {
+  if (input.trigger.trigger !== "bash") {
+    return false;
+  }
+  if (input.attachmentCount > 0) {
+    return false;
+  }
+  return !(input.isAgentRunning && !input.forceSend);
+}

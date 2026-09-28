@@ -111,7 +111,7 @@ import { useKeyboardActionHandler } from "@/hooks/use-keyboard-action-handler";
 import type { KeyboardActionDefinition } from "@/keyboard/keyboard-action-dispatcher";
 import type { MessageInputKeyboardActionKind } from "@/keyboard/actions";
 import { submitAgentInput } from "@/composer/submit";
-import { parseOmpBashTrigger } from "@/composer/omp-bash-trigger";
+import { parseOmpBashTrigger, shouldDispatchAsBashCommand } from "@/composer/omp-bash-trigger";
 import { BashArmedChip } from "@/composer/omp-control-deck/bash-armed-chip";
 import { createMessageSubmissionWriter } from "@/composer/submission/writer";
 import { ComposerKeyboardScopeProvider, useComposerKeyboardScope } from "@/composer/keyboard-scope";
@@ -1726,29 +1726,48 @@ function ComposerContentImpl({
       // prefixed prompt as prose and runs nothing, so it is dispatched to the
       // fork's `bash` RPC instead of the message path.
       const bashTrigger = parseOmpBashTrigger(outgoingMessage);
-      if (bashTrigger.trigger === "bash") {
+      // The arm is a pure text transform with no attachment or queue semantics
+      // of its own, so it only takes the draft when nothing else is riding
+      // along. With attachments it falls through -- a command cannot carry a
+      // browser element or a PR context, and clearing them would destroy work
+      // the user did not ask to discard. While the agent is streaming it also
+      // falls through, so the turn's ordering and queueing stay the message
+      // path's to decide rather than running a command beside a live turn.
+      if (
+        shouldDispatchAsBashCommand({
+          trigger: bashTrigger,
+          attachmentCount: outgoingAttachments.length,
+          isAgentRunning,
+          forceSend,
+        })
+      ) {
         if (blurOnSubmit) {
           messageInputRef.current?.blur();
         }
+        resetSuppression();
         clearDraft("sent");
         replaceUserInput("");
-        setSelectedAttachments([]);
         setSendError(null);
         setIsProcessing(true);
+        let outcome: "submitted" | "failed" = "submitted";
         try {
-          const result = await ompBash.run(bashTrigger.command);
-          const failed = result.exitCode !== 0 && result.exitCode !== undefined;
-          const summary = result.output.trim() || `$ ${bashTrigger.command}`;
-          toast.show(failed ? `${summary}\n\nexit code ${result.exitCode}` : summary, {
+          const response = await ompBash.run(bashTrigger.command);
+          const failed = response.exitCode !== 0 && response.exitCode !== undefined;
+          const summary = response.output.trim() || `$ ${bashTrigger.command}`;
+          toast.show(failed ? `${summary}\n\nexit code ${response.exitCode}` : summary, {
             variant: failed ? "error" : "success",
           });
-          setIsProcessing(false);
         } catch (error) {
-          setIsProcessing(false);
+          outcome = "failed";
           const message =
             error instanceof Error ? error.message : t("composer.errors.failedToSend");
           setSendError(message);
           toast.show(message, { variant: "error" });
+        } finally {
+          setIsProcessing(false);
+          // Runs on every outcome. The early return here used to skip it, which
+          // left suppressed attachment keys stuck for the rest of the session.
+          completeSubmit({ result: outcome, outgoingAttachments });
         }
         return;
       }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseOmpBashTrigger } from "./omp-bash-trigger";
+import { parseOmpBashTrigger, shouldDispatchAsBashCommand } from "./omp-bash-trigger";
 
 describe("parseOmpBashTrigger", () => {
   it("arms bash for a single sigil and returns the command without it", () => {
@@ -46,5 +46,62 @@ describe("parseOmpBashTrigger", () => {
     expect(parsed.trigger).toBe("none");
     expect(parsed.unsupported).toBe(true);
     expect(parsed.command).toBe("");
+  });
+});
+
+describe("shouldDispatchAsBashCommand", () => {
+  const armed = parseOmpBashTrigger("!echo hi");
+
+  it("dispatches a bare armed draft", () => {
+    expect(
+      shouldDispatchAsBashCommand({
+        trigger: armed,
+        attachmentCount: 0,
+        isAgentRunning: false,
+      }),
+    ).toBe(true);
+  });
+
+  // A command cannot carry a browser element or a PR context. Diverting would
+  // clear the attachments without ever sending them.
+  it("falls through when the draft carries attachments", () => {
+    expect(
+      shouldDispatchAsBashCommand({
+        trigger: armed,
+        attachmentCount: 1,
+        isAgentRunning: false,
+      }),
+    ).toBe(false);
+  });
+
+  // Ordering and queueing belong to the message path.
+  it("falls through while the agent is streaming, unless the send is forced", () => {
+    expect(
+      shouldDispatchAsBashCommand({
+        trigger: armed,
+        attachmentCount: 0,
+        isAgentRunning: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldDispatchAsBashCommand({
+        trigger: armed,
+        attachmentCount: 0,
+        isAgentRunning: true,
+        forceSend: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("never dispatches an untriggered or unsupported draft", () => {
+    for (const text of ["hello", "!", "!!echo hi"]) {
+      expect(
+        shouldDispatchAsBashCommand({
+          trigger: parseOmpBashTrigger(text),
+          attachmentCount: 0,
+          isAgentRunning: false,
+        }),
+      ).toBe(false);
+    }
   });
 });
