@@ -19,6 +19,12 @@ export interface ControlChipProps {
   accessibilityRole?: "button" | "radio";
   compact?: boolean;
   testID?: string;
+  /**
+   * A write is in flight. The control is already non-interactive while this is
+   * true, but without a visible state it just sits in its old value looking
+   * inert, which reads as "the tap did not register" rather than "working".
+   */
+  pending?: boolean;
 }
 
 /**
@@ -49,6 +55,7 @@ export const ControlChip = forwardRef<View, ControlChipProps>(function ControlCh
     showCaret = false,
     compact = false,
     testID,
+    pending = false,
   },
   ref,
 ) {
@@ -67,8 +74,9 @@ export const ControlChip = forwardRef<View, ControlChipProps>(function ControlCh
       pressed && styles.pressed,
       focused && styles.focused,
       disabled && styles.disabled,
+      pending && styles.pending,
     ],
-    [accentSelected, compact, disabled, open, selected, showLabel, value],
+    [accentSelected, compact, disabled, open, pending, selected, showLabel, value],
   );
   const accessibilityState = useMemo(
     () =>
@@ -83,10 +91,14 @@ export const ControlChip = forwardRef<View, ControlChipProps>(function ControlCh
       ref={ref}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={accessibilityState}
+      accessibilityState={pending ? { ...accessibilityState, busy: true } : accessibilityState}
       aria-checked={accessibilityRole === "radio" ? selected : undefined}
       aria-expanded={accessibilityRole === "button" ? open : undefined}
       aria-disabled={disabled}
+      // Explicit, for the same reason aria-checked is: react-native-web does
+      // not derive aria-busy from accessibilityState, and a control mid-write
+      // has to announce that rather than only looking dimmer.
+      aria-busy={pending || undefined}
       collapsable={false}
       disabled={disabled}
       onPress={onPress}
@@ -152,6 +164,13 @@ const styles = StyleSheet.create((theme) => ({
   },
   focused: {
     borderColor: theme.colors.ring,
+  },
+  // Distinct from `disabled`: a pending chip is mid-write, not unavailable.
+  // The theme's opacity scale only offers 0/50/100, and 100 is what a live
+  // control already uses, so this takes the literal between the two steps
+  // rather than inventing a scale step for one caller.
+  pending: {
+    opacity: 0.7,
   },
   disabled: {
     opacity: theme.opacity[50],
