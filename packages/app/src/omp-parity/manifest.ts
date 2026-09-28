@@ -1149,19 +1149,19 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "mode:advisor",
     surface: "mode",
     name: "advisor",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "settings",
+    guiHome: "omp_settings",
     reason:
-      "Mode transition; escape hatch via bundled OMP TUI terminal until Phase 3 RPC and Phase 9 deck modes land",
+      "The composer deck's Advisor toggle writes advisor.enabled through set_setting, and the settings form renders the same entry under Behavior",
   },
   {
     id: "mode:fast",
     surface: "mode",
     name: "fast",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "session",
+    guiHome: "omp_settings",
     reason:
-      "Mode transition; escape hatch via bundled OMP TUI terminal until Phase 3 RPC and Phase 9 deck modes land",
+      "Exposed as the fast_mode row of the settings sheet's Behavior group (OMP_FEATURE_ORDER.behavior), rendered by OmpSettingsForm",
   },
   {
     id: "mode:goal",
@@ -1215,10 +1215,10 @@ export const OMP_PARITY_MANIFEST: readonly OmpParityEntry[] = [
     id: "mode:prewalk",
     surface: "mode",
     name: "prewalk",
-    transport: "terminal",
-    guiHome: "terminal:omp-tui",
+    transport: "session",
+    guiHome: "omp_settings",
     reason:
-      "Mode transition; escape hatch via bundled OMP TUI terminal until Phase 3 RPC and Phase 9 deck modes land",
+      "Exposed as the omp_prewalk row of the settings sheet's Startup group (OMP_FEATURE_ORDER.startup); launch-only per OMP but surfaced as a setting",
   },
   {
     id: "mode:vibe",
